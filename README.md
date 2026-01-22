@@ -164,10 +164,10 @@ npm run tauri dev
 
 **目标**: 完成最小可用原型，验证技术栈和架构设计
 
-- [ ] **项目初始化**
-  - [ ] 创建 Tauri 项目骨架
-  - [ ] 配置 Svelte + Tailwind CSS
-  - [ ] 搭建基础目录结构
+- [x] **项目初始化**
+  - [x] 创建 Tauri 项目骨架
+  - [x] 配置 Svelte + Tailwind CSS
+  - [x] 搭建基础目录结构
 
 - [ ] **Status 模块开发**
   - [ ] 设计 Status 数据的 JSON Schema（体重、运动数据等）
