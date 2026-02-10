@@ -21,7 +21,7 @@
 
 用途：存储用户基础信息（身份相关，低频变更）。
 
-建议路径：`data/user_profile.json`
+路径：`data/user_profile.json`
 
 最小示例：
 
@@ -40,7 +40,7 @@
 ## 模块 Schema 索引
 
 - `app_settings.md`：应用行为配置（启用模块、主题、首页等）。
-- `status.md`：身体与生活状态数据（体重、训练、配速等）。
+- `status.md`：状态指标定义与数值文件（支持可插拔指标与缺省值）。
 - `achievements.md`：成就定义与解锁状态。
 - `skills.md`：技能树节点、积分与等级计算输入。
 - `items.md`：物品记录与统计字段。
