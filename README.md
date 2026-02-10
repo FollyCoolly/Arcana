@@ -114,6 +114,13 @@ graph LR
 
 ---
 
+## 📚 文档
+
+- [架构设计](docs/architecture.md) - 详细的架构设计文档
+- [目录结构说明](docs/directory_structure.md) - 项目目录结构说明
+
+---
+
 ## 🚀 快速开始
 
 ### 环境要求
