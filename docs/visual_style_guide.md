@@ -1,4 +1,4 @@
-# Reality Mod - 视觉设计规范（P5-Inspired）
+# Reality Mod - 视觉风格指南（P5-Inspired）
 
 > **版本**: v0.2.0  
 > **最后更新**: 2026-03-03  

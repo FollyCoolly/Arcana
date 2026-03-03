@@ -123,6 +123,8 @@ graph LR
 
 - [架构设计](docs/architecture.md) - 详细的架构设计文档
 - [目录结构说明](docs/directory_structure.md) - 项目目录结构说明
+- [视觉风格指南](docs/visual_style_guide.md) - 视觉语言与设计 token 规范
+- [UI 设计规范](docs/ui_design_spec.md) - 主菜单与子菜单交互规范
 - [Schema 总览](docs/schema/README.md) - 数据结构文档导航
 - [Status Schema](docs/schema/status.md) - Status 指标定义与数值结构
 
