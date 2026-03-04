@@ -224,8 +224,8 @@ pub fn run() {
             let _ = window.set_shadow(false);
             let _ = window.set_effects(
                 EffectsBuilder::new()
-                    .effect(Effect::Blur)
-                    .color(Color(10, 12, 16, 176))
+                    .effect(Effect::Acrylic)
+                    .color(Color(140, 0, 18, 110))
                     .build(),
             );
 
@@ -240,8 +240,17 @@ pub fn run() {
                 // 只在按键按下时触发，避免释放时也触发
                 if event.state == ShortcutState::Pressed {
                     if window.is_visible().unwrap_or(false) {
+                        let _ = window.set_always_on_top(false);
                         let _ = window.hide();
                     } else {
+                        // 展开到主显示器全屏
+                        if let Ok(Some(monitor)) = window.primary_monitor() {
+                            let size = monitor.size();
+                            let pos = monitor.position();
+                            let _ = window.set_position(tauri::PhysicalPosition::new(pos.x, pos.y));
+                            let _ = window.set_size(tauri::PhysicalSize::new(size.width, size.height));
+                        }
+                        let _ = window.set_always_on_top(true);
                         let _ = window.show();
                         let _ = window.set_focus();
                         let _ = window.emit("reality://summoned", ());

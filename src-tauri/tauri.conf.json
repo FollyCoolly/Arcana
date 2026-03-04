@@ -22,8 +22,9 @@
         "transparent": true,
         "windowEffects": {
           "effects": [
-            "blur"
-          ]
+            "acrylic"
+          ],
+          "color": [140, 0, 18, 120]
         },
         "visible": false
       }

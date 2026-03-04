@@ -462,7 +462,7 @@
     position: relative;
     min-height: 100vh;
     color: var(--rm-white);
-    background: rgba(10, 12, 16, 0.36);
+    background: rgba(150, 0, 15, 0.62);
     font-family: "Noto Sans SC", "Source Han Sans SC", "Microsoft YaHei", sans-serif;
   }
 
@@ -628,7 +628,7 @@
     width: min(52vw, 740px);
     max-height: min(74vh, 720px);
     border: 0.2rem solid var(--rm-white);
-    background: var(--rm-black);
+    background: rgba(0, 0, 0, 0.68);
     transform: skewX(-5deg) rotate(-1deg);
     box-shadow: 0.42rem 0.42rem 0 var(--rm-red);
     z-index: 2;
