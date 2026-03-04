@@ -462,7 +462,7 @@
     position: relative;
     min-height: 100vh;
     color: var(--rm-white);
-    background: rgba(150, 0, 15, 0.62);
+    background: rgba(150, 0, 15, 0.8);
     font-family: "Noto Sans SC", "Source Han Sans SC", "Microsoft YaHei", sans-serif;
   }
 
