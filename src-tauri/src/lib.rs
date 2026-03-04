@@ -3,7 +3,10 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
-use tauri::Manager;
+use tauri::{
+    window::{Color, Effect, EffectsBuilder},
+    Emitter, Manager,
+};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
 #[derive(Debug, Deserialize)]
@@ -216,14 +219,23 @@ pub fn run() {
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .setup(|app| {
             let window = app.get_webview_window("main").unwrap();
-            
+
+            let _ = window.set_decorations(false);
+            let _ = window.set_shadow(false);
+            let _ = window.set_effects(
+                EffectsBuilder::new()
+                    .effect(Effect::Blur)
+                    .color(Color(10, 12, 16, 176))
+                    .build(),
+            );
+
             // 注册全局快捷键 Cmd+Shift+R (macOS) 或 Ctrl+Shift+R (Windows/Linux)
             #[cfg(target_os = "macos")]
             let shortcut = "Command+Shift+R";
-            
+
             #[cfg(not(target_os = "macos"))]
             let shortcut = "Ctrl+Shift+R";
-            
+
             app.global_shortcut().on_shortcut(shortcut, move |_app, _shortcut, event| {
                 // 只在按键按下时触发，避免释放时也触发
                 if event.state == ShortcutState::Pressed {
@@ -232,6 +244,7 @@ pub fn run() {
                     } else {
                         let _ = window.show();
                         let _ = window.set_focus();
+                        let _ = window.emit("reality://summoned", ());
                     }
                 }
             })?;
