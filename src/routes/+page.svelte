@@ -208,18 +208,18 @@
         id: "bmi",
         name: "BMI",
         category: "health",
-        group: "derived",
+        group: "body",
         unit: "",
         value_type: "number",
         value: statusData.bmi,
         body_parts: [],
       };
 
-      const existing = groups.find((group) => group.name === "derived");
+      const existing = groups.find((group) => group.name === "body");
       if (existing) {
         existing.metrics.unshift(derivedMetric);
       } else {
-        groups.push({ name: "derived", metrics: [derivedMetric] });
+        groups.push({ name: "body", metrics: [derivedMetric] });
       }
     }
 
@@ -334,63 +334,64 @@
 
 <main class="rm-overlay">
   <section class="rm-scene">
-    <div class="rm-star-stack" aria-hidden="true">
-      <div class="rm-star rm-star-1"></div>
-      <div class="rm-star rm-star-2"></div>
-      <div class="rm-star rm-star-3"></div>
-      <div class="rm-star rm-star-4"></div>
-      <div class="rm-star rm-star-5"></div>
-      <div class="rm-star rm-star-6"></div>
-      <div class="rm-star rm-star-7"></div>
-    </div>
+    {#if currentScreen === "main"}
+      <div class="rm-star-stack" aria-hidden="true">
+        <div class="rm-star rm-star-1"></div>
+        <div class="rm-star rm-star-2"></div>
+        <div class="rm-star rm-star-3"></div>
+        <div class="rm-star rm-star-4"></div>
+        <div class="rm-star rm-star-5"></div>
+        <div class="rm-star rm-star-6"></div>
+        <div class="rm-star rm-star-7"></div>
+      </div>
+    {/if}
 
-    <aside class="rm-command">
-      <ul class="rm-menu" class:rm-menu-locked={currentScreen !== "main"}>
-        {#each MENU_ITEMS as item, index}
-          <li class="rm-menu-line">
-            <button
-              type="button"
-              class="rm-menu-item"
-              class:is-focused={currentScreen === "main" && focusedMenuIndex === index}
-              class:is-active={currentScreen === "status" && item.id === "status"}
-              class:is-disabled={!item.enabled && item.id !== "hide"}
-              aria-disabled={!item.enabled && item.id !== "hide"}
-              onclick={() => void activateMenuItem(index)}
-              onmouseenter={() => setFocusedMenuIndex(index)}
-            >
-              <span class="rm-menu-text">{item.label}</span>
-            </button>
-          </li>
-        {/each}
-      </ul>
+    {#if currentScreen === "main"}
+      <aside class="rm-command">
+        <ul class="rm-menu">
+          {#each MENU_ITEMS as item, index}
+            <li class="rm-menu-line">
+              <button
+                type="button"
+                class="rm-menu-item"
+                class:is-focused={focusedMenuIndex === index}
+                class:is-disabled={!item.enabled && item.id !== "hide"}
+                aria-disabled={!item.enabled && item.id !== "hide"}
+                onclick={() => void activateMenuItem(index)}
+                onmouseenter={() => setFocusedMenuIndex(index)}
+              >
+                <span class="rm-menu-text">{item.label}</span>
+              </button>
+            </li>
+          {/each}
+        </ul>
 
-      <footer class="rm-command-foot">
-        {#if menuFeedback}
-          <p class="rm-feedback">{menuFeedback}</p>
-        {/if}
-      </footer>
-    </aside>
+        <footer class="rm-command-foot">
+          {#if menuFeedback}
+            <p class="rm-feedback">{menuFeedback}</p>
+          {/if}
+        </footer>
+      </aside>
+    {/if}
 
     {#if currentScreen === "status"}
       <section class="rm-stage">
-        <div class="rm-stage-inner">
-          <header class="rm-status-head">
-            <div>
-              <p class="rm-kicker">Status Submenu</p>
-              <h2>Status</h2>
-              <p class="rm-status-subtitle">
-                {#if statusData}
-                  {statusData.username}
-                  {#if statusData.game_days !== null}
-                    · Game Day {statusData.game_days}
-                  {/if}
-                {:else}
-                  Local snapshot from status JSON files.
-                {/if}
-              </p>
-            </div>
+        <header class="rm-status-nav">
+          <div class="rm-status-nav-left">
+            <button type="button" class="rm-back-btn" onclick={() => currentScreen = "main"}>← Back</button>
+            <h2 class="rm-status-title">Status</h2>
+          </div>
+          <div class="rm-status-nav-right">
+            {#if statusData}
+              <span class="rm-status-meta">{statusData.username}</span>
+              {#if statusData.game_days !== null}
+                <span class="rm-status-meta">Day {statusData.game_days}</span>
+              {/if}
+            {/if}
             <button type="button" class="rm-reload-btn" onclick={loadStatusData}>Reload</button>
-          </header>
+          </div>
+        </header>
+        <div class="rm-stage-inner">
 
           {#if loading}
             <p class="state-text">Loading status data...</p>
@@ -553,12 +554,7 @@
     list-style: none;
   }
 
-  .rm-menu.rm-menu-locked {
-    pointer-events: none;
-    opacity: 0.72;
-  }
-
-  .rm-menu-line {
+.rm-menu-line {
     margin: 1rem 0;
   }
 
@@ -633,130 +629,154 @@
 
   .rm-stage {
     position: absolute;
-    right: clamp(0.6rem, 5vw, 4rem);
-    top: clamp(2rem, 15vh, 8rem);
-    width: min(52vw, 740px);
-    max-height: min(74vh, 720px);
-    border: 0.2rem solid var(--rm-white);
-    background: rgba(0, 0, 0, 0.68);
-    transform: skewX(-5deg) rotate(-1deg);
-    box-shadow: 0.42rem 0.42rem 0 var(--rm-red);
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
     z-index: 2;
-    overflow: auto;
   }
 
   .rm-stage-inner {
-    transform: skewX(5deg);
-    padding: 1rem;
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.5rem clamp(1rem, 6vw, 5rem) 2rem;
   }
 
-  .rm-status-head h2 {
-    margin: 0.3rem 0 0;
-    font-size: clamp(1.8rem, 5vw, 2.7rem);
-    line-height: 0.9;
+  .rm-status-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem clamp(1rem, 6vw, 5rem);
+    border-bottom: 0.1rem solid rgba(255, 255, 255, 0.25);
+    flex-shrink: 0;
+  }
+
+  .rm-status-nav-left {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+  }
+
+  .rm-status-nav-right {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .rm-back-btn {
+    background: transparent;
+    border: 0.1rem solid rgba(255, 255, 255, 0.4);
+    color: var(--rm-white);
+    font-family: inherit;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
-    font-family: "p5hatty", "Orbitron", Arial, sans-serif;
-    text-shadow: 0.18rem 0.18rem 0 var(--rm-red);
+    padding: 0.35rem 0.75rem;
+    cursor: pointer;
   }
 
-  .rm-kicker {
+  .rm-back-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .rm-status-title {
     margin: 0;
-    color: var(--rm-red);
+    font-size: clamp(1.4rem, 3vw, 2rem);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    line-height: 1;
+  }
+
+  .rm-status-meta {
     font-size: 0.78rem;
     font-weight: 700;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
-  }
-
-  .rm-status-head {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 0.75rem;
-    margin-bottom: 1rem;
-  }
-
-  .rm-status-subtitle {
-    margin: 0.3rem 0 0;
-    line-height: 1.45;
+    opacity: 0.7;
   }
 
   .rm-reload-btn {
-    border: 0.14rem solid var(--rm-white);
-    padding: 0.55rem 0.85rem;
+    border: 0.1rem solid rgba(255, 255, 255, 0.4);
+    padding: 0.35rem 0.75rem;
     color: var(--rm-white);
+    font-family: inherit;
+    font-size: 0.8rem;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.08em;
     cursor: pointer;
-    background: var(--rm-red);
-    clip-path: polygon(0 0, 100% 0, 90% 100%, 0 100%);
+    background: transparent;
+  }
+
+  .rm-reload-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
   }
 
   .rm-status-block {
-    margin-top: 0.9rem;
-    border: 0.14rem solid var(--rm-black);
-    padding: 0.9rem;
-    color: var(--rm-black);
-    background: var(--rm-white);
-    box-shadow: 0.28rem 0.28rem 0 var(--rm-red);
+    margin-top: 1.5rem;
   }
 
   .rm-status-block h3 {
-    margin: 0;
-    font-size: 1rem;
+    margin: 0 0 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.1em;
+    color: rgba(255, 255, 255, 0.5);
+    border-bottom: 0.06rem solid rgba(255, 255, 255, 0.15);
+    padding-bottom: 0.35rem;
   }
 
   .rm-group-block + .rm-group-block {
-    margin-top: 0.9rem;
+    margin-top: 1rem;
   }
 
   .rm-group-block h4 {
-    margin: 0.7rem 0 0.45rem;
-    font-size: 0.78rem;
+    margin: 1rem 0 0.5rem;
+    font-size: 0.7rem;
     text-transform: uppercase;
-    letter-spacing: 0.07em;
+    letter-spacing: 0.1em;
+    color: rgba(255, 255, 255, 0.4);
   }
 
   .rm-metric-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 0.5rem;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 0.6rem;
   }
 
   .rm-metric-card {
-    border: 0.12rem solid var(--rm-black);
-    padding: 0.58rem;
-    background: var(--rm-white);
+    background: rgba(0, 0, 0, 0.5);
+    border: 0.08rem solid rgba(255, 255, 255, 0.15);
+    padding: 1rem 1.2rem;
   }
 
   .rm-metric-name {
     margin: 0;
-    font-size: 0.81rem;
-    line-height: 1.2;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(255, 255, 255, 0.75);
   }
 
   .rm-metric-value {
-    margin: 0.28rem 0 0;
-    font-size: 1rem;
+    margin: 0.5rem 0 0;
+    font-size: clamp(1.4rem, 2.5vw, 1.8rem);
     font-weight: 700;
     color: var(--rm-red);
+    line-height: 1;
   }
 
   .state-text {
     margin: 0.85rem 0 0;
+    color: rgba(255, 255, 255, 0.7);
   }
 
   .state-text.error {
     color: var(--rm-red);
     font-weight: 700;
-  }
-
-  .rm-status-block .state-text {
-    color: var(--rm-black);
   }
 
   @media (max-width: 980px) {
@@ -770,20 +790,6 @@
       transform: rotate(0);
       padding: 0 0.6rem;
       box-sizing: border-box;
-    }
-
-    .rm-stage {
-      position: relative;
-      right: auto;
-      top: auto;
-      width: calc(100% - 1.2rem);
-      max-height: none;
-      margin: 0.6rem auto 1rem;
-      transform: skewX(0) rotate(0);
-    }
-
-    .rm-stage-inner {
-      transform: none;
     }
 
   }
