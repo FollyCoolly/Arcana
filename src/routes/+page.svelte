@@ -340,6 +340,8 @@
       <div class="rm-star rm-star-3"></div>
       <div class="rm-star rm-star-4"></div>
       <div class="rm-star rm-star-5"></div>
+      <div class="rm-star rm-star-6"></div>
+      <div class="rm-star rm-star-7"></div>
     </div>
 
     <aside class="rm-command">
@@ -458,12 +460,12 @@
   .rm-overlay {
     --rm-black: #000000;
     --rm-white: #ffffff;
-    --rm-red: #ff0033;
+    --rm-red: #80001a;
     position: relative;
     min-height: 100vh;
     color: var(--rm-white);
     background: rgba(150, 0, 15, 0.8);
-    font-family: "Noto Sans SC", "Source Han Sans SC", "Microsoft YaHei", sans-serif;
+    font-family: "p5hatty", "Orbitron", Arial, sans-serif;
   }
 
   .rm-scene {
@@ -476,8 +478,8 @@
   .rm-star-stack {
     position: absolute;
     top: 50%;
-    left: 48%;
-    width: clamp(320px, 43vw, 620px);
+    left: 25%;
+    width: 80vh;
     aspect-ratio: 1;
     transform: translate(-50%, -50%) rotate(-14deg);
     z-index: 0;
@@ -508,31 +510,41 @@
 
   .rm-star-2 {
     background: var(--rm-black);
-    transform: scale(0.76);
+    transform: scale(0.80);
   }
 
   .rm-star-3 {
     background: var(--rm-white);
-    transform: scale(0.62);
+    transform: scale(0.68);
   }
 
   .rm-star-4 {
     background: var(--rm-black);
-    transform: scale(0.48);
+    transform: scale(0.56);
   }
 
   .rm-star-5 {
     background: var(--rm-white);
-    transform: scale(0.34);
+    transform: scale(0.44);
+  }
+
+  .rm-star-6 {
+    background: var(--rm-black);
+    transform: scale(0.32);
+  }
+
+  .rm-star-7 {
+    background: var(--rm-white);
+    transform: scale(0.20);
   }
 
   .rm-command {
     position: absolute;
-    left: clamp(0.6rem, 6vw, 6rem);
-    top: clamp(1.2rem, 12vh, 9rem);
-    width: min(41vw, 560px);
+    left: 30%;
+    top: 50%;
+    width: min(66vw, 960px);
     z-index: 2;
-    transform: rotate(-8deg);
+    transform: translateY(-50%);
   }
 
   .rm-menu {
@@ -547,37 +559,37 @@
   }
 
   .rm-menu-line {
-    margin: 0.35rem 0;
+    margin: 1rem 0;
   }
 
-  .rm-menu-line:nth-child(odd) .rm-menu-item {
-    transform: skewX(-10deg) translateX(-0.45rem) rotate(1deg);
-  }
-
-  .rm-menu-line:nth-child(even) .rm-menu-item {
-    transform: skewX(-10deg) translateX(0.8rem) rotate(-1.5deg);
-  }
+  .rm-menu-line:nth-child(1) .rm-menu-item { transform: translateX(-1.5rem) rotate(-9deg); }
+  .rm-menu-line:nth-child(2) .rm-menu-item { transform: translateX(2rem)    rotate(-6deg); }
+  .rm-menu-line:nth-child(3) .rm-menu-item { transform: translateX(-1.5rem) rotate(-3deg); }
+  .rm-menu-line:nth-child(4) .rm-menu-item { transform: translateX(2rem)    rotate(0deg);  }
+  .rm-menu-line:nth-child(5) .rm-menu-item { transform: translateX(-1.5rem) rotate(3deg);  }
+  .rm-menu-line:nth-child(6) .rm-menu-item { transform: translateX(2rem)    rotate(6deg);  }
+  .rm-menu-line:nth-child(7) .rm-menu-item { transform: translateX(-1.5rem) rotate(9deg);  }
 
   .rm-menu-item {
     width: 100%;
     border: 0;
-    padding: 0.4rem 0.85rem;
+    padding: 1.8rem 3.6rem;
     display: flex;
     align-items: center;
     gap: 0.56rem;
     cursor: pointer;
     color: var(--rm-white);
     background: var(--rm-black);
-    box-shadow: 0.2rem 0.2rem 0 var(--rm-white), 0.34rem 0.34rem 0 var(--rm-red);
-    transition: transform 140ms ease, box-shadow 140ms ease, background-color 140ms ease;
+    clip-path: polygon(0 15%, 100% 0%, 100% 100%, 0 85%);
+    transition: background-color 140ms ease;
   }
 
   .rm-menu-item span {
-    transform: skewX(10deg);
+    display: block;
   }
 
   .rm-menu-text {
-    font-size: clamp(0.95rem, 2vw, 1.25rem);
+    font-size: clamp(3rem, 7vw, 4.8rem);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.04em;
@@ -586,7 +598,6 @@
   .rm-menu-item:not(.is-disabled):hover,
   .rm-menu-item.is-focused {
     background: var(--rm-red);
-    box-shadow: 0.2rem 0.2rem 0 var(--rm-white), 0.4rem 0.4rem 0 var(--rm-black);
   }
 
   .rm-menu-item.is-active {
@@ -595,7 +606,6 @@
   }
 
   .rm-menu-item.is-disabled {
-    opacity: 0.62;
     cursor: default;
   }
 
@@ -645,7 +655,7 @@
     font-size: clamp(1.8rem, 5vw, 2.7rem);
     line-height: 0.9;
     text-transform: uppercase;
-    font-family: "Bebas Neue", "Archivo Black", Impact, sans-serif;
+    font-family: "p5hatty", "Orbitron", Arial, sans-serif;
     text-shadow: 0.18rem 0.18rem 0 var(--rm-red);
   }
 
