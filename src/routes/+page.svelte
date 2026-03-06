@@ -742,7 +742,6 @@
     align-items: center;
     gap: clamp(1rem, 1.5vw, 2.5rem);
     padding: clamp(0.6rem, 0.8vw, 1.4rem) clamp(1rem, 4vw, 5rem);
-    border-bottom: 0.1rem solid rgba(255, 255, 255, 0.25);
     flex-shrink: 0;
   }
 
@@ -796,10 +795,6 @@
     box-sizing: border-box;
   }
 
-  .rm-col-health {
-    border-right: 0.06rem solid rgba(255, 255, 255, 0.15);
-  }
-
   .rm-col-heading {
     margin: 0 0 clamp(0.75rem, 1vw, 1.75rem);
     font-size: clamp(0.75rem, 0.65vw, 1.4rem);
@@ -807,8 +802,6 @@
     text-transform: uppercase;
     letter-spacing: 0.1em;
     color: rgba(255, 255, 255, 0.5);
-    border-bottom: 0.06rem solid rgba(255, 255, 255, 0.15);
-    padding-bottom: clamp(0.3rem, 0.4vw, 0.7rem);
   }
 
   .rm-group-block + .rm-group-block {
@@ -913,8 +906,6 @@
     }
 
     .rm-col-health {
-      border-right: none;
-      border-bottom: 0.06rem solid rgba(255, 255, 255, 0.15);
       height: auto;
       overflow-y: visible;
     }
