@@ -9,6 +9,7 @@
     name: string;
     category: "health" | "performance" | string;
     group: string;
+    sub_group?: string;
     unit: string;
     value_type: string;
     value: number | null;
@@ -89,6 +90,8 @@
 
   const DEFAULT_FOCUS_INDEX = Math.max(0, MENU_ITEMS.findIndex((item) => item.enabled));
 
+  const STRENGTH_SUBGROUP_ORDER = ["chest", "back", "shoulders", "biceps", "triceps", "legs", "core"];
+
   let currentScreen = $state<MenuScreen>("main");
   let focusedMenuIndex = $state(DEFAULT_FOCUS_INDEX);
 
@@ -166,11 +169,55 @@
     return Number.isInteger(value) ? String(value) : value.toFixed(1).replace(/\.0$/, "");
   }
 
+  function formatUnit(unit: string): string {
+    switch (unit) {
+      case "":
+      case "reps":
+        return "";
+      case "percent":
+        return "%";
+      case "kg_each":
+        return "ea";
+      case "sec":
+        return "s";
+      case "sec_per_km":
+        return "/km";
+      default:
+        return unit.replace(/_/g, " ");
+    }
+  }
+
+  function secsToMSS(totalSecs: number): string {
+    const m = Math.floor(totalSecs / 60);
+    const s = Math.round(totalSecs % 60);
+    return `${m}:${String(s).padStart(2, "0")}`;
+  }
+
   function formatMetricValue(metric: StatusMetric): string {
     if (metric.value === null || metric.value === undefined) {
       return "-";
     }
-    return metric.unit ? `${formatValue(metric.value)} ${metric.unit}` : formatValue(metric.value);
+
+    const v = metric.value;
+
+    if (metric.unit === "sec_per_km") {
+      return `${secsToMSS(v)} /km`;
+    }
+
+    if (metric.unit === "sec" && v >= 60) {
+      return secsToMSS(v);
+    }
+
+    const unitStr = formatUnit(metric.unit);
+    const numStr = formatValue(v);
+
+    if (!unitStr) {
+      return numStr;
+    }
+    if (unitStr === "%") {
+      return `${numStr}%`;
+    }
+    return `${numStr} ${unitStr}`;
   }
 
   function getCategoryGroups(category: "health" | "performance"): MetricGroup[] {
@@ -224,6 +271,39 @@
     }
 
     return groups;
+  }
+
+  function getStrengthSubGroups(): { subGroup: string; metrics: StatusMetric[] }[] {
+    if (!statusData) {
+      return [];
+    }
+
+    const bySubGroup = new Map<string, StatusMetric[]>();
+
+    for (const metric of statusData.metrics) {
+      if (metric.group !== "strength") continue;
+      if (metric.value === null || metric.value === undefined) continue;
+
+      const sg = metric.sub_group ?? "other";
+      const list = bySubGroup.get(sg) ?? [];
+      list.push(metric);
+      bySubGroup.set(sg, list);
+    }
+
+    const result: { subGroup: string; metrics: StatusMetric[] }[] = [];
+    for (const sg of STRENGTH_SUBGROUP_ORDER) {
+      const metrics = bySubGroup.get(sg);
+      if (metrics && metrics.length > 0) {
+        result.push({ subGroup: sg, metrics });
+        bySubGroup.delete(sg);
+      }
+    }
+    // append any remaining unlisted sub_groups
+    for (const [sg, metrics] of bySubGroup.entries()) {
+      result.push({ subGroup: sg, metrics });
+    }
+
+    return result;
   }
 
   async function loadStatusData() {
@@ -377,36 +457,33 @@
     {#if currentScreen === "status"}
       <section class="rm-stage">
         <header class="rm-status-nav">
-          <div class="rm-status-nav-left">
-            <button type="button" class="rm-back-btn" onclick={() => currentScreen = "main"}>← Back</button>
+          <button type="button" class="rm-back-btn" onclick={() => currentScreen = "main"}>← Back</button>
+          <div class="rm-status-title-block">
             <h2 class="rm-status-title">Status</h2>
           </div>
-          <div class="rm-status-nav-right">
-            {#if statusData}
-              <span class="rm-status-meta">{statusData.username}</span>
-              {#if statusData.game_days !== null}
-                <span class="rm-status-meta">Day {statusData.game_days}</span>
-              {/if}
-            {/if}
-            <button type="button" class="rm-reload-btn" onclick={loadStatusData}>Reload</button>
-          </div>
         </header>
-        <div class="rm-stage-inner">
 
+        <div class="rm-stage-inner">
           {#if loading}
             <p class="state-text">Loading status data...</p>
           {:else if errorMessage}
             <p class="state-text error">{errorMessage}</p>
           {:else if statusData}
-            <section class="rm-status-block">
-              <h3>Health</h3>
+            <!-- LEFT COLUMN: Health -->
+            <div class="rm-col-health">
+              <h3 class="rm-col-heading">Health</h3>
               {#if getHealthGroupsWithDerived().length === 0}
                 <p class="state-text">No health metrics yet.</p>
               {:else}
                 {#each getHealthGroupsWithDerived() as group}
                   <div class="rm-group-block">
-                    <h4>{formatGroupName(group.name)}</h4>
-                    <div class="rm-metric-grid">
+                    <h4 class="rm-group-title">{formatGroupName(group.name)}</h4>
+                    <div
+                      class="rm-metric-grid"
+                      class:rm-metric-grid--body={group.name === "body"}
+                      class:rm-metric-grid--vitals={group.name === "vitals"}
+                      class:rm-metric-grid--circumference={group.name === "circumference"}
+                    >
                       {#each group.metrics as metric}
                         <article class="rm-metric-card">
                           <p class="rm-metric-name">{metric.name}</p>
@@ -417,28 +494,50 @@
                   </div>
                 {/each}
               {/if}
-            </section>
+            </div>
 
-            <section class="rm-status-block">
-              <h3>Performance</h3>
-              {#if getCategoryGroups("performance").length === 0}
-                <p class="state-text">No performance metrics yet.</p>
-              {:else}
-                {#each getCategoryGroups("performance") as group}
-                  <div class="rm-group-block">
-                    <h4>{formatGroupName(group.name)}</h4>
-                    <div class="rm-metric-grid">
-                      {#each group.metrics as metric}
-                        <article class="rm-metric-card">
-                          <p class="rm-metric-name">{metric.name}</p>
-                          <p class="rm-metric-value">{formatMetricValue(metric)}</p>
-                        </article>
-                      {/each}
+            <!-- RIGHT COLUMN: Performance -->
+            <div class="rm-col-performance">
+              <h3 class="rm-col-heading">Performance</h3>
+
+              <!-- Strength with sub_groups -->
+              {#if getStrengthSubGroups().length > 0}
+                <div class="rm-group-block">
+                  <h4 class="rm-group-title">Strength</h4>
+                  {#each getStrengthSubGroups() as sg}
+                    <div class="rm-subgroup-block">
+                      <h5 class="rm-subgroup-title">{formatGroupName(sg.subGroup)}</h5>
+                      <div class="rm-metric-grid">
+                        {#each sg.metrics as metric}
+                          <article class="rm-metric-card">
+                            <p class="rm-metric-name">{metric.name}</p>
+                            <p class="rm-metric-value">{formatMetricValue(metric)}</p>
+                          </article>
+                        {/each}
+                      </div>
                     </div>
-                  </div>
-                {/each}
+                  {/each}
+                </div>
               {/if}
-            </section>
+
+              <!-- Endurance -->
+              {#each getCategoryGroups("performance").filter(g => g.name !== "strength") as group}
+                <div class="rm-group-block">
+                  <h4 class="rm-group-title">{formatGroupName(group.name)}</h4>
+                  <div
+                    class="rm-metric-grid"
+                    class:rm-metric-grid--endurance={group.name === "endurance"}
+                  >
+                    {#each group.metrics as metric}
+                      <article class="rm-metric-card">
+                        <p class="rm-metric-name">{metric.name}</p>
+                        <p class="rm-metric-value">{formatMetricValue(metric)}</p>
+                      </article>
+                    {/each}
+                  </div>
+                </div>
+              {/each}
+            </div>
           {:else}
             <p class="state-text">Status data is not available yet.</p>
           {/if}
@@ -627,6 +726,8 @@
     padding: 0.24rem 0.42rem;
   }
 
+  /* ─── Status screen ─── */
+
   .rm-stage {
     position: absolute;
     inset: 0;
@@ -636,125 +737,125 @@
     z-index: 2;
   }
 
-  .rm-stage-inner {
-    flex: 1;
-    overflow-y: auto;
-    padding: 1.5rem clamp(1rem, 6vw, 5rem) 2rem;
-  }
-
   .rm-status-nav {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    padding: 1rem clamp(1rem, 6vw, 5rem);
+    gap: clamp(1rem, 1.5vw, 2.5rem);
+    padding: clamp(0.6rem, 0.8vw, 1.4rem) clamp(1rem, 4vw, 5rem);
     border-bottom: 0.1rem solid rgba(255, 255, 255, 0.25);
     flex-shrink: 0;
   }
 
-  .rm-status-nav-left {
-    display: flex;
-    align-items: center;
-    gap: 1.5rem;
-  }
-
-  .rm-status-nav-right {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-  }
-
   .rm-back-btn {
     background: transparent;
-    border: 0.1rem solid rgba(255, 255, 255, 0.4);
+    border: none;
     color: var(--rm-white);
     font-family: inherit;
-    font-size: 0.8rem;
+    font-size: clamp(0.85rem, 0.7vw, 1.5rem);
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    padding: 0.35rem 0.75rem;
+    padding: 0.3rem 0;
     cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 100ms ease;
   }
 
   .rm-back-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
+    opacity: 1;
+  }
+
+  .rm-status-title-block {
+    background: var(--rm-black);
+    clip-path: polygon(0 0, 100% 0, 96% 100%, 4% 100%);
+    padding: clamp(0.3rem, 0.4vw, 0.8rem) clamp(1.2rem, 2vw, 3.5rem);
   }
 
   .rm-status-title {
     margin: 0;
-    font-size: clamp(1.4rem, 3vw, 2rem);
+    font-size: clamp(2rem, 4vw, 5.5rem);
     text-transform: uppercase;
     letter-spacing: 0.06em;
     line-height: 1;
   }
 
-  .rm-status-meta {
-    font-size: 0.78rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    opacity: 0.7;
+  /* Two-column layout */
+  .rm-stage-inner {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 0;
+    overflow: hidden;
   }
 
-  .rm-reload-btn {
-    border: 0.1rem solid rgba(255, 255, 255, 0.4);
-    padding: 0.35rem 0.75rem;
-    color: var(--rm-white);
-    font-family: inherit;
-    font-size: 0.8rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    cursor: pointer;
-    background: transparent;
+  .rm-col-health,
+  .rm-col-performance {
+    overflow-y: auto;
+    height: 100%;
+    padding: clamp(1rem, 1.5vw, 2.5rem) clamp(0.8rem, 2vw, 3.5rem) clamp(1.5rem, 2vw, 3rem);
+    box-sizing: border-box;
   }
 
-  .rm-reload-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
+  .rm-col-health {
+    border-right: 0.06rem solid rgba(255, 255, 255, 0.15);
   }
 
-  .rm-status-block {
-    margin-top: 1.5rem;
-  }
-
-  .rm-status-block h3 {
-    margin: 0 0 0.75rem;
-    font-size: 0.75rem;
+  .rm-col-heading {
+    margin: 0 0 clamp(0.75rem, 1vw, 1.75rem);
+    font-size: clamp(0.75rem, 0.65vw, 1.4rem);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.1em;
     color: rgba(255, 255, 255, 0.5);
     border-bottom: 0.06rem solid rgba(255, 255, 255, 0.15);
-    padding-bottom: 0.35rem;
+    padding-bottom: clamp(0.3rem, 0.4vw, 0.7rem);
   }
 
   .rm-group-block + .rm-group-block {
-    margin-top: 1rem;
+    margin-top: clamp(1rem, 1.5vw, 2.5rem);
   }
 
-  .rm-group-block h4 {
-    margin: 1rem 0 0.5rem;
-    font-size: 0.7rem;
+  .rm-group-title {
+    margin: 0 0 clamp(0.4rem, 0.5vw, 0.9rem);
+    font-size: clamp(0.7rem, 0.6vw, 1.3rem);
     text-transform: uppercase;
     letter-spacing: 0.1em;
     color: rgba(255, 255, 255, 0.4);
   }
 
+  /* Metric grids */
   .rm-metric-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 0.6rem;
+    grid-template-columns: repeat(auto-fill, minmax(max(180px, 12vw), 1fr));
+    gap: clamp(0.5rem, 0.5vw, 1rem);
+  }
+
+  .rm-metric-grid--body {
+    grid-template-columns: repeat(auto-fill, minmax(max(200px, 14vw), 1fr));
+  }
+
+  .rm-metric-grid--vitals {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .rm-metric-grid--circumference {
+    grid-template-columns: repeat(auto-fill, minmax(max(120px, 8vw), 1fr));
+    gap: clamp(0.3rem, 0.4vw, 0.8rem);
+  }
+
+  .rm-metric-grid--endurance {
+    grid-template-columns: repeat(auto-fill, minmax(max(180px, 12vw), 1fr));
   }
 
   .rm-metric-card {
     background: rgba(0, 0, 0, 0.5);
     border: 0.08rem solid rgba(255, 255, 255, 0.15);
-    padding: 1rem 1.2rem;
+    padding: clamp(0.75rem, 0.9vw, 1.6rem) clamp(0.9rem, 1.1vw, 2rem);
   }
 
   .rm-metric-name {
     margin: 0;
-    font-size: 0.72rem;
+    font-size: clamp(0.9rem, 0.75vw, 1.6rem);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.08em;
@@ -762,11 +863,26 @@
   }
 
   .rm-metric-value {
-    margin: 0.5rem 0 0;
-    font-size: clamp(1.4rem, 2.5vw, 1.8rem);
+    margin: clamp(0.35rem, 0.4vw, 0.75rem) 0 0;
+    font-size: clamp(1.4rem, 1.5vw, 3.2rem);
     font-weight: 700;
     color: var(--rm-red);
     line-height: 1;
+  }
+
+  /* Strength sub-groups */
+  .rm-subgroup-block {
+    margin-top: 0.25rem;
+  }
+
+  .rm-subgroup-title {
+    margin: clamp(0.75rem, 0.9vw, 1.75rem) 0 clamp(0.3rem, 0.4vw, 0.8rem);
+    font-size: clamp(0.72rem, 0.62vw, 1.3rem);
+    color: var(--rm-red);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    border-left: 0.2rem solid var(--rm-red);
+    padding-left: clamp(0.4rem, 0.5vw, 1rem);
   }
 
   .state-text {
@@ -792,5 +908,20 @@
       box-sizing: border-box;
     }
 
+    .rm-stage-inner {
+      grid-template-columns: 1fr;
+    }
+
+    .rm-col-health {
+      border-right: none;
+      border-bottom: 0.06rem solid rgba(255, 255, 255, 0.15);
+      height: auto;
+      overflow-y: visible;
+    }
+
+    .rm-col-performance {
+      height: auto;
+      overflow-y: visible;
+    }
   }
 </style>
