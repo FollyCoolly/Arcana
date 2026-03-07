@@ -108,7 +108,38 @@ Reality Mod 的呼出界面采用三层结构:
 - `Esc: Back`: 在子菜单返回主菜单
 - `Esc: Hide`: 在主菜单隐藏界面
 
-## 7. 验收清单
+## 7. 分辨率适配
+
+### 7.1 适配目标
+
+- 最低分辨率：1920×1080（1080p）
+- 最高分辨率：3840×2160（4K）
+- 不要求适配 1080p 以下分辨率
+
+### 7.2 适配方案
+
+所有尺寸相关的 CSS 属性使用 `clamp(min, preferred, max)` 表达：
+
+- `preferred` 使用视口单位（`vw` / `vh`），使尺寸随分辨率线性缩放
+- `min` 防止在低分辨率下过小；`max` 防止在高分辨率下失控放大
+- 字体使用 `clamp(…, …vw, …)` 确保在 4K 下依然清晰可读
+- 间距、内边距使用 `clamp(…, …vw/vh, …)` 同步缩放
+
+图片素材均以 **2× CSS 像素** 导出（`OUTPUT_SCALE = 2`），在 1080p 标准 DPI 下等比显示，在 4K 高 DPI 下保持清晰。
+
+### 7.3 Status 标题图片
+
+- 素材路径：`/ui/Status.png`（500×320px，2× 输出）
+- 位置：`position: fixed`，右上角
+  - `top: clamp(0.8rem, 1.5vh, 3rem)`
+  - `right: clamp(1.2rem, 2.5vw, 5rem)`
+- 尺寸：`height: clamp(9rem, 15vh, 27rem)`，宽度自适应
+  - 1080p：约 162px 高
+  - 4K：约 324px 高
+- `pointer-events: none`，不拦截鼠标事件
+- 替代原文字标题 `<h2>Status</h2>`
+
+## 8. 验收清单
 
 1. 任意时刻从隐藏态呼出，首屏必须是 `MainMenu`。
 2. `Status` 可进入，其他五个模块均为禁用且提示 `Coming Soon`。

@@ -456,12 +456,11 @@
 
     {#if currentScreen === "status"}
       <section class="rm-stage">
-        <header class="rm-status-nav">
-          <button type="button" class="rm-back-btn" onclick={() => currentScreen = "main"}>← Back</button>
-          <div class="rm-status-title-block">
-            <h2 class="rm-status-title">Status</h2>
-          </div>
-        </header>
+        <img src="/ui/Status.png" alt="Status" class="rm-status-title-img" />
+
+        <button type="button" class="rm-back-btn" onclick={() => currentScreen = "main"}>
+          <img src="/ui/back.png" alt="Back" class="rm-back-img" />
+        </button>
 
         <div class="rm-stage-inner">
           {#if loading}
@@ -737,45 +736,37 @@
     z-index: 2;
   }
 
-  .rm-status-nav {
-    display: flex;
-    align-items: center;
-    gap: clamp(1rem, 1.5vw, 2.5rem);
-    padding: clamp(0.6rem, 0.8vw, 1.4rem) clamp(1rem, 4vw, 5rem);
-    flex-shrink: 0;
+  .rm-status-title-img {
+    position: fixed;
+    top: clamp(0.8rem, 1.5vh, 3rem);
+    right: clamp(1.2rem, 2.5vw, 5rem);
+    height: clamp(9rem, 15vh, 27rem);
+    width: auto;
+    z-index: 10;
+    pointer-events: none;
   }
 
   .rm-back-btn {
-    background: transparent;
+    position: fixed;
+    bottom: clamp(1.5rem, 3vh, 3.5rem);
+    right: clamp(1.5rem, 3vw, 4rem);
+    z-index: 10;
+    background: none;
     border: none;
-    color: var(--rm-white);
-    font-family: inherit;
-    font-size: clamp(0.85rem, 0.7vw, 1.5rem);
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    padding: 0.3rem 0;
     cursor: pointer;
-    opacity: 0.7;
-    transition: opacity 100ms ease;
+    padding: 0;
+    transform: rotate(-2deg);
+    transition: transform 120ms ease;
   }
 
   .rm-back-btn:hover {
-    opacity: 1;
+    transform: rotate(-2deg) scale(1.06);
   }
 
-  .rm-status-title-block {
-    background: var(--rm-black);
-    clip-path: polygon(0 0, 100% 0, 96% 100%, 4% 100%);
-    padding: clamp(0.3rem, 0.4vw, 0.8rem) clamp(1.2rem, 2vw, 3.5rem);
-  }
-
-  .rm-status-title {
-    margin: 0;
-    font-size: clamp(2rem, 4vw, 5.5rem);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    line-height: 1;
+  .rm-back-img {
+    display: block;
+    height: clamp(4rem, 7.2vh, 8rem);
+    width: auto;
   }
 
   /* Two-column layout */
