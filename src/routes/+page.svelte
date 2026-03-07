@@ -3,6 +3,7 @@
   import { invoke } from "@tauri-apps/api/core";
   import type { UnlistenFn } from "@tauri-apps/api/event";
   import { getCurrentWindow } from "@tauri-apps/api/window";
+  import P5Text from "$lib/P5Text.svelte";
 
   type StatusMetric = {
     id: string;
@@ -470,7 +471,7 @@
           {:else if statusData}
             <!-- LEFT COLUMN: Health -->
             <div class="rm-col-health">
-              <img src="/ui/Health.png" alt="Health" class="rm-health-title-img" />
+              <P5Text text="HEALTH" fontSize={62} />
               {#if getHealthGroupsWithDerived().length === 0}
                 <p class="state-text">No health metrics yet.</p>
               {:else}
@@ -497,7 +498,7 @@
 
             <!-- RIGHT COLUMN: Performance -->
             <div class="rm-col-performance">
-              <h3 class="rm-col-heading">Performance</h3>
+              <P5Text text="PERFORMANCE" fontSize={62} />
 
               <!-- Strength with sub_groups -->
               {#if getStrengthSubGroups().length > 0}
@@ -784,14 +785,6 @@
     height: 100%;
     padding: clamp(1rem, 1.5vw, 2.5rem) clamp(0.8rem, 2vw, 3.5rem) clamp(1.5rem, 2vw, 3rem);
     box-sizing: border-box;
-  }
-
-  .rm-health-title-img {
-    display: block;
-    height: clamp(5rem, 4.4vw, 10rem);
-    width: auto;
-    margin: 0 0 clamp(0.75rem, 1vw, 1.75rem);
-    pointer-events: none;
   }
 
   .rm-col-heading {
