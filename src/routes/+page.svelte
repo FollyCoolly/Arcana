@@ -824,7 +824,7 @@
 
   .rm-metric-grid--circumference {
     grid-template-columns: repeat(auto-fill, minmax(max(120px, 8vw), 1fr));
-    gap: clamp(0.3rem, 0.4vw, 0.8rem);
+    gap: clamp(0.4rem, 0.5vw, 1rem);
   }
 
   .rm-metric-grid--endurance {
@@ -832,26 +832,40 @@
   }
 
   .rm-metric-card {
-    background: rgba(0, 0, 0, 0.5);
-    border: 0.08rem solid rgba(255, 255, 255, 0.15);
-    padding: clamp(0.75rem, 0.9vw, 1.6rem) clamp(0.9rem, 1.1vw, 2rem);
+    background: var(--rm-black);
+    border: none;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    transform: rotate(-0.8deg);
+    clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 4% 100%);
+  }
+
+  .rm-metric-card:nth-child(even) {
+    transform: rotate(0.8deg);
   }
 
   .rm-metric-name {
-    margin: 0;
-    font-size: clamp(0.9rem, 0.75vw, 1.6rem);
+    margin: clamp(0.2rem, 0.25vw, 0.45rem) clamp(0.2rem, 0.25vw, 0.45rem) 0 clamp(0.2rem, 0.25vw, 0.45rem);
+    background: var(--rm-white);
+    color: var(--rm-black);
+    padding: clamp(0.3rem, 0.4vw, 0.7rem) clamp(0.7rem, 0.9vw, 1.6rem);
+    font-size: clamp(0.7rem, 0.65vw, 1.2rem);
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: rgba(255, 255, 255, 0.75);
+    letter-spacing: 0.1em;
+    line-height: 1.2;
+    clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 1.8% 100%);
   }
 
   .rm-metric-value {
-    margin: clamp(0.35rem, 0.4vw, 0.75rem) 0 0;
-    font-size: clamp(1.4rem, 1.5vw, 3.2rem);
+    margin: 0;
+    background: var(--rm-black);
+    color: var(--rm-white);
+    padding: clamp(0.25rem, 0.35vw, 0.6rem) clamp(0.7rem, 0.9vw, 1.6rem) clamp(0.25rem, 0.35vw, 0.6rem) clamp(1.2rem, 1.4vw, 2.4rem);
+    font-size: clamp(1.1rem, 1.1vw, 2.2rem);
     font-weight: 700;
-    color: var(--rm-red);
-    line-height: 1;
+    line-height: 1.2;
   }
 
   /* Strength sub-groups */
