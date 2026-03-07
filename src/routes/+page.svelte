@@ -470,7 +470,7 @@
           {:else if statusData}
             <!-- LEFT COLUMN: Health -->
             <div class="rm-col-health">
-              <h3 class="rm-col-heading">Health</h3>
+              <img src="/ui/Health.png" alt="Health" class="rm-health-title-img" />
               {#if getHealthGroupsWithDerived().length === 0}
                 <p class="state-text">No health metrics yet.</p>
               {:else}
@@ -784,6 +784,14 @@
     height: 100%;
     padding: clamp(1rem, 1.5vw, 2.5rem) clamp(0.8rem, 2vw, 3.5rem) clamp(1.5rem, 2vw, 3rem);
     box-sizing: border-box;
+  }
+
+  .rm-health-title-img {
+    display: block;
+    height: clamp(5rem, 4.4vw, 10rem);
+    width: auto;
+    margin: 0 0 clamp(0.75rem, 1vw, 1.75rem);
+    pointer-events: none;
   }
 
   .rm-col-heading {
