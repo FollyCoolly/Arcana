@@ -4,6 +4,7 @@
   import type { UnlistenFn } from "@tauri-apps/api/event";
   import { getCurrentWindow } from "@tauri-apps/api/window";
   import P5Text from "$lib/P5Text.svelte";
+  import P5Calendar from "$lib/P5Calendar.svelte";
 
   type StatusMetric = {
     id: string;
@@ -416,6 +417,9 @@
 <main class="rm-overlay">
   <section class="rm-scene">
     {#if currentScreen === "main"}
+      <div class="rm-calendar-widget">
+        <P5Calendar />
+      </div>
       <div class="rm-star-stack" aria-hidden="true">
         <div class="rm-star rm-star-1"></div>
         <div class="rm-star rm-star-2"></div>
@@ -573,6 +577,15 @@
     width: 100%;
     height: 100vh;
     overflow: hidden;
+  }
+
+  .rm-calendar-widget {
+    position: absolute;
+    top: 1.5rem;
+    left: 1.5rem;
+    width: clamp(250px, 14.6vw, 600px);
+    z-index: 3;
+    pointer-events: none;
   }
 
   .rm-star-stack {
