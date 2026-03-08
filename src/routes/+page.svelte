@@ -420,15 +420,35 @@
       <div class="rm-calendar-widget">
         <P5Calendar />
       </div>
-      <div class="rm-star-stack" aria-hidden="true">
-        <div class="rm-star rm-star-1"></div>
-        <div class="rm-star rm-star-2"></div>
-        <div class="rm-star rm-star-3"></div>
-        <div class="rm-star rm-star-4"></div>
-        <div class="rm-star rm-star-5"></div>
-        <div class="rm-star rm-star-6"></div>
-        <div class="rm-star rm-star-7"></div>
+      <div class="rm-star-left" aria-hidden="true">
+        <div class="rm-star-stack">
+          <div class="rm-star rm-star-1"></div>
+          <div class="rm-star rm-star-2"></div>
+          <div class="rm-star rm-star-3"></div>
+          <div class="rm-star rm-star-4"></div>
+          <div class="rm-star rm-star-5"></div>
+          <div class="rm-star rm-star-6"></div>
+          <div class="rm-star rm-star-7"></div>
+          <div class="rm-star rm-star-8"></div>
+        </div>
+        <div class="rm-star-stack rm-star-small">
+          <div class="rm-star rm-sm-1"></div>
+          <div class="rm-star rm-sm-2"></div>
+          <div class="rm-star rm-sm-3"></div>
+          <div class="rm-star rm-sm-4"></div>
+          <div class="rm-star rm-sm-5"></div>
+          <div class="rm-star rm-sm-6"></div>
+        </div>
       </div>
+      <div class="rm-star-right" aria-hidden="true">
+        <div class="rm-star-stack">
+          <div class="rm-star rm-star-solid"></div>
+        </div>
+        <div class="rm-star-stack rm-star-small">
+          <div class="rm-star rm-sm-solid"></div>
+        </div>
+      </div>
+      <div class="rm-diagonal-line" aria-hidden="true"></div>
     {/if}
 
     {#if currentScreen === "main"}
@@ -589,7 +609,7 @@
   .rm-star-stack {
     position: absolute;
     top: 50%;
-    left: 25%;
+    left: 35%;
     width: 80vh;
     aspect-ratio: 1;
     transform: translate(-50%, -50%) rotate(-14deg);
@@ -602,56 +622,81 @@
     inset: 0;
     clip-path: polygon(
       50% 0%,
-      58% 35%,
-      92% 35%,
-      65% 54%,
-      74% 88%,
-      50% 68%,
-      26% 88%,
-      35% 54%,
-      8% 35%,
-      42% 35%
+      61.2% 34.5%,
+      97.6% 34.5%,
+      68.2% 55.9%,
+      79.4% 90.5%,
+      50% 69.1%,
+      20.6% 90.5%,
+      31.8% 55.9%,
+      2.4% 34.5%,
+      38.8% 34.5%
     );
   }
 
-  .rm-star-1 {
-    background: var(--rm-white);
+  /* Big star: 8 layers, step 0.12 */
+  .rm-star-1 { background: var(--rm-white); transform: scale(0.92); }
+  .rm-star-2 { background: var(--rm-black); transform: scale(0.80); }
+  .rm-star-3 { background: var(--rm-white); transform: scale(0.68); }
+  .rm-star-4 { background: var(--rm-black); transform: scale(0.56); }
+  .rm-star-5 { background: var(--rm-white); transform: scale(0.44); }
+  .rm-star-6 { background: var(--rm-black); transform: scale(0.32); }
+  .rm-star-7 { background: var(--rm-white); transform: scale(0.20); }
+  .rm-star-8 { background: var(--rm-black); transform: scale(0.08); }
+
+  .rm-star-solid {
+    background: var(--rm-black);
     transform: scale(0.92);
   }
 
-  .rm-star-2 {
+  /* Small star: offset position & different rotation */
+  .rm-star-small {
+    top: 62%;
+    left: 35%;
+    transform: translate(-50%, -50%) rotate(20deg);
+  }
+
+  /* Small star: white edge(0.04 extra) + 5 layers(step 0.10) */
+  .rm-sm-1 { background: var(--rm-white); transform: scale(0.50); }  /* white edge */
+  .rm-sm-2 { background: var(--rm-black); transform: scale(0.48); }  /* layer 1 */
+  .rm-sm-3 { background: var(--rm-white); transform: scale(0.38); }  /* layer 2 */
+  .rm-sm-4 { background: var(--rm-black); transform: scale(0.28); }  /* layer 3 */
+  .rm-sm-5 { background: var(--rm-white); transform: scale(0.18); }  /* layer 4 */
+  .rm-sm-6 { background: var(--rm-black); transform: scale(0.08); }  /* layer 5 */
+
+  .rm-sm-solid {
     background: var(--rm-black);
-    transform: scale(0.80);
+    transform: scale(0.52);
   }
 
-  .rm-star-3 {
+  .rm-star-left {
+    position: absolute;
+    inset: 0;
+    clip-path: polygon(0 0, 20% 0, 50% 100%, 0 100%);
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  .rm-star-right {
+    position: absolute;
+    inset: 0;
+    clip-path: polygon(20% 0, 100% 0, 100% 100%, 50% 100%);
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  .rm-diagonal-line {
+    position: absolute;
+    inset: 0;
+    clip-path: polygon(19.85% 0%, 20.15% 0%, 50.15% 100%, 49.85% 100%);
     background: var(--rm-white);
-    transform: scale(0.68);
-  }
-
-  .rm-star-4 {
-    background: var(--rm-black);
-    transform: scale(0.56);
-  }
-
-  .rm-star-5 {
-    background: var(--rm-white);
-    transform: scale(0.44);
-  }
-
-  .rm-star-6 {
-    background: var(--rm-black);
-    transform: scale(0.32);
-  }
-
-  .rm-star-7 {
-    background: var(--rm-white);
-    transform: scale(0.20);
+    z-index: 1;
+    pointer-events: none;
   }
 
   .rm-command {
     position: absolute;
-    left: 30%;
+    left: 40%;
     top: 50%;
     width: min(66vw, 960px);
     z-index: 2;
