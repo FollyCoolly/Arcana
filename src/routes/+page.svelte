@@ -447,6 +447,10 @@
 
     window.addEventListener("keydown", handleKeydown);
 
+    if (!statusData) {
+      void loadStatusData();
+    }
+
     appWindow.listen("reality://summoned", () => {
       resetToMainMenu();
     }).then((unlisten) => {
@@ -471,6 +475,12 @@
       <div class="rm-calendar-widget">
         <P5Calendar />
       </div>
+      {#if statusData}
+        <div class="rm-player-info" aria-label="Player info">
+          <span class="rm-player-name">{statusData.username}</span>
+          <span class="rm-player-days">Day {statusData.game_days ?? "—"}</span>
+        </div>
+      {/if}
       <div class="rm-star-left" aria-hidden="true">
         <div class="rm-star-stack">
           <div class="rm-star rm-star-1"></div>
@@ -655,6 +665,34 @@
     width: clamp(250px, 14.6vw, 600px);
     z-index: 3;
     pointer-events: none;
+  }
+
+  .rm-player-info {
+    position: absolute;
+    top: 1.5rem;
+    right: 1.5rem;
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.1rem;
+    pointer-events: none;
+  }
+
+  .rm-player-name,
+  .rm-player-days {
+    color: var(--rm-white);
+    font-family: "p5hatty", "Orbitron", Arial, sans-serif;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    -webkit-text-stroke: 0.04em var(--rm-black);
+    paint-order: stroke fill;
+  }
+
+  .rm-player-name,
+  .rm-player-days {
+    font-size: clamp(1.5rem, 2.1vw, 3rem);
   }
 
   .rm-star-stack {
