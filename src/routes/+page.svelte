@@ -475,13 +475,12 @@
           {:else if statusData}
             <!-- LEFT COLUMN: Health -->
             <div class="rm-col-health">
-              <P5Text text="HEALTH" fontSize={62} />
               {#if getHealthGroupsWithDerived().length === 0}
                 <p class="state-text">No health metrics yet.</p>
               {:else}
                 {#each getHealthGroupsWithDerived() as group}
                   <div class="rm-group-block">
-                    <h4 class="rm-group-title">{formatGroupName(group.name)}</h4>
+                    <P5Text text={formatGroupName(group.name)} fontSize={62} />
                     <div
                       class="rm-metric-grid"
                       class:rm-metric-grid--body={group.name === "body"}
@@ -502,12 +501,11 @@
 
             <!-- RIGHT COLUMN: Performance -->
             <div class="rm-col-performance">
-              <P5Text text="PERFORMANCE" fontSize={62} />
 
               <!-- Strength with sub_groups -->
               {#if getStrengthSubGroups().length > 0}
                 <div class="rm-group-block">
-                  <h4 class="rm-group-title">Strength</h4>
+                  <P5Text text="Strength" fontSize={62} />
                   {#each getStrengthSubGroups() as sg}
                     <div class="rm-subgroup-block">
                       <h5 class="rm-subgroup-title">{formatGroupName(sg.subGroup)}</h5>
@@ -527,7 +525,7 @@
               <!-- Endurance -->
               {#each getCategoryGroups("performance").filter(g => g.name !== "strength") as group}
                 <div class="rm-group-block">
-                  <h4 class="rm-group-title">{formatGroupName(group.name)}</h4>
+                  <P5Text text={formatGroupName(group.name)} fontSize={62} />
                   <div
                     class="rm-metric-grid"
                     class:rm-metric-grid--endurance={group.name === "endurance"}
