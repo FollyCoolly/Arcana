@@ -20,12 +20,6 @@
         "decorations": false,
         "shadow": false,
         "transparent": true,
-        "windowEffects": {
-          "effects": [
-            "acrylic"
-          ],
-          "color": [140, 0, 18, 120]
-        },
         "visible": false
       }
     ],

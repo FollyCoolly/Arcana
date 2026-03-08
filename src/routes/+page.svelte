@@ -586,7 +586,7 @@
     position: relative;
     min-height: 100vh;
     color: var(--rm-white);
-    background: rgba(150, 0, 15, 0.8);
+    background: rgba(30, 0, 0, 0.8);
     font-family: "p5hatty", "Orbitron", Arial, sans-serif;
   }
 

@@ -3,10 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
-use tauri::{
-    window::{Color, Effect, EffectsBuilder},
-    Emitter, Manager,
-};
+use tauri::{Emitter, Manager};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
 #[derive(Debug, Deserialize)]
@@ -332,12 +329,6 @@ pub fn run() {
 
             let _ = window.set_decorations(false);
             let _ = window.set_shadow(false);
-            let _ = window.set_effects(
-                EffectsBuilder::new()
-                    .effect(Effect::Acrylic)
-                    .color(Color(140, 0, 18, 110))
-                    .build(),
-            );
 
             // 注册全局快捷键 Cmd+Shift+R (macOS) 或 Ctrl+Shift+R (Windows/Linux)
             #[cfg(target_os = "macos")]
