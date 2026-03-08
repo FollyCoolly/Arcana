@@ -5,6 +5,8 @@
   import { getCurrentWindow } from "@tauri-apps/api/window";
   import P5Text from "$lib/P5Text.svelte";
   import P5Calendar from "$lib/P5Calendar.svelte";
+  import P5MenuItem from "$lib/P5MenuItem.svelte";
+  import type { LetterConfig } from "$lib/P5MenuItem.svelte";
 
   type StatusMetric = {
     id: string;
@@ -36,7 +38,7 @@
   };
 
   type MenuScreen = "main" | "status";
-  type MenuItemId = "status" | "skills" | "achievements" | "items" | "gallery" | "crafting" | "hide";
+  type MenuItemId = "status" | "skills" | "achievements" | "items" | "gallery" | "crafting";
 
   type MenuItem = {
     id: MenuItemId;
@@ -82,13 +84,67 @@
       description: "Recipe and material planning module.",
       enabled: false,
     },
-    {
-      id: "hide",
-      label: "Hide",
-      description: "Return to reality by hiding the summoned interface.",
-      enabled: true,
-    },
   ];
+
+  const MENU_LETTER_DATA: Record<MenuItemId, LetterConfig[]> = {
+    // Uppercase: 0.70–1.20em  |  Lowercase: 0.75–1.00em
+    status: [
+      { char: 'S', size: '1.18em', yOffset: -3, rotate: -6, weight: 800 },
+      { char: 't', size: '0.82em', yOffset: 4, rotate: 4, color: 'black', outline: true },
+      { char: 'A', size: '0.85em', yOffset: 1, rotate: -2 },
+      { char: 't', size: '0.92em', yOffset: -1, rotate: 5, color: 'black', rounded: true },
+      { char: 'U', size: '0.7em', yOffset: 3, rotate: -4 },
+      { char: 's', size: '0.78em', yOffset: -2, rotate: 6, color: 'black' },
+    ],
+    skills: [
+      { char: 'S', size: '1.15em', yOffset: -2, rotate: -4, weight: 800 },
+      { char: 'K', size: '0.78em', yOffset: 3, rotate: 5 },
+      { char: 'i', size: '0.88em', yOffset: -1, rotate: -3, color: 'black', rounded: true },
+      { char: 'L', size: '1.1em',  yOffset: 2, rotate: 4 },
+      { char: 'l', size: '0.80em', yOffset: -2, rotate: -5, color: 'black', outline: true },
+      { char: 'S', size: '0.76em', yOffset: 1, rotate: 3 },
+    ],
+    achievements: [
+      { char: 'A', size: '1.18em', yOffset: -3, rotate: -5, weight: 800 },
+      { char: 'c', size: '0.82em', yOffset: 3, rotate: 4, color: 'black' },
+      { char: 'H', size: '1.0em',  yOffset: -1, rotate: -3 },
+      { char: 'i', size: '0.88em', yOffset: 2, rotate: 5, color: 'black', outline: true },
+      { char: 'E', size: '0.82em', yOffset: -2, rotate: -2 },
+      { char: 'v', size: '0.95em', yOffset: 4, rotate: 3, color: 'black', rounded: true },
+      { char: 'E', size: '1.12em', yOffset: -1, rotate: -4 },
+      { char: 'M', size: '0.75em', yOffset: 2, rotate: 2 },
+      { char: 'e', size: '0.78em', yOffset: -3, rotate: -3, color: 'black' },
+      { char: 'N', size: '1.1em',  yOffset: 1, rotate: 5 },
+      { char: 't', size: '0.92em', yOffset: -2, rotate: -4, color: 'black', outline: true },
+      { char: 'S', size: '0.88em', yOffset: 3, rotate: 3 },
+    ],
+    items: [
+      { char: 'I', size: '1.15em', yOffset: -2, rotate: -5, weight: 800 },
+      { char: 't', size: '0.85em', yOffset: 3, rotate: 4, color: 'black', outline: true },
+      { char: 'E', size: '0.80em', yOffset: -1, rotate: -3 },
+      { char: 'm', size: '0.97em', yOffset: 2, rotate: 5, color: 'black', rounded: true },
+      { char: 'S', size: '1.08em', yOffset: -3, rotate: -4 },
+    ],
+    gallery: [
+      { char: 'G', size: '1.18em', yOffset: -3, rotate: -6, weight: 800 },
+      { char: 'a', size: '0.88em', yOffset: 4, rotate: 3, color: 'black', rounded: true },
+      { char: 'L', size: '0.78em', yOffset: -1, rotate: -4 },
+      { char: 'l', size: '0.76em', yOffset: 2, rotate: 5, color: 'black', outline: true },
+      { char: 'E', size: '1.1em',  yOffset: -2, rotate: -3 },
+      { char: 'r', size: '0.93em', yOffset: 3, rotate: 4, color: 'black' },
+      { char: 'Y', size: '1.02em', yOffset: -1, rotate: -5 },
+    ],
+    crafting: [
+      { char: 'C', size: '1.16em', yOffset: -2, rotate: -5, weight: 800 },
+      { char: 'r', size: '0.80em', yOffset: 3, rotate: 4, color: 'black', outline: true },
+      { char: 'A', size: '1.00em', yOffset: -1, rotate: -3 },
+      { char: 'f', size: '0.90em', yOffset: 2, rotate: 5, color: 'black', rounded: true },
+      { char: 'T', size: '0.95em', yOffset: -3, rotate: -4 },
+      { char: 'i', size: '0.85em', yOffset: 1, rotate: 3, color: 'black' },
+      { char: 'N', size: '0.8em', yOffset: -2, rotate: -5 },
+      { char: 'g', size: '0.78em', yOffset: 4, rotate: 4, color: 'black', outline: true },
+    ],
+  };
 
   const DEFAULT_FOCUS_INDEX = Math.max(0, MENU_ITEMS.findIndex((item) => item.enabled));
 
@@ -348,11 +404,6 @@
 
     focusedMenuIndex = index;
 
-    if (item.id === "hide") {
-      await hideInterface();
-      return;
-    }
-
     if (item.id === "status") {
       await openStatusScreen();
     }
@@ -460,12 +511,12 @@
                 type="button"
                 class="rm-menu-item"
                 class:is-focused={focusedMenuIndex === index}
-                class:is-disabled={!item.enabled && item.id !== "hide"}
-                aria-disabled={!item.enabled && item.id !== "hide"}
+                class:is-disabled={!item.enabled}
+                aria-disabled={!item.enabled}
                 onclick={() => void activateMenuItem(index)}
                 onmouseenter={() => setFocusedMenuIndex(index)}
               >
-                <span class="rm-menu-text">{item.label}</span>
+                <P5MenuItem letters={MENU_LETTER_DATA[item.id]} active={focusedMenuIndex === index} />
               </button>
             </li>
           {/each}
@@ -696,9 +747,9 @@
 
   .rm-command {
     position: absolute;
-    left: 40%;
+    left: 30%;
     top: 50%;
-    width: min(66vw, 960px);
+    width: min(75vw, 1200px);
     z-index: 2;
     transform: translateY(-50%);
   }
@@ -710,51 +761,62 @@
   }
 
 .rm-menu-line {
-    margin: 1rem 0;
+    margin: -1rem 0;
   }
 
-  .rm-menu-line:nth-child(1) .rm-menu-item { transform: translateX(-1.5rem) rotate(-9deg); }
-  .rm-menu-line:nth-child(2) .rm-menu-item { transform: translateX(2rem)    rotate(-6deg); }
-  .rm-menu-line:nth-child(3) .rm-menu-item { transform: translateX(-1.5rem) rotate(-3deg); }
-  .rm-menu-line:nth-child(4) .rm-menu-item { transform: translateX(2rem)    rotate(0deg);  }
-  .rm-menu-line:nth-child(5) .rm-menu-item { transform: translateX(-1.5rem) rotate(3deg);  }
-  .rm-menu-line:nth-child(6) .rm-menu-item { transform: translateX(2rem)    rotate(6deg);  }
-  .rm-menu-line:nth-child(7) .rm-menu-item { transform: translateX(-1.5rem) rotate(9deg);  }
+  /* Diagonal staircase: each line shifts right to follow the 20%→50% diagonal */
+  .rm-menu-line:nth-child(1) { margin-left: 1.5vw; }
+  .rm-menu-line:nth-child(2) { margin-left: 5vw; }
+  .rm-menu-line:nth-child(3) { margin-left: 1vw; }
+  .rm-menu-line:nth-child(4) { margin-left: 7.5vw; }
+  .rm-menu-line:nth-child(5) { margin-left: 7vw; }
+  .rm-menu-line:nth-child(6) { margin-left: 10vw; }
+
+  /* Per-item: small rotation + irregular quadrilateral clip-path */
+  .rm-menu-line:nth-child(1) .rm-menu-item {
+    transform: rotate(-30deg);
+    clip-path: polygon(1% 10%, 97% 0%, 100% 88%, 3% 96%);
+  }
+  .rm-menu-line:nth-child(2) .rm-menu-item {
+    transform: rotate(-27deg);
+    clip-path: polygon(0% 5%, 99% 10%, 96% 94%, 2% 100%);
+  }
+  .rm-menu-line:nth-child(3) .rm-menu-item {
+    transform: rotate(-20deg);
+    clip-path: polygon(2% 0%, 100% 8%, 98% 100%, 0% 90%);
+  }
+  .rm-menu-line:nth-child(4) .rm-menu-item {
+    transform: rotate(-8deg);
+    clip-path: polygon(0% 6%, 98% 0%, 100% 92%, 1% 100%);
+  }
+  .rm-menu-line:nth-child(5) .rm-menu-item {
+    transform: rotate(-2deg);
+    clip-path: polygon(1% 0%, 100% 4%, 97% 96%, 0% 100%);
+  }
+  .rm-menu-line:nth-child(6) .rm-menu-item {
+    transform: rotate(2deg);
+    clip-path: polygon(0% 8%, 99% 0%, 100% 100%, 3% 92%);
+  }
 
   .rm-menu-item {
-    width: 100%;
+    width: fit-content;
     border: 0;
-    padding: 1.8rem 3.6rem;
+    padding: 1.6rem 1.6rem;
     display: flex;
     align-items: center;
-    gap: 0.56rem;
+    gap: 0.2rem;
     cursor: pointer;
     color: var(--rm-white);
     background: var(--rm-black);
-    clip-path: polygon(0 15%, 100% 0%, 100% 100%, 0 85%);
     transition: background-color 140ms ease;
   }
 
-  .rm-menu-item span {
-    display: block;
-  }
-
-  .rm-menu-text {
-    font-size: clamp(3rem, 7vw, 4.8rem);
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-  }
 
   .rm-menu-item:not(.is-disabled):hover,
   .rm-menu-item.is-focused {
-    background: var(--rm-red);
+    background: var(--rm-black);
   }
 
-  .rm-menu-item.is-active {
-    background: var(--rm-white);
-    color: var(--rm-black);
-  }
 
   .rm-menu-item.is-disabled {
     cursor: default;
