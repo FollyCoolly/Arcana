@@ -81,19 +81,29 @@
     paint-order: stroke fill;
   }
 
-  /* ── Active state: white letters → bright red ── */
+  /* ── Active states: colours are set to the INVERSE of the desired result,
+     because the selection-quad overlay (mix-blend-mode: difference, red)
+     flips them:  black → red,  red → black  ── */
+
+  /* White letters → set black → after difference → red */
   .p5m.is-active .p5m-char:not(.p5m-black):not(.p5m-outline) {
     color: #000;
   }
 
-  /* Rectangle turns red when active */
+  /* Rectangle bg → set black → after difference → red;
+     text fill → set red → after difference → black */
+  .p5m.is-active .p5m-char.p5m-black {
+    color: #E5191C;
+  }
   .p5m.is-active .p5m-char.p5m-black::before {
-    background: #E5191C;
+    background: #000;
   }
 
-  /* Outline stroke turns red when active */
+  /* Outline stroke → set black → after difference → red;
+     text fill → set red → after difference → black */
   .p5m.is-active .p5m-char.p5m-outline {
-    -webkit-text-stroke-color: #E5191C;
+    color: #E5191C;
+    -webkit-text-stroke-color: #000;
   }
 
   /* ── star-dot: replace the dot on "i" with a ★ ── */
