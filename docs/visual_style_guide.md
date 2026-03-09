@@ -1,6 +1,6 @@
 # Reality Mod - 视觉风格指南（P5-Inspired）
 
-> **最后更新**: 2026-03-07
+> **最后更新**: 2026-03-08
 > **状态**: Active Draft
 
 ---
@@ -50,7 +50,7 @@
 :root {
   --rm-black: #000000;
   --rm-white: #ffffff;
-  --rm-red: #80001a;
+  --rm-red: #E5191C;
 }
 ```
 

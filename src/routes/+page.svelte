@@ -158,8 +158,46 @@
   let statusData = $state<StatusData | null>(null);
   let menuFeedback = $state<string | null>(null);
 
+  let commandRef = $state<HTMLElement | undefined>(undefined);
+  let menuItemRefs = $state<(HTMLButtonElement | undefined)[]>([]);
+
   let menuFeedbackTimer: ReturnType<typeof setTimeout> | null = null;
   let unlistenSummonEvent: UnlistenFn | null = null;
+
+  // Per-item quad config: rotation, clip-path shape
+  const MENU_QUAD_CONFIGS: { rot: number; clip: string }[] = [
+    { rot: -35, clip: 'polygon(10% 25%, 70% 0%, 95% 99%, 10% 80%)' },   // Status
+    { rot: -27, clip: 'polygon(1% 8%, 98% 2%, 97% 92%, 3% 98%)' },     // Skills
+    { rot: -20, clip: 'polygon(2% 0%, 99% 6%, 96% 96%, 0% 88%)' },     // Achievements
+    { rot: -8,  clip: 'polygon(0% 10%, 100% 3%, 98% 94%, 2% 100%)' },  // Items
+    { rot: -2,  clip: 'polygon(1% 4%, 97% 0%, 100% 90%, 3% 96%)' },    // Gallery
+    { rot: 2,   clip: 'polygon(0% 6%, 98% 0%, 100% 100%, 2% 92%)' },   // Crafting
+  ];
+
+  $effect(() => {
+    const idx = focusedMenuIndex;
+    const btn = menuItemRefs[idx];
+    const container = commandRef;
+    if (!btn || !container) return;
+
+    const btnRect = btn.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+
+    // Center of the focused item relative to the container
+    const centerX = btnRect.left + btnRect.width / 2 - containerRect.left;
+    const centerY = btnRect.top + btnRect.height / 2 - containerRect.top;
+
+    const quadW = btn.offsetWidth * 1.6;
+    const quadH = btn.offsetHeight * 1.4;
+    const cfg = MENU_QUAD_CONFIGS[idx] ?? { rot: 0, clip: 'polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)' };
+
+    container.style.setProperty('--quad-x', `${centerX - quadW / 2}px`);
+    container.style.setProperty('--quad-y', `${centerY - quadH / 2}px`);
+    container.style.setProperty('--quad-w', `${quadW}px`);
+    container.style.setProperty('--quad-h', `${quadH}px`);
+    container.style.setProperty('--quad-rot', `${cfg.rot}deg`);
+    container.style.setProperty('--quad-clip', cfg.clip);
+  });
 
   function resetToMainMenu() {
     currentScreen = "main";
@@ -513,10 +551,10 @@
     {/if}
 
     {#if currentScreen === "main"}
-      <aside class="rm-command">
+      <aside class="rm-command" bind:this={commandRef}>
         <ul class="rm-menu">
           {#each MENU_ITEMS as item, index}
-            <li class="rm-menu-line">
+            <li class="rm-menu-line" style:position="relative" style:z-index={focusedMenuIndex === index ? 10 : 0}>
               <button
                 type="button"
                 class="rm-menu-item"
@@ -525,12 +563,14 @@
                 aria-disabled={!item.enabled}
                 onclick={() => void activateMenuItem(index)}
                 onmouseenter={() => setFocusedMenuIndex(index)}
+                bind:this={menuItemRefs[index]}
               >
                 <P5MenuItem letters={MENU_LETTER_DATA[item.id]} active={focusedMenuIndex === index} />
               </button>
             </li>
           {/each}
         </ul>
+        <div class="rm-selection-quad" aria-hidden="true"></div>
 
         <footer class="rm-command-foot">
           {#if menuFeedback}
@@ -643,7 +683,7 @@
   .rm-overlay {
     --rm-black: #000000;
     --rm-white: #ffffff;
-    --rm-red: #80001a;
+    --rm-red: #E5191C;
     position: relative;
     min-height: 100vh;
     color: var(--rm-white);
@@ -813,7 +853,7 @@
   /* Per-item: small rotation + irregular quadrilateral clip-path */
   .rm-menu-line:nth-child(1) .rm-menu-item {
     transform: rotate(-30deg);
-    clip-path: polygon(1% 10%, 97% 0%, 100% 88%, 3% 96%);
+    clip-path: polygon(0% 10%, 100% 0%, 90% 88%, 10% 96%);
   }
   .rm-menu-line:nth-child(2) .rm-menu-item {
     transform: rotate(-27deg);
@@ -839,7 +879,7 @@
   .rm-menu-item {
     width: fit-content;
     border: 0;
-    padding: 1.6rem 1.6rem;
+    padding: 1rem 4rem;
     display: flex;
     align-items: center;
     gap: 0.2rem;
@@ -852,7 +892,7 @@
 
   .rm-menu-item:not(.is-disabled):hover,
   .rm-menu-item.is-focused {
-    background: var(--rm-black);
+    background: var(--rm-red);
   }
 
 
@@ -863,6 +903,21 @@
   .rm-menu-item:focus-visible {
     outline: 0.16rem solid var(--rm-white);
     outline-offset: 0.12rem;
+  }
+
+  .rm-selection-quad {
+    position: absolute;
+    left: var(--quad-x);
+    top: var(--quad-y);
+    width: var(--quad-w);
+    height: var(--quad-h);
+    transform: rotate(var(--quad-rot));
+    z-index: 15;
+    background: var(--rm-red);
+    mix-blend-mode: difference;
+    clip-path: var(--quad-clip, polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%));
+    pointer-events: none;
+    transition: left 120ms ease, top 120ms ease, width 120ms ease, height 120ms ease, transform 120ms ease, clip-path 120ms ease;
   }
 
   .rm-command-foot {
@@ -1061,6 +1116,10 @@
       transform: rotate(0);
       padding: 0 0.6rem;
       box-sizing: border-box;
+    }
+
+    .rm-selection-quad {
+      display: none;
     }
 
     .rm-stage-inner {

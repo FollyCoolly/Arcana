@@ -83,17 +83,17 @@
 
   /* ── Active state: white letters → bright red ── */
   .p5m.is-active .p5m-char:not(.p5m-black):not(.p5m-outline) {
-    color: #ff003c;
+    color: #000;
   }
 
   /* Rectangle turns red when active */
   .p5m.is-active .p5m-char.p5m-black::before {
-    background: #ff003c;
+    background: #E5191C;
   }
 
   /* Outline stroke turns red when active */
   .p5m.is-active .p5m-char.p5m-outline {
-    -webkit-text-stroke-color: #ff003c;
+    -webkit-text-stroke-color: #E5191C;
   }
 
   /* ── star-dot: replace the dot on "i" with a ★ ── */
@@ -137,6 +137,6 @@
 
   /* When active, bg is red so counter star must become red to keep illusion */
   .p5m.is-active .p5m-char[data-special="star-counter"]::after {
-    color: var(--rm-red, #80001a);
+    color: var(--rm-red, #E5191C);
   }
 </style>
