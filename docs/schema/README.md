@@ -41,8 +41,9 @@
 
 - `app_settings.md`：应用行为配置（启用模块、主题、首页等）。
 - `status.md`：状态指标定义与数值文件（支持可插拔指标与缺省值）。
+- `content_packs.md`：内容包系统、`loaded_packs.json` 与 `manifest.json`。
 - `achievements.md`：成就定义与解锁状态。
-- `skills.md`：技能树节点、积分与等级计算输入。
+- `skills.md`：技能树节点、积分与等级计算。
 - `items.md`：物品记录与统计字段。
 - `gallery.md`：阅读/观影/游戏媒体聚合数据。
 - `crafting.md`：配方与材料结构。
