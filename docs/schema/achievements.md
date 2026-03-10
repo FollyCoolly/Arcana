@@ -90,10 +90,12 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| `unlocked_at` | string | 是 | 解锁日期，格式 `YYYY-MM-DD` |
+| `achieved_at` | string | 否 | 实际达成日期，支持 `YYYY`、`YYYY-MM`、`YYYY-MM-DD` 三种精度 |
 | `note` | string | 否 | 用户备注 |
 
-- 不在 map 中的成就 ID = 未解锁
+- **在 map 中 = 已解锁，不在 = 未解锁**
+- `achieved_at` 省略表示已达成但不记得具体时间
+- 新达成的成就，UI 应自动填入当天日期（`YYYY-MM-DD`）作为缺省值，用户可清除或修改
 - 卸载包时数据保留，重新加载时恢复
 
 ### 示例
@@ -103,11 +105,14 @@
   "version": 1,
   "unlocked": {
     "programmer::hello_world": {
-      "unlocked_at": "2025-06-15",
       "note": "First Python script - fizzbuzz.py"
     },
+    "fitness::5k_under_25min": {
+      "achieved_at": "2023",
+      "note": "公园晨跑"
+    },
     "programmer::first_pr_merged": {
-      "unlocked_at": "2025-09-22"
+      "achieved_at": "2025-09-22"
     }
   }
 }
@@ -120,4 +125,4 @@
 3. `prerequisites` 关系必须构成 DAG（无环）
 4. 同包内成就 ID 不可重复
 5. `difficulty` 必须是枚举值之一
-6. `achievement_progress.json` 中的 `unlocked_at` 格式为 `YYYY-MM-DD`
+6. `achieved_at` 若存在，格式必须为 `YYYY`、`YYYY-MM` 或 `YYYY-MM-DD` 之一
