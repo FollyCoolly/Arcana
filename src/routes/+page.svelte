@@ -8,6 +8,7 @@
   import P5MenuItem from "$lib/P5MenuItem.svelte";
   import type { LetterConfig } from "$lib/P5MenuItem.svelte";
   import type { AchievementData, Achievement, PackAchievements } from "$lib/types/achievement";
+  import type { SkillData, SkillWithLevel } from "$lib/types/skill";
 
   type StatusMetric = {
     id: string;
@@ -38,7 +39,7 @@
     metrics: StatusMetric[];
   };
 
-  type MenuScreen = "main" | "status" | "achievements";
+  type MenuScreen = "main" | "status" | "achievements" | "skills";
   type MenuItemId = "status" | "skills" | "achievements" | "items" | "gallery" | "crafting";
 
   type MenuItem = {
@@ -59,7 +60,7 @@
       id: "skills",
       label: "Skills",
       description: "Skill tree progression linked to achievements.",
-      enabled: false,
+      enabled: true,
     },
     {
       id: "achievements",
@@ -163,6 +164,11 @@
   let achievementError = $state<string | null>(null);
   let achievementData = $state<AchievementData | null>(null);
   let selectedPackIndex = $state(0);
+
+  let skillLoading = $state(false);
+  let skillError = $state<string | null>(null);
+  let skillData = $state<SkillData | null>(null);
+  let selectedSkill = $state<SkillWithLevel | null>(null);
 
   let commandRef = $state<HTMLElement | undefined>(undefined);
   let menuItemRefs = $state<(HTMLButtonElement | undefined)[]>([]);
@@ -456,6 +462,61 @@
     }
   }
 
+  async function loadSkillData() {
+    skillLoading = true;
+    skillError = null;
+
+    try {
+      skillData = await invoke<SkillData>("load_skills");
+    } catch (error) {
+      skillError =
+        typeof error === "string"
+          ? error
+          : "Failed to load skill data.";
+      skillData = null;
+    } finally {
+      skillLoading = false;
+    }
+  }
+
+  async function openSkillsScreen() {
+    currentScreen = "skills";
+    selectedSkill = null;
+    if (!skillData && !skillLoading) {
+      await loadSkillData();
+    }
+    if (!achievementData && !achievementLoading) {
+      await loadAchievementData();
+    }
+  }
+
+  const ROMAN_NUMERALS = ["0", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
+
+  function toRomanNumeral(n: number): string {
+    return ROMAN_NUMERALS[n] ?? String(n);
+  }
+
+  function getSkillProgressPercent(s: SkillWithLevel): number {
+    if (s.max_points === 0) return 0;
+    return (s.current_points / s.max_points) * 100;
+  }
+
+  function isNodeUnlocked(achievementId: string): boolean {
+    return !!achievementData?.progress[achievementId];
+  }
+
+  function getAchievementName(achievementId: string): string {
+    if (!achievementData) return achievementId;
+    for (const pack of achievementData.packs) {
+      for (const ach of pack.achievements) {
+        if (ach.id === achievementId) return ach.name;
+      }
+    }
+    // Fallback: format from ID
+    const after = achievementId.split("::")[1];
+    return after ? formatGroupName(after) : achievementId;
+  }
+
   type CategoryGroup = {
     category: string;
     achievements: Achievement[];
@@ -516,13 +577,17 @@
       await openStatusScreen();
     } else if (item.id === "achievements") {
       await openAchievementsScreen();
+    } else if (item.id === "skills") {
+      await openSkillsScreen();
     }
   }
 
   function handleKeydown(event: KeyboardEvent) {
     if (event.key === "Escape") {
       event.preventDefault();
-      if (currentScreen === "status" || currentScreen === "achievements") {
+      if (currentScreen === "skills" && selectedSkill) {
+        selectedSkill = null;
+      } else if (currentScreen === "status" || currentScreen === "achievements" || currentScreen === "skills") {
         currentScreen = "main";
       } else {
         void hideInterface();
@@ -818,6 +883,148 @@
             <p class="state-text">Achievement data is not available yet.</p>
           {/if}
         </div>
+      </section>
+    {/if}
+
+    {#if currentScreen === "skills"}
+      <section class="rm-stage">
+        <div class="rm-skills-title">
+          <P5Text text="Skills" fontSize={82} />
+        </div>
+
+        <button type="button" class="rm-back-btn" onclick={() => {
+          if (selectedSkill) {
+            selectedSkill = null;
+          } else {
+            currentScreen = "main";
+          }
+        }}>
+          <img src="/ui/back.png" alt="Back" class="rm-back-img" />
+        </button>
+
+        {#if skillLoading}
+          <p class="state-text" style="padding: 2rem;">Loading skills...</p>
+        {:else if skillError}
+          <p class="state-text error" style="padding: 2rem;">{skillError}</p>
+        {:else if skillData && !selectedSkill}
+          <!-- Level 1: Card Gallery -->
+          <div class="rm-skill-gallery">
+            {#each skillData.skills as skill, si}
+              {@const leveled = skill.current_level > 0}
+              <button
+                type="button"
+                class="rm-tarot-card"
+                class:rm-tarot-card--leveled={leveled}
+                style:--card-rot="{(si % 2 === 0 ? -2 : 2) + (si % 3) * 0.5}deg"
+                onclick={() => selectedSkill = skill}
+              >
+                <div class="rm-tarot-card-inner">
+                  <div class="rm-tarot-top">
+                    <span class="rm-tarot-level">{toRomanNumeral(skill.current_level)}</span>
+                    <span class="rm-tarot-pack">{skill.pack_name}</span>
+                  </div>
+                  <div class="rm-tarot-art">
+                    <div class="rm-tarot-star-stack">
+                      <div class="rm-tarot-star rm-ts-1"></div>
+                      <div class="rm-tarot-star rm-ts-2"></div>
+                      <div class="rm-tarot-star rm-ts-3"></div>
+                      <div class="rm-tarot-star rm-ts-4"></div>
+                      <div class="rm-tarot-star rm-ts-5"></div>
+                    </div>
+                    <div class="rm-tarot-stripe"></div>
+                  </div>
+                  <div class="rm-tarot-name-strip">
+                    <span class="rm-tarot-name">{skill.skill.name}</span>
+                  </div>
+                  <div class="rm-tarot-bottom">
+                    <div class="rm-tarot-progress">
+                      <div class="rm-tarot-progress-fill" style:width="{getSkillProgressPercent(skill)}%"></div>
+                    </div>
+                    <span class="rm-tarot-lv">LV {skill.current_level}</span>
+                  </div>
+                </div>
+              </button>
+            {/each}
+          </div>
+        {:else if skillData && selectedSkill}
+          <!-- Level 2: Skill Detail -->
+          <div class="rm-skill-detail">
+            <!-- Left: Enlarged card + stats -->
+            <div class="rm-skill-detail-left">
+              <div class="rm-tarot-card rm-tarot-card--large" class:rm-tarot-card--leveled={selectedSkill.current_level > 0}>
+                <div class="rm-tarot-card-inner">
+                  <div class="rm-tarot-top">
+                    <span class="rm-tarot-level">{toRomanNumeral(selectedSkill.current_level)}</span>
+                    <span class="rm-tarot-pack">{selectedSkill.pack_name}</span>
+                  </div>
+                  <div class="rm-tarot-art">
+                    <div class="rm-tarot-star-stack">
+                      <div class="rm-tarot-star rm-ts-1"></div>
+                      <div class="rm-tarot-star rm-ts-2"></div>
+                      <div class="rm-tarot-star rm-ts-3"></div>
+                      <div class="rm-tarot-star rm-ts-4"></div>
+                      <div class="rm-tarot-star rm-ts-5"></div>
+                    </div>
+                    <div class="rm-tarot-stripe"></div>
+                  </div>
+                  <div class="rm-tarot-name-strip">
+                    <span class="rm-tarot-name">{selectedSkill.skill.name}</span>
+                  </div>
+                  <div class="rm-tarot-bottom">
+                    <div class="rm-tarot-progress">
+                      <div class="rm-tarot-progress-fill" style:width="{getSkillProgressPercent(selectedSkill)}%"></div>
+                    </div>
+                    <span class="rm-tarot-lv">LV {selectedSkill.current_level}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="rm-skill-stats">
+                <div class="rm-skill-stat-row">
+                  <span class="rm-skill-stat-label">LEVEL</span>
+                  <span class="rm-skill-stat-value">{selectedSkill.current_level} / {selectedSkill.skill.max_level}</span>
+                </div>
+                <div class="rm-skill-stat-row">
+                  <span class="rm-skill-stat-label">POINTS</span>
+                  <span class="rm-skill-stat-value">{selectedSkill.current_points} / {selectedSkill.max_points}</span>
+                </div>
+                {#if selectedSkill.next_threshold}
+                  <div class="rm-skill-stat-row">
+                    <span class="rm-skill-stat-label">NEXT LV</span>
+                    <span class="rm-skill-stat-value">{selectedSkill.next_threshold.points_required} pts</span>
+                  </div>
+                {/if}
+              </div>
+
+              {#if selectedSkill.skill.description}
+                <p class="rm-skill-description">{selectedSkill.skill.description}</p>
+              {/if}
+            </div>
+
+            <!-- Right: Skill name + honeycomb node grid -->
+            <div class="rm-skill-detail-right">
+              <div class="rm-skill-detail-header">
+                <P5Text text={selectedSkill.skill.name} fontSize={52} />
+              </div>
+
+              <div class="rm-skill-node-grid">
+                {#each selectedSkill.skill.nodes as node, ni}
+                  {@const unlocked = isNodeUnlocked(node.achievement_id)}
+                  <div
+                    class="rm-skill-node-hex"
+                    class:rm-skill-node-hex--unlocked={unlocked}
+                  >
+                    <span class="rm-node-status">{unlocked ? "✓" : "○"}</span>
+                    <span class="rm-node-name">{getAchievementName(node.achievement_id)}</span>
+                    <span class="rm-node-points">+{node.points}</span>
+                  </div>
+                {/each}
+              </div>
+            </div>
+          </div>
+        {:else}
+          <p class="state-text" style="padding: 2rem;">Skill data is not available yet.</p>
+        {/if}
       </section>
     {/if}
   </section>
@@ -1457,6 +1664,350 @@
     color: rgba(255, 255, 255, 0.35);
     border: 1px solid rgba(255, 255, 255, 0.15);
     padding: 0.1rem 0.4rem;
+  }
+
+  /* ─── Skills screen ─── */
+
+  .rm-skills-title {
+    position: fixed;
+    top: clamp(0.8rem, 1.5vh, 3rem);
+    right: clamp(1.2rem, 2.5vw, 5rem);
+    z-index: 10;
+    pointer-events: none;
+  }
+
+  /* Card gallery */
+  .rm-skill-gallery {
+    flex: 1;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    gap: clamp(1rem, 1.5vw, 2.5rem);
+    padding: clamp(1.5rem, 2.5vh, 4rem) clamp(2rem, 4vw, 6rem) clamp(6rem, 10vh, 10rem);
+    overflow-y: auto;
+    height: 100%;
+    box-sizing: border-box;
+  }
+
+  /* Tarot card */
+  .rm-tarot-card {
+    display: block;
+    border: none;
+    background: none;
+    cursor: pointer;
+    padding: 0;
+    width: clamp(120px, 10vw, 200px);
+    transform: rotate(var(--card-rot, 0deg));
+    transition: transform 200ms ease;
+  }
+
+  .rm-tarot-card:hover {
+    transform: translateY(-6px) rotateX(4deg) rotate(var(--card-rot, 0deg));
+    z-index: 5;
+  }
+
+  .rm-tarot-card-inner {
+    aspect-ratio: 0.6 / 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 2px solid rgba(255, 255, 255, 0.15);
+  }
+
+  /* Top band (white) */
+  .rm-tarot-top {
+    background: var(--rm-white);
+    color: var(--rm-black);
+    padding: clamp(0.2rem, 0.3vw, 0.5rem) clamp(0.3rem, 0.4vw, 0.7rem);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  .rm-tarot-level {
+    font-size: clamp(0.7rem, 0.7vw, 1.2rem);
+    font-weight: 800;
+    letter-spacing: 0.06em;
+  }
+
+  .rm-tarot-pack {
+    font-size: clamp(0.4rem, 0.38vw, 0.65rem);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    opacity: 0.5;
+    text-align: right;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 60%;
+  }
+
+  /* Art area (black) */
+  .rm-tarot-art {
+    flex: 1;
+    background: var(--rm-black);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.35;
+  }
+
+  .rm-tarot-card--leveled .rm-tarot-art {
+    opacity: 1;
+  }
+
+  .rm-tarot-star-stack {
+    position: absolute;
+    width: 70%;
+    aspect-ratio: 1;
+  }
+
+  .rm-tarot-star {
+    position: absolute;
+    inset: 0;
+    clip-path: polygon(
+      50% 0%,
+      61.2% 34.5%,
+      97.6% 34.5%,
+      68.2% 55.9%,
+      79.4% 90.5%,
+      50% 69.1%,
+      20.6% 90.5%,
+      31.8% 55.9%,
+      2.4% 34.5%,
+      38.8% 34.5%
+    );
+  }
+
+  .rm-ts-1 { background: var(--rm-white); transform: scale(0.85); }
+  .rm-ts-2 { background: var(--rm-black); transform: scale(0.68); }
+  .rm-ts-3 { background: var(--rm-white); transform: scale(0.51); }
+  .rm-ts-4 { background: var(--rm-black); transform: scale(0.34); }
+  .rm-ts-5 { background: var(--rm-white); transform: scale(0.17); }
+
+  .rm-tarot-stripe {
+    position: absolute;
+    top: 0;
+    left: 40%;
+    width: 35%;
+    height: 100%;
+    background: var(--rm-red);
+    opacity: 0.35;
+    transform: skewX(-20deg);
+  }
+
+  .rm-tarot-card--leveled .rm-tarot-stripe {
+    opacity: 0.7;
+  }
+
+  /* Center name strip (red) */
+  .rm-tarot-name-strip {
+    background: var(--rm-red);
+    padding: clamp(0.15rem, 0.2vw, 0.35rem) clamp(0.3rem, 0.4vw, 0.7rem);
+    flex-shrink: 0;
+    overflow: hidden;
+  }
+
+  .rm-tarot-name {
+    display: block;
+    font-size: clamp(0.5rem, 0.48vw, 0.85rem);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--rm-white);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Bottom band (black) */
+  .rm-tarot-bottom {
+    background: var(--rm-black);
+    padding: clamp(0.2rem, 0.25vw, 0.45rem) clamp(0.3rem, 0.4vw, 0.7rem);
+    display: flex;
+    align-items: center;
+    gap: clamp(0.25rem, 0.3vw, 0.5rem);
+    flex-shrink: 0;
+  }
+
+  .rm-tarot-progress {
+    flex: 1;
+    height: clamp(3px, 0.3vw, 6px);
+    background: rgba(255, 255, 255, 0.15);
+    overflow: hidden;
+  }
+
+  .rm-tarot-progress-fill {
+    height: 100%;
+    background: var(--rm-red);
+    transition: width 300ms ease;
+  }
+
+  .rm-tarot-lv {
+    font-size: clamp(0.45rem, 0.42vw, 0.7rem);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: rgba(255, 255, 255, 0.6);
+    flex-shrink: 0;
+  }
+
+  /* Muted state for level-0 cards */
+  .rm-tarot-card:not(.rm-tarot-card--leveled) .rm-tarot-card-inner {
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+
+  .rm-tarot-card:not(.rm-tarot-card--leveled) .rm-tarot-top {
+    background: rgba(255, 255, 255, 0.3);
+  }
+
+  .rm-tarot-card:not(.rm-tarot-card--leveled) .rm-tarot-name-strip {
+    background: rgba(229, 25, 28, 0.35);
+  }
+
+  .rm-tarot-card:not(.rm-tarot-card--leveled) .rm-tarot-lv {
+    color: rgba(255, 255, 255, 0.3);
+  }
+
+  /* Large card (detail view) */
+  .rm-tarot-card--large {
+    width: 100%;
+    max-width: clamp(180px, 18vw, 320px);
+    cursor: default;
+    transform: none;
+  }
+
+  .rm-tarot-card--large:hover {
+    transform: none;
+  }
+
+  /* Skill detail layout */
+  .rm-skill-detail {
+    flex: 1;
+    display: grid;
+    grid-template-columns: clamp(180px, 18vw, 320px) 1fr;
+    gap: clamp(1.5rem, 2.5vw, 4rem);
+    overflow: hidden;
+    height: 100%;
+    padding: clamp(1.5rem, 2.5vh, 4rem) clamp(2rem, 4vw, 6rem) clamp(6rem, 10vh, 10rem);
+    box-sizing: border-box;
+  }
+
+  .rm-skill-detail-left {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(0.8rem, 1vw, 1.5rem);
+    overflow-y: auto;
+    padding-right: clamp(0.5rem, 1vw, 1.5rem);
+  }
+
+  .rm-skill-stats {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(0.2rem, 0.3vw, 0.5rem);
+  }
+
+  .rm-skill-stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: clamp(0.15rem, 0.2vw, 0.35rem) 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .rm-skill-stat-label {
+    font-size: clamp(0.6rem, 0.55vw, 0.95rem);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  .rm-skill-stat-value {
+    font-size: clamp(0.75rem, 0.7vw, 1.2rem);
+    font-weight: 800;
+    letter-spacing: 0.04em;
+  }
+
+  .rm-skill-description {
+    margin: 0;
+    font-size: clamp(0.6rem, 0.55vw, 0.95rem);
+    color: rgba(255, 255, 255, 0.55);
+    line-height: 1.5;
+  }
+
+  .rm-skill-detail-right {
+    overflow-y: auto;
+    padding-right: clamp(6rem, 10vw, 16rem);
+  }
+
+  .rm-skill-detail-header {
+    margin-bottom: clamp(1rem, 1.5vw, 2.5rem);
+  }
+
+  /* Honeycomb node grid */
+  .rm-skill-node-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(clamp(100px, 9vw, 160px), 1fr));
+    gap: clamp(0.4rem, 0.5vw, 0.8rem) clamp(0.3rem, 0.4vw, 0.6rem);
+  }
+
+  .rm-skill-node-grid > :nth-child(even) {
+    transform: translateY(25%);
+  }
+
+  .rm-skill-node-hex {
+    aspect-ratio: 1.15 / 1;
+    clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+    background: var(--rm-black);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(0.1rem, 0.15vw, 0.25rem);
+    padding: clamp(0.4rem, 0.5vw, 0.8rem) clamp(0.8rem, 1vw, 1.5rem);
+    opacity: 0.35;
+    transition: opacity 120ms ease;
+  }
+
+  .rm-skill-node-hex--unlocked {
+    opacity: 1;
+  }
+
+  .rm-node-status {
+    font-size: clamp(0.7rem, 0.65vw, 1.1rem);
+    font-weight: 800;
+  }
+
+  .rm-skill-node-hex--unlocked .rm-node-status {
+    color: var(--rm-red);
+  }
+
+  .rm-node-name {
+    font-size: clamp(0.45rem, 0.42vw, 0.7rem);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    text-align: center;
+    line-height: 1.2;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  .rm-node-points {
+    font-size: clamp(0.5rem, 0.48vw, 0.8rem);
+    font-weight: 800;
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  .rm-skill-node-hex--unlocked .rm-node-points {
+    color: var(--rm-red);
   }
 
   @media (max-width: 980px) {

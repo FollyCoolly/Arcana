@@ -51,6 +51,7 @@ pub fn run() {
             commands::status::load_status_data,
             commands::weather::get_weather,
             commands::achievements::load_achievements,
+            commands::skills::load_skills,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
