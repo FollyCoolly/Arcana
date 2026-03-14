@@ -306,13 +306,10 @@ def build_skill(pack_id: str, skill_hint: str, tree_title: str,
     for i, ach in enumerate(skill_achs):
         points = DIFFICULTY_POINTS[ach["difficulty"]]
         total_possible_points += points
-        row = ach.get("_row", 0)
-        col = i % 7
         nodes.append({
             "node_id": f"node_{i}",
             "achievement_id": ach["id"],
             "points": points,
-            "position": {"x": col, "y": row},
         })
 
     # Build level thresholds (5 levels)

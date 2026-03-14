@@ -1,6 +1,6 @@
 # Skills Schema
 
-技能树定义存在于每个内容包中，描述技能的等级计算规则和节点布局。积分和关键成就标记在技能树节点和等级门槛上。
+技能树定义存在于每个内容包中，描述技能的等级计算规则和节点。积分和关键成就标记在技能树节点和等级门槛上。
 
 ## 文件路径
 
@@ -9,7 +9,8 @@
 ## 核心设计决策
 
 1. **积分放在技能侧**：技能树节点包含 `points`，成就定义不含积分。看技能树就能知道每个节点值多少分。
-2. **无边（edges）**：技能树只定义节点和位置，不定义边。前端渲染时根据 `achievements.prerequisites` 推导连线。
+2. **无边（edges）**：技能树只定义节点，不定义边。前端渲染时根据 `achievements.prerequisites` 推导连线。
+3. **无位置（position）**：节点不存储布局坐标，前端根据成就的 `difficulty`、`category`、`tags` 等属性动态计算布局。
 
 ## `skills.json`（每包）
 
@@ -40,7 +41,6 @@
 | `node_id` | string | 是 | 树内唯一节点 ID |
 | `achievement_id` | string | 是 | 对应成就 ID |
 | `points` | number | 是 | 解锁后贡献的积分 |
-| `position` | object | 是 | 逻辑网格坐标 `{ x, y }`，用于前端布局 |
 
 同一成就可在多棵技能树中被引用（不同节点、不同积分值）。
 
@@ -76,14 +76,12 @@
         {
           "node_id": "node_hello_world",
           "achievement_id": "programmer::hello_world",
-          "points": 5,
-          "position": { "x": 0, "y": 0 }
+          "points": 5
         },
         {
           "node_id": "node_first_pr",
           "achievement_id": "programmer::first_pr_merged",
-          "points": 10,
-          "position": { "x": 1, "y": -1 }
+          "points": 10
         }
       ]
     }
