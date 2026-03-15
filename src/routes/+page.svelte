@@ -9,6 +9,7 @@
   import type { LetterConfig } from "$lib/P5MenuItem.svelte";
   import type { AchievementData, Achievement, PackAchievements } from "$lib/types/achievement";
   import type { SkillData, SkillWithLevel, SkillNode } from "$lib/types/skill";
+  import type { ItemData, ItemWithComputed, ItemSortKey, ItemSortOrder } from "$lib/types/item";
   import SkillNebula from "$lib/components/SkillNebula.svelte";
 
   type StatusMetric = {
@@ -40,7 +41,7 @@
     metrics: StatusMetric[];
   };
 
-  type MenuScreen = "main" | "status" | "achievements" | "skills";
+  type MenuScreen = "main" | "status" | "achievements" | "skills" | "items";
   type MenuItemId = "status" | "skills" | "achievements" | "items" | "gallery" | "crafting";
 
   type MenuItem = {
@@ -73,7 +74,7 @@
       id: "items",
       label: "Items",
       description: "Personal inventory and purchase awareness.",
-      enabled: false,
+      enabled: true,
     },
     {
       id: "gallery",
@@ -170,6 +171,15 @@
   let skillError = $state<string | null>(null);
   let skillData = $state<SkillData | null>(null);
   let selectedSkill = $state<SkillWithLevel | null>(null);
+
+  let itemLoading = $state(false);
+  let itemError = $state<string | null>(null);
+  let itemData = $state<ItemData | null>(null);
+  let selectedItem = $state<ItemWithComputed | null>(null);
+  let itemFilterSource = $state<string | null>(null);
+  let itemFilterCategory = $state<string | null>(null);
+  let itemSortKey = $state<ItemSortKey>('name');
+  let itemSortOrder = $state<ItemSortOrder>('asc');
 
   let commandRef = $state<HTMLElement | undefined>(undefined);
   let menuItemRefs = $state<(HTMLButtonElement | undefined)[]>([]);
@@ -491,6 +501,106 @@
     }
   }
 
+  // ── Items helpers ──
+
+  const ITEM_SORT_OPTIONS: { key: ItemSortKey; label: string }[] = [
+    { key: 'name', label: '名称' },
+    { key: 'price', label: '价格' },
+    { key: 'daily_cost', label: '日均' },
+    { key: 'date', label: '购入' },
+    { key: 'days_owned', label: '天数' },
+  ];
+
+  async function loadItemData() {
+    itemLoading = true;
+    itemError = null;
+
+    try {
+      itemData = await invoke<ItemData>("load_items");
+    } catch (error) {
+      itemError =
+        typeof error === "string"
+          ? error
+          : "Failed to load item data.";
+      itemData = null;
+    } finally {
+      itemLoading = false;
+    }
+  }
+
+  async function openItemsScreen() {
+    currentScreen = "items";
+    selectedItem = null;
+    itemFilterSource = null;
+    itemFilterCategory = null;
+    if (!itemData && !itemLoading) {
+      await loadItemData();
+    }
+  }
+
+  function formatPrice(price: number | null): string {
+    if (price === null || price === undefined) return "—";
+    return `¥${price.toLocaleString("zh-CN", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+  }
+
+  function formatDailyCost(cost: number | null): string {
+    if (cost === null || cost === undefined) return "—";
+    return `¥${cost.toFixed(2)}`;
+  }
+
+  function toggleItemSort(key: ItemSortKey) {
+    if (itemSortKey === key) {
+      itemSortOrder = itemSortOrder === 'asc' ? 'desc' : 'asc';
+    } else {
+      itemSortKey = key;
+      itemSortOrder = key === 'name' ? 'asc' : 'desc';
+    }
+  }
+
+  function getFilteredSortedItems(): ItemWithComputed[] {
+    if (!itemData) return [];
+
+    let items = itemData.items;
+
+    if (itemFilterSource) {
+      items = items.filter(i => i.source_id === itemFilterSource);
+    }
+    if (itemFilterCategory) {
+      items = items.filter(i => (i.main_category ?? '未分类') === itemFilterCategory);
+    }
+
+    const sorted = [...items];
+    const dir = itemSortOrder === 'asc' ? 1 : -1;
+
+    sorted.sort((a, b) => {
+      switch (itemSortKey) {
+        case 'name':
+          return dir * a.name.localeCompare(b.name, 'zh-CN');
+        case 'price':
+          return dir * ((a.price ?? 0) - (b.price ?? 0));
+        case 'daily_cost':
+          return dir * ((a.daily_cost ?? Infinity) - (b.daily_cost ?? Infinity));
+        case 'date':
+          return dir * ((a.purchase_date ?? '').localeCompare(b.purchase_date ?? ''));
+        case 'days_owned':
+          return dir * ((a.days_owned ?? 0) - (b.days_owned ?? 0));
+        default:
+          return 0;
+      }
+    });
+
+    return sorted;
+  }
+
+  function formatExtraValue(val: unknown): string {
+    if (val === null || val === undefined) return "—";
+    if (typeof val === 'string') return val;
+    if (typeof val === 'number') return String(val);
+    if (typeof val === 'boolean') return val ? '是' : '否';
+    if (Array.isArray(val)) return val.join(', ');
+    return JSON.stringify(val);
+  }
+
   const ROMAN_NUMERALS = ["0", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
 
   function toRomanNumeral(n: number): string {
@@ -593,6 +703,8 @@
       await openAchievementsScreen();
     } else if (item.id === "skills") {
       await openSkillsScreen();
+    } else if (item.id === "items") {
+      await openItemsScreen();
     }
   }
 
@@ -601,7 +713,9 @@
       event.preventDefault();
       if (currentScreen === "skills" && selectedSkill) {
         selectedSkill = null;
-      } else if (currentScreen === "status" || currentScreen === "achievements" || currentScreen === "skills") {
+      } else if (currentScreen === "items" && selectedItem) {
+        selectedItem = null;
+      } else if (currentScreen === "status" || currentScreen === "achievements" || currentScreen === "skills" || currentScreen === "items") {
         currentScreen = "main";
       } else {
         void hideInterface();
@@ -1012,6 +1126,232 @@
           </div>
         {:else}
           <p class="state-text" style="padding: 2rem;">Skill data is not available yet.</p>
+        {/if}
+      </section>
+    {/if}
+
+    {#if currentScreen === "items"}
+      <section class="rm-stage">
+        <div class="rm-items-title">
+          <P5Text text="Items" fontSize={82} />
+        </div>
+
+        <button type="button" class="rm-back-btn" onclick={() => {
+          if (selectedItem) {
+            selectedItem = null;
+          } else {
+            currentScreen = "main";
+          }
+        }}>
+          <img src="/ui/back.png" alt="Back" class="rm-back-img" />
+        </button>
+
+        {#if itemLoading}
+          <p class="state-text" style="padding: 2rem;">Loading items...</p>
+        {:else if itemError}
+          <p class="state-text error" style="padding: 2rem;">{itemError}</p>
+        {:else if itemData && !selectedItem}
+          <div class="rm-items-layout">
+            <!-- LEFT: Stats sidebar -->
+            <div class="rm-items-sidebar">
+              <div class="rm-items-stat-block">
+                <div class="rm-items-stat-row">
+                  <span class="rm-items-stat-label">TOTAL</span>
+                  <span class="rm-items-stat-value">{itemData.stats.total_items}</span>
+                </div>
+                <div class="rm-items-stat-row">
+                  <span class="rm-items-stat-label">VALUE</span>
+                  <span class="rm-items-stat-value">{formatPrice(itemData.stats.total_value)}</span>
+                </div>
+                <div class="rm-items-stat-row">
+                  <span class="rm-items-stat-label">AVG/DAY</span>
+                  <span class="rm-items-stat-value rm-items-daily">{formatDailyCost(itemData.stats.average_daily_cost)}</span>
+                </div>
+              </div>
+
+              <!-- By source -->
+              <div class="rm-items-filter-section">
+                <h4 class="rm-items-filter-title">Sources</h4>
+                <button
+                  type="button"
+                  class="rm-items-filter-btn"
+                  class:is-active={!itemFilterSource}
+                  onclick={() => { itemFilterSource = null; }}
+                >All</button>
+                {#each itemData.stats.by_source as src}
+                  <button
+                    type="button"
+                    class="rm-items-filter-btn"
+                    class:is-active={itemFilterSource === src.source_id}
+                    onclick={() => { itemFilterSource = itemFilterSource === src.source_id ? null : src.source_id; }}
+                  >
+                    {src.source_icon} {src.source_name}
+                    <span class="rm-items-filter-count">{src.item_count}</span>
+                  </button>
+                {/each}
+              </div>
+
+              <!-- By category -->
+              <div class="rm-items-filter-section">
+                <h4 class="rm-items-filter-title">Categories</h4>
+                <button
+                  type="button"
+                  class="rm-items-filter-btn"
+                  class:is-active={!itemFilterCategory}
+                  onclick={() => { itemFilterCategory = null; }}
+                >All</button>
+                {#each itemData.stats.by_main_category as cat}
+                  <button
+                    type="button"
+                    class="rm-items-filter-btn"
+                    class:is-active={itemFilterCategory === cat.name}
+                    onclick={() => { itemFilterCategory = itemFilterCategory === cat.name ? null : cat.name; }}
+                  >
+                    {cat.name}
+                    <span class="rm-items-filter-count">{cat.item_count}</span>
+                  </button>
+                {/each}
+              </div>
+            </div>
+
+            <!-- RIGHT: Items grid -->
+            <div class="rm-items-content">
+              <!-- Sort bar -->
+              <div class="rm-items-sort-bar">
+                {#each ITEM_SORT_OPTIONS as opt}
+                  <button
+                    type="button"
+                    class="rm-items-sort-btn"
+                    class:is-active={itemSortKey === opt.key}
+                    onclick={() => toggleItemSort(opt.key)}
+                  >
+                    {opt.label}
+                    {#if itemSortKey === opt.key}
+                      <span class="rm-items-sort-arrow">{itemSortOrder === 'asc' ? '↑' : '↓'}</span>
+                    {/if}
+                  </button>
+                {/each}
+                <span class="rm-items-result-count">{getFilteredSortedItems().length} items</span>
+              </div>
+
+              <!-- Item cards grid -->
+              <div class="rm-items-grid">
+                {#each getFilteredSortedItems() as item}
+                  <button
+                    type="button"
+                    class="rm-item-card"
+                    onclick={() => { selectedItem = item; }}
+                  >
+                    <div class="rm-item-card-header">
+                      <span class="rm-item-card-category">{item.main_category ?? '—'}</span>
+                      {#if item.sub_category}
+                        <span class="rm-item-card-subcategory">{item.sub_category}</span>
+                      {/if}
+                    </div>
+                    <div class="rm-item-card-body">
+                      <p class="rm-item-card-name">{item.name}</p>
+                      {#if item.brand}
+                        <p class="rm-item-card-brand">{item.brand}</p>
+                      {/if}
+                      <div class="rm-item-card-stats">
+                        <span class="rm-item-card-price">{formatPrice(item.price)}</span>
+                        <span class="rm-item-card-daily">{formatDailyCost(item.daily_cost)}/d</span>
+                      </div>
+                      {#if item.days_owned !== null}
+                        <p class="rm-item-card-days">{item.days_owned} days</p>
+                      {/if}
+                    </div>
+                  </button>
+                {/each}
+              </div>
+            </div>
+          </div>
+        {:else if itemData && selectedItem}
+          <!-- Item detail view -->
+          <div class="rm-item-detail">
+            <div class="rm-item-detail-left">
+              <div class="rm-item-detail-name">
+                <P5Text text={selectedItem.name} fontSize={62} />
+              </div>
+
+              {#if selectedItem.brand}
+                <p class="rm-item-detail-brand">{selectedItem.brand}</p>
+              {/if}
+
+              <div class="rm-item-detail-table">
+                {#if selectedItem.price !== null}
+                  <div class="rm-item-detail-row">
+                    <span class="rm-item-detail-label">PRICE</span>
+                    <span class="rm-item-detail-value">{formatPrice(selectedItem.price)}</span>
+                  </div>
+                {/if}
+                {#if selectedItem.daily_cost !== null}
+                  <div class="rm-item-detail-row">
+                    <span class="rm-item-detail-label">DAILY</span>
+                    <span class="rm-item-detail-value rm-items-daily">{formatDailyCost(selectedItem.daily_cost)}/day</span>
+                  </div>
+                {/if}
+                {#if selectedItem.days_owned !== null}
+                  <div class="rm-item-detail-row">
+                    <span class="rm-item-detail-label">OWNED</span>
+                    <span class="rm-item-detail-value">{selectedItem.days_owned} days</span>
+                  </div>
+                {/if}
+                {#if selectedItem.purchase_date}
+                  <div class="rm-item-detail-row">
+                    <span class="rm-item-detail-label">DATE</span>
+                    <span class="rm-item-detail-value">{selectedItem.purchase_date}</span>
+                  </div>
+                {/if}
+                {#if selectedItem.purchase_channel}
+                  <div class="rm-item-detail-row">
+                    <span class="rm-item-detail-label">FROM</span>
+                    <span class="rm-item-detail-value">{selectedItem.purchase_channel}</span>
+                  </div>
+                {/if}
+                {#if selectedItem.main_category}
+                  <div class="rm-item-detail-row">
+                    <span class="rm-item-detail-label">CATEGORY</span>
+                    <span class="rm-item-detail-value">{selectedItem.main_category}{selectedItem.sub_category ? ` / ${selectedItem.sub_category}` : ''}</span>
+                  </div>
+                {/if}
+                {#if selectedItem.color}
+                  <div class="rm-item-detail-row">
+                    <span class="rm-item-detail-label">COLOR</span>
+                    <span class="rm-item-detail-value">{selectedItem.color}</span>
+                  </div>
+                {/if}
+              </div>
+            </div>
+
+            <div class="rm-item-detail-right">
+              <!-- Extra attributes -->
+              {#if Object.keys(selectedItem.extra).length > 0}
+                <h4 class="rm-item-extra-title">Attributes</h4>
+                <div class="rm-item-extra-list">
+                  {#each Object.entries(selectedItem.extra) as [key, val]}
+                    <div class="rm-item-extra-row">
+                      <span class="rm-item-extra-key">{key}</span>
+                      <span class="rm-item-extra-val">{formatExtraValue(val)}</span>
+                    </div>
+                  {/each}
+                </div>
+              {/if}
+
+              <!-- Image -->
+              {#if selectedItem.image}
+                <div class="rm-item-image-wrap">
+                  <img
+                    src="https://asset.localhost/{selectedItem.image}"
+                    alt={selectedItem.name}
+                    class="rm-item-image"
+                  />
+                </div>
+              {/if}
+            </div>
+          </div>
+        {:else}
+          <p class="state-text" style="padding: 2rem;">Item data is not available yet.</p>
         {/if}
       </section>
     {/if}
@@ -2052,6 +2392,378 @@
 
   .rm-skill-node-hex--unlocked .rm-node-points {
     opacity: 1;
+  }
+
+  /* ─── Items screen ─── */
+
+  .rm-items-title {
+    position: fixed;
+    top: clamp(0.8rem, 1.5vh, 3rem);
+    right: clamp(1.2rem, 2.5vw, 5rem);
+    z-index: 10;
+    pointer-events: none;
+  }
+
+  .rm-items-layout {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    overflow: hidden;
+    height: 100%;
+  }
+
+  /* ── Left sidebar ── */
+  .rm-items-sidebar {
+    overflow-y: auto;
+    height: 100%;
+    padding: clamp(1.5rem, 2.5vh, 4rem) clamp(1.2rem, 2vw, 3rem) clamp(6rem, 10vh, 10rem) clamp(1.5rem, 2.5vw, 4rem);
+    box-sizing: border-box;
+  }
+
+  .rm-items-stat-block {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(0.2rem, 0.3vw, 0.5rem);
+    margin-bottom: clamp(1.5rem, 2vw, 3rem);
+  }
+
+  .rm-items-stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: clamp(0.15rem, 0.2vw, 0.35rem) 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .rm-items-stat-label {
+    font-size: clamp(0.6rem, 0.55vw, 0.95rem);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  .rm-items-stat-value {
+    font-size: clamp(0.75rem, 0.7vw, 1.2rem);
+    font-weight: 800;
+    letter-spacing: 0.04em;
+  }
+
+  .rm-items-daily {
+    color: var(--rm-red);
+  }
+
+  .rm-items-filter-section {
+    margin-bottom: clamp(1rem, 1.5vw, 2.5rem);
+  }
+
+  .rm-items-filter-title {
+    margin: 0 0 clamp(0.4rem, 0.5vw, 0.9rem);
+    font-size: clamp(0.72rem, 0.62vw, 1.3rem);
+    color: var(--rm-red);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    border-left: 0.2rem solid var(--rm-red);
+    padding-left: clamp(0.4rem, 0.5vw, 1rem);
+  }
+
+  .rm-items-filter-btn {
+    display: block;
+    width: fit-content;
+    border: none;
+    background: transparent;
+    color: var(--rm-white);
+    cursor: pointer;
+    padding: clamp(0.15rem, 0.25vw, 0.4rem) clamp(0.4rem, 0.6vw, 1rem);
+    font-family: inherit;
+    font-size: clamp(0.65rem, 0.58vw, 1rem);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    opacity: 0.35;
+    transition: opacity 140ms ease;
+  }
+
+  .rm-items-filter-btn:hover {
+    opacity: 0.65;
+  }
+
+  .rm-items-filter-btn.is-active {
+    opacity: 1;
+  }
+
+  .rm-items-filter-count {
+    font-size: clamp(0.55rem, 0.5vw, 0.85rem);
+    opacity: 0.5;
+    margin-left: 0.3em;
+  }
+
+  /* ── Right content ── */
+  .rm-items-content {
+    overflow-y: auto;
+    height: 100%;
+    padding: clamp(1.5rem, 2.5vh, 4rem) clamp(8rem, 14vw, 20rem) clamp(6rem, 10vh, 10rem) clamp(1.5rem, 2.5vw, 4rem);
+    box-sizing: border-box;
+  }
+
+  .rm-items-sort-bar {
+    display: flex;
+    align-items: center;
+    gap: clamp(0.3rem, 0.4vw, 0.6rem);
+    margin-bottom: clamp(1rem, 1.5vw, 2.5rem);
+    flex-wrap: wrap;
+  }
+
+  .rm-items-sort-btn {
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: transparent;
+    color: var(--rm-white);
+    cursor: pointer;
+    padding: clamp(0.2rem, 0.25vw, 0.4rem) clamp(0.5rem, 0.6vw, 1rem);
+    font-family: inherit;
+    font-size: clamp(0.6rem, 0.55vw, 0.95rem);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    opacity: 0.5;
+    transition: opacity 140ms ease, background 140ms ease;
+  }
+
+  .rm-items-sort-btn:hover {
+    opacity: 0.8;
+  }
+
+  .rm-items-sort-btn.is-active {
+    opacity: 1;
+    background: var(--rm-red);
+    border-color: var(--rm-red);
+  }
+
+  .rm-items-sort-arrow {
+    margin-left: 0.2em;
+  }
+
+  .rm-items-result-count {
+    margin-left: auto;
+    font-size: clamp(0.6rem, 0.55vw, 0.95rem);
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.4);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .rm-items-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(max(200px, 13vw), 1fr));
+    gap: clamp(0.6rem, 0.6vw, 1.2rem);
+  }
+
+  .rm-item-card {
+    background: var(--rm-black);
+    border: none;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    cursor: pointer;
+    transform: rotate(-0.5deg);
+    clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 3% 100%);
+    transition: transform 120ms ease;
+    text-align: left;
+    font-family: inherit;
+    color: var(--rm-white);
+  }
+
+  .rm-item-card:nth-child(even) {
+    transform: rotate(0.5deg);
+  }
+
+  .rm-item-card:hover {
+    transform: rotate(0deg) scale(1.03);
+    z-index: 2;
+  }
+
+  .rm-item-card-header {
+    display: flex;
+    align-items: center;
+    gap: clamp(0.3rem, 0.4vw, 0.6rem);
+    background: var(--rm-white);
+    color: var(--rm-black);
+    padding: clamp(0.25rem, 0.35vw, 0.6rem) clamp(0.7rem, 0.9vw, 1.6rem);
+    margin: clamp(0.15rem, 0.2vw, 0.35rem) clamp(0.15rem, 0.2vw, 0.35rem) 0;
+    clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 1.5% 100%);
+  }
+
+  .rm-item-card-category {
+    font-size: clamp(0.6rem, 0.55vw, 0.95rem);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .rm-item-card-subcategory {
+    font-size: clamp(0.5rem, 0.45vw, 0.8rem);
+    font-weight: 600;
+    opacity: 0.5;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .rm-item-card-body {
+    padding: clamp(0.3rem, 0.4vw, 0.7rem) clamp(0.7rem, 0.9vw, 1.6rem) clamp(0.4rem, 0.5vw, 0.8rem) clamp(1rem, 1.2vw, 2rem);
+  }
+
+  .rm-item-card-name {
+    margin: 0;
+    font-size: clamp(0.75rem, 0.7vw, 1.2rem);
+    font-weight: 800;
+    line-height: 1.3;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .rm-item-card-brand {
+    margin: clamp(0.1rem, 0.15vw, 0.2rem) 0 0;
+    font-size: clamp(0.55rem, 0.5vw, 0.85rem);
+    color: rgba(255, 255, 255, 0.45);
+    font-weight: 600;
+  }
+
+  .rm-item-card-stats {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-top: clamp(0.3rem, 0.4vw, 0.6rem);
+  }
+
+  .rm-item-card-price {
+    font-size: clamp(0.85rem, 0.8vw, 1.4rem);
+    font-weight: 800;
+  }
+
+  .rm-item-card-daily {
+    font-size: clamp(0.6rem, 0.55vw, 0.95rem);
+    font-weight: 700;
+    color: var(--rm-red);
+  }
+
+  .rm-item-card-days {
+    margin: clamp(0.1rem, 0.15vw, 0.2rem) 0 0;
+    font-size: clamp(0.55rem, 0.5vw, 0.85rem);
+    color: rgba(255, 255, 255, 0.35);
+    font-weight: 600;
+  }
+
+  /* ── Item detail ── */
+
+  .rm-item-detail {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: clamp(1.5rem, 2vw, 3rem);
+    overflow: hidden;
+    height: 100%;
+    padding: clamp(1.5rem, 2.5vh, 4rem) clamp(2rem, 3vw, 5rem) clamp(6rem, 10vh, 10rem);
+    box-sizing: border-box;
+  }
+
+  .rm-item-detail-left {
+    overflow-y: auto;
+    padding: clamp(1rem, 2vw, 3rem);
+  }
+
+  .rm-item-detail-name {
+    margin-bottom: clamp(0.5rem, 0.8vw, 1.5rem);
+  }
+
+  .rm-item-detail-brand {
+    margin: 0 0 clamp(1rem, 1.5vw, 2.5rem);
+    font-size: clamp(0.7rem, 0.65vw, 1.1rem);
+    color: rgba(255, 255, 255, 0.5);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .rm-item-detail-table {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(0.2rem, 0.3vw, 0.5rem);
+  }
+
+  .rm-item-detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: clamp(0.15rem, 0.2vw, 0.35rem) 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .rm-item-detail-label {
+    font-size: clamp(0.6rem, 0.55vw, 0.95rem);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  .rm-item-detail-value {
+    font-size: clamp(0.75rem, 0.7vw, 1.2rem);
+    font-weight: 800;
+    letter-spacing: 0.04em;
+  }
+
+  .rm-item-detail-right {
+    overflow-y: auto;
+    padding: clamp(1rem, 2vw, 3rem);
+  }
+
+  .rm-item-extra-title {
+    margin: 0 0 clamp(0.4rem, 0.5vw, 0.9rem);
+    font-size: clamp(0.72rem, 0.62vw, 1.3rem);
+    color: var(--rm-red);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    border-left: 0.2rem solid var(--rm-red);
+    padding-left: clamp(0.4rem, 0.5vw, 1rem);
+  }
+
+  .rm-item-extra-list {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(0.15rem, 0.2vw, 0.35rem);
+    margin-bottom: clamp(1.5rem, 2vw, 3rem);
+  }
+
+  .rm-item-extra-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: clamp(0.12rem, 0.15vw, 0.3rem) 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .rm-item-extra-key {
+    font-size: clamp(0.6rem, 0.55vw, 0.95rem);
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.5);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .rm-item-extra-val {
+    font-size: clamp(0.7rem, 0.65vw, 1.1rem);
+    font-weight: 700;
+  }
+
+  .rm-item-image-wrap {
+    margin-top: clamp(1rem, 1.5vw, 2.5rem);
+  }
+
+  .rm-item-image {
+    max-width: 100%;
+    max-height: 50vh;
+    display: block;
+    clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 3% 100%);
   }
 
   @media (max-width: 980px) {

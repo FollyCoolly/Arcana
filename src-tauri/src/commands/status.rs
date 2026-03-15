@@ -1,59 +1,8 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::models::status::*;
+use crate::storage::date_utils::calculate_days_since;
 use crate::storage::json_store::{read_json_file, resolve_data_dir};
-
-fn parse_birth_date(date_str: &str) -> Result<(i32, u32, u32), String> {
-    let parts: Vec<&str> = date_str.split('-').collect();
-    if parts.len() != 3 {
-        return Err(format!(
-            "Invalid birth_date '{}'. Expected format YYYY-MM-DD",
-            date_str
-        ));
-    }
-
-    let year = parts[0]
-        .parse::<i32>()
-        .map_err(|_| format!("Invalid year in birth_date '{}'", date_str))?;
-    let month = parts[1]
-        .parse::<u32>()
-        .map_err(|_| format!("Invalid month in birth_date '{}'", date_str))?;
-    let day = parts[2]
-        .parse::<u32>()
-        .map_err(|_| format!("Invalid day in birth_date '{}'", date_str))?;
-
-    if !(1..=12).contains(&month) {
-        return Err(format!("Invalid month '{}' in birth_date '{}'", month, date_str));
-    }
-    if !(1..=31).contains(&day) {
-        return Err(format!("Invalid day '{}' in birth_date '{}'", day, date_str));
-    }
-
-    Ok((year, month, day))
-}
-
-fn days_from_civil(year: i32, month: u32, day: u32) -> i64 {
-    let y = year - if month <= 2 { 1 } else { 0 };
-    let era = if y >= 0 { y } else { y - 399 } / 400;
-    let yoe = y - era * 400;
-    let mp = month as i32 + if month > 2 { -3 } else { 9 };
-    let doy = (153 * mp + 2) / 5 + day as i32 - 1;
-    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
-    (era * 146097 + doe) as i64
-}
-
-fn calculate_game_days(birth_date: &str) -> Result<u64, String> {
-    let (year, month, day) = parse_birth_date(birth_date)?;
-    let birth_days = days_from_civil(year, month, day) - days_from_civil(1970, 1, 1);
-
-    let now_duration = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map_err(|e| format!("System clock before UNIX_EPOCH: {}", e))?;
-    let today_days = (now_duration.as_secs() / 86_400) as i64;
-
-    let diff = today_days - birth_days;
-    Ok(if diff > 0 { diff as u64 } else { 0 })
-}
 
 fn calculate_bmi(values: &HashMap<String, f64>) -> Option<f64> {
     let weight = values.get("weight_kg")?;
@@ -123,7 +72,7 @@ pub fn load_status_data() -> Result<StatusData, String> {
         definition_version: definitions.version,
         value_version: values.version,
         username: user_profile.username,
-        game_days: Some(calculate_game_days(&user_profile.birth_date)?),
+        game_days: Some(calculate_days_since(&user_profile.birth_date)?),
         bmi: calculate_bmi(&values.metrics),
         metrics: merged_metrics,
     })
