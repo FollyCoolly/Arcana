@@ -1,4 +1,5 @@
 pub mod achievement;
+pub mod crafting;
 pub mod item;
 pub mod skill;
 pub mod status;

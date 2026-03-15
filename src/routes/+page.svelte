@@ -10,6 +10,7 @@
   import type { AchievementData, Achievement, PackAchievements } from "$lib/types/achievement";
   import type { SkillData, SkillWithLevel, SkillNode } from "$lib/types/skill";
   import type { ItemData, ItemWithComputed, ItemSortKey, ItemSortOrder } from "$lib/types/item";
+  import type { CraftingData, RecipeWithComputed } from "$lib/types/crafting";
   import SkillNebula from "$lib/components/SkillNebula.svelte";
 
   type StatusMetric = {
@@ -41,7 +42,7 @@
     metrics: StatusMetric[];
   };
 
-  type MenuScreen = "main" | "status" | "achievements" | "skills" | "items";
+  type MenuScreen = "main" | "status" | "achievements" | "skills" | "items" | "crafting";
   type MenuItemId = "status" | "skills" | "achievements" | "items" | "gallery" | "crafting";
 
   type MenuItem = {
@@ -86,7 +87,7 @@
       id: "crafting",
       label: "Crafting",
       description: "Recipe and material planning module.",
-      enabled: false,
+      enabled: true,
     },
   ];
 
@@ -180,6 +181,11 @@
   let itemFilterCategory = $state<string | null>(null);
   let itemSortKey = $state<ItemSortKey>('name');
   let itemSortOrder = $state<ItemSortOrder>('asc');
+
+  let craftingLoading = $state(false);
+  let craftingError = $state<string | null>(null);
+  let craftingData = $state<CraftingData | null>(null);
+  let selectedRecipe = $state<RecipeWithComputed | null>(null);
 
   let commandRef = $state<HTMLElement | undefined>(undefined);
   let menuItemRefs = $state<(HTMLButtonElement | undefined)[]>([]);
@@ -538,6 +544,31 @@
     }
   }
 
+  async function loadCraftingData() {
+    craftingLoading = true;
+    craftingError = null;
+
+    try {
+      craftingData = await invoke<CraftingData>("load_crafting");
+    } catch (error) {
+      craftingError =
+        typeof error === "string"
+          ? error
+          : "Failed to load crafting data.";
+      craftingData = null;
+    } finally {
+      craftingLoading = false;
+    }
+  }
+
+  async function openCraftingScreen() {
+    currentScreen = "crafting";
+    selectedRecipe = null;
+    if (!craftingData && !craftingLoading) {
+      await loadCraftingData();
+    }
+  }
+
   function formatPrice(price: number | null): string {
     if (price === null || price === undefined) return "—";
     return `¥${price.toLocaleString("zh-CN", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
@@ -705,6 +736,8 @@
       await openSkillsScreen();
     } else if (item.id === "items") {
       await openItemsScreen();
+    } else if (item.id === "crafting") {
+      await openCraftingScreen();
     }
   }
 
@@ -715,7 +748,9 @@
         selectedSkill = null;
       } else if (currentScreen === "items" && selectedItem) {
         selectedItem = null;
-      } else if (currentScreen === "status" || currentScreen === "achievements" || currentScreen === "skills" || currentScreen === "items") {
+      } else if (currentScreen === "crafting" && selectedRecipe) {
+        selectedRecipe = null;
+      } else if (currentScreen === "status" || currentScreen === "achievements" || currentScreen === "skills" || currentScreen === "items" || currentScreen === "crafting") {
         currentScreen = "main";
       } else {
         void hideInterface();
@@ -1126,6 +1161,124 @@
           </div>
         {:else}
           <p class="state-text" style="padding: 2rem;">Skill data is not available yet.</p>
+        {/if}
+      </section>
+    {/if}
+
+    {#if currentScreen === "crafting"}
+      <section class="rm-stage">
+        <div class="rm-items-title">
+          <P5Text text="Crafting" fontSize={82} />
+        </div>
+
+        <button type="button" class="rm-back-btn" onclick={() => {
+          currentScreen = "main";
+        }}>
+          <img src="/ui/back.png" alt="Back" class="rm-back-img" />
+        </button>
+
+        {#if craftingLoading}
+          <p class="state-text" style="padding: 2rem;">Loading recipes...</p>
+        {:else if craftingError}
+          <p class="state-text error" style="padding: 2rem;">{craftingError}</p>
+        {:else if craftingData}
+          <div class="rm-craft-layout">
+            <!-- LEFT: recipe list -->
+            <div class="rm-craft-menu">
+              {#each craftingData.recipes as recipe}
+                <button
+                  type="button"
+                  class="rm-craft-menu-item"
+                  class:is-active={selectedRecipe?.id === recipe.id}
+                  onclick={() => { selectedRecipe = recipe; }}
+                >
+                  <span class="rm-craft-menu-name">{recipe.name}</span>
+                  <span class="rm-craft-menu-meta">
+                    {#if recipe.recipe_type}{recipe.recipe_type}{/if}
+                    {#if recipe.time} · {recipe.time}{/if}
+                  </span>
+                </button>
+              {/each}
+            </div>
+
+            <!-- RIGHT: detail -->
+            <div class="rm-craft-detail">
+              {#if selectedRecipe}
+                <!-- Top: ingredients box -->
+                <div class="rm-craft-ingredients">
+                  <h4 class="rm-craft-section-title">INGREDIENTS
+                    <span class="rm-craft-count">{selectedRecipe.ingredient_count}</span>
+                  </h4>
+                  <div class="rm-craft-ingredient-list">
+                    {#each selectedRecipe.ingredients as ing}
+                      <span class="rm-craft-ingredient-tag">{ing}</span>
+                    {/each}
+                  </div>
+                </div>
+
+                <!-- Bottom: paper-style detail panel -->
+                <div class="rm-craft-paper">
+                  <div class="rm-craft-paper-header">
+                    <h2 class="rm-craft-paper-title">{selectedRecipe.name}</h2>
+                    <div class="rm-craft-paper-meta">
+                      {#if selectedRecipe.recipe_type}
+                        <span class="rm-craft-paper-tag">{selectedRecipe.recipe_type}</span>
+                      {/if}
+                      {#if selectedRecipe.difficulty}
+                        <span class="rm-craft-paper-tag">{selectedRecipe.difficulty}</span>
+                      {/if}
+                      {#if selectedRecipe.servings}
+                        <span class="rm-craft-paper-tag">{selectedRecipe.servings}</span>
+                      {/if}
+                      {#if selectedRecipe.time}
+                        <span class="rm-craft-paper-tag">{selectedRecipe.time}</span>
+                      {/if}
+                    </div>
+                  </div>
+
+                  {#if selectedRecipe.steps.length > 0}
+                    <div class="rm-craft-steps">
+                      <h4 class="rm-craft-section-title">STEPS</h4>
+                      <ol class="rm-craft-step-list">
+                        {#each selectedRecipe.steps as step, i}
+                          <li class="rm-craft-step">
+                            <span class="rm-craft-step-num">{i + 1}</span>
+                            <span class="rm-craft-step-text">{step}</span>
+                          </li>
+                        {/each}
+                      </ol>
+                    </div>
+                  {/if}
+
+                  {#if selectedRecipe.tags.length > 0}
+                    <div class="rm-craft-tags">
+                      {#each selectedRecipe.tags as tag}
+                        <span class="rm-craft-tag">{tag}</span>
+                      {/each}
+                    </div>
+                  {/if}
+
+                  {#if selectedRecipe.source}
+                    <p class="rm-craft-source">Source: {selectedRecipe.source}</p>
+                  {/if}
+
+                  {#if Object.keys(selectedRecipe.extra).length > 0}
+                    <div class="rm-craft-extra">
+                      {#each Object.entries(selectedRecipe.extra) as [key, val]}
+                        <span class="rm-craft-paper-tag">{key}: {val}</span>
+                      {/each}
+                    </div>
+                  {/if}
+                </div>
+              {:else}
+                <div class="rm-craft-empty">
+                  <p>Select a recipe from the list</p>
+                </div>
+              {/if}
+            </div>
+          </div>
+        {:else}
+          <p class="state-text" style="padding: 2rem;">Crafting data is not available yet.</p>
         {/if}
       </section>
     {/if}
@@ -2764,6 +2917,252 @@
     max-height: 50vh;
     display: block;
     clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 3% 100%);
+  }
+
+  /* ── Crafting ── */
+
+  .rm-craft-layout {
+    display: grid;
+    grid-template-columns: clamp(180px, 18vw, 280px) 1fr;
+    gap: clamp(0.8rem, 1.2vw, 1.5rem);
+    height: calc(100vh - 140px);
+    padding: 0 clamp(1rem, 2vw, 3rem) clamp(1rem, 1.5vw, 2rem);
+  }
+
+  .rm-craft-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    overflow-y: auto;
+    padding-right: clamp(0.3rem, 0.4vw, 0.6rem);
+  }
+
+  .rm-craft-menu::-webkit-scrollbar { width: 3px; }
+  .rm-craft-menu::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+
+  .rm-craft-menu-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: clamp(0.4rem, 0.5vw, 0.7rem) clamp(0.5rem, 0.6vw, 0.8rem);
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-left: 3px solid transparent;
+    color: rgba(255, 255, 255, 0.6);
+    text-align: left;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+  }
+
+  .rm-craft-menu-item:hover {
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(255, 255, 255, 0.85);
+    border-left-color: rgba(229, 25, 28, 0.3);
+  }
+
+  .rm-craft-menu-item.is-active {
+    background: rgba(229, 25, 28, 0.08);
+    border-left-color: var(--rm-red);
+    color: var(--rm-white);
+  }
+
+  .rm-craft-menu-name {
+    font-size: clamp(0.7rem, 0.7vw, 1rem);
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+
+  .rm-craft-menu-meta {
+    font-size: clamp(0.5rem, 0.5vw, 0.75rem);
+    opacity: 0.45;
+    letter-spacing: 0.03em;
+  }
+
+  .rm-craft-detail {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(0.6rem, 0.8vw, 1rem);
+    overflow-y: auto;
+    min-height: 0;
+  }
+
+  .rm-craft-detail::-webkit-scrollbar { width: 3px; }
+  .rm-craft-detail::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+
+  .rm-craft-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: rgba(255, 255, 255, 0.25);
+    font-size: clamp(0.8rem, 0.8vw, 1.2rem);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  /* Ingredients box */
+  .rm-craft-ingredients {
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    padding: clamp(0.6rem, 0.8vw, 1rem) clamp(0.8rem, 1vw, 1.3rem);
+    background: rgba(0, 0, 0, 0.3);
+  }
+
+  .rm-craft-section-title {
+    font-size: clamp(0.55rem, 0.55vw, 0.8rem);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--rm-red);
+    margin: 0 0 clamp(0.4rem, 0.5vw, 0.7rem);
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+  }
+
+  .rm-craft-count {
+    font-size: 0.85em;
+    color: rgba(255, 255, 255, 0.35);
+    font-weight: 700;
+  }
+
+  .rm-craft-ingredient-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: clamp(0.25rem, 0.3vw, 0.4rem);
+  }
+
+  .rm-craft-ingredient-tag {
+    font-size: clamp(0.6rem, 0.6vw, 0.9rem);
+    padding: clamp(0.15rem, 0.2vw, 0.3rem) clamp(0.4rem, 0.5vw, 0.7rem);
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.8);
+    letter-spacing: 0.02em;
+  }
+
+  /* Paper panel */
+  .rm-craft-paper {
+    flex: 1;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    background: rgba(0, 0, 0, 0.6);
+    padding: clamp(1.2rem, 1.5vw, 2rem) clamp(1.5rem, 2vw, 2.5rem);
+    overflow-y: auto;
+    box-shadow:
+      inset 0 0 40px rgba(0, 0, 0, 0.4),
+      0 0 1px rgba(255, 255, 255, 0.1);
+    position: relative;
+  }
+
+  .rm-craft-paper::before {
+    content: '';
+    position: absolute;
+    inset: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    pointer-events: none;
+  }
+
+  .rm-craft-paper::-webkit-scrollbar { width: 3px; }
+  .rm-craft-paper::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 2px; }
+
+  .rm-craft-paper-header {
+    margin-bottom: clamp(1rem, 1.2vw, 1.8rem);
+    padding-bottom: clamp(0.6rem, 0.8vw, 1rem);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .rm-craft-paper-title {
+    font-size: clamp(1.2rem, 1.3vw, 2rem);
+    font-weight: 800;
+    margin: 0 0 clamp(0.3rem, 0.4vw, 0.6rem);
+    letter-spacing: 0.04em;
+  }
+
+  .rm-craft-paper-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: clamp(0.3rem, 0.4vw, 0.5rem);
+  }
+
+  .rm-craft-paper-tag {
+    font-size: clamp(0.55rem, 0.55vw, 0.8rem);
+    padding: clamp(0.1rem, 0.12vw, 0.2rem) clamp(0.35rem, 0.4vw, 0.6rem);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.6);
+    letter-spacing: 0.04em;
+  }
+
+  .rm-craft-steps {
+    margin-bottom: clamp(1rem, 1.2vw, 1.8rem);
+  }
+
+  .rm-craft-step-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: clamp(0.35rem, 0.4vw, 0.6rem);
+  }
+
+  .rm-craft-step {
+    display: flex;
+    align-items: flex-start;
+    gap: clamp(0.5rem, 0.6vw, 0.8rem);
+    padding: clamp(0.3rem, 0.4vw, 0.5rem) 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  }
+
+  .rm-craft-step-num {
+    flex-shrink: 0;
+    width: clamp(1.2rem, 1.2vw, 1.6rem);
+    height: clamp(1.2rem, 1.2vw, 1.6rem);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: clamp(0.5rem, 0.5vw, 0.75rem);
+    font-weight: 800;
+    border: 1px solid rgba(229, 25, 28, 0.4);
+    color: var(--rm-red);
+  }
+
+  .rm-craft-step-text {
+    font-size: clamp(0.65rem, 0.65vw, 1rem);
+    color: rgba(255, 255, 255, 0.8);
+    line-height: 1.6;
+    letter-spacing: 0.01em;
+  }
+
+  .rm-craft-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: clamp(0.2rem, 0.3vw, 0.4rem);
+    margin-bottom: clamp(0.6rem, 0.8vw, 1rem);
+  }
+
+  .rm-craft-tag {
+    font-size: clamp(0.5rem, 0.5vw, 0.75rem);
+    padding: clamp(0.08rem, 0.1vw, 0.15rem) clamp(0.3rem, 0.35vw, 0.5rem);
+    border: 1px solid rgba(229, 25, 28, 0.25);
+    color: rgba(229, 25, 28, 0.7);
+    letter-spacing: 0.04em;
+  }
+
+  .rm-craft-source {
+    font-size: clamp(0.5rem, 0.5vw, 0.75rem);
+    color: rgba(255, 255, 255, 0.3);
+    letter-spacing: 0.04em;
+    margin: 0;
+  }
+
+  .rm-craft-extra {
+    display: flex;
+    flex-wrap: wrap;
+    gap: clamp(0.2rem, 0.3vw, 0.4rem);
+    margin-top: clamp(0.4rem, 0.5vw, 0.7rem);
+    padding-top: clamp(0.4rem, 0.5vw, 0.7rem);
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
   }
 
   @media (max-width: 980px) {

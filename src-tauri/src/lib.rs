@@ -53,6 +53,7 @@ pub fn run() {
             commands::achievements::load_achievements,
             commands::skills::load_skills,
             commands::items::load_items,
+            commands::crafting::load_crafting,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
