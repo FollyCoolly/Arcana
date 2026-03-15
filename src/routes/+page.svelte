@@ -9,6 +9,7 @@
   import type { LetterConfig } from "$lib/P5MenuItem.svelte";
   import type { AchievementData, Achievement, PackAchievements } from "$lib/types/achievement";
   import type { SkillData, SkillWithLevel } from "$lib/types/skill";
+  import SkillNebula from "$lib/components/SkillNebula.svelte";
 
   type StatusMetric = {
     id: string;
@@ -907,44 +908,12 @@
         {:else if skillError}
           <p class="state-text error" style="padding: 2rem;">{skillError}</p>
         {:else if skillData && !selectedSkill}
-          <!-- Level 1: Card Gallery -->
-          <div class="rm-skill-gallery">
-            {#each skillData.skills as skill, si}
-              {@const leveled = skill.current_level > 0}
-              <button
-                type="button"
-                class="rm-tarot-card"
-                class:rm-tarot-card--leveled={leveled}
-                style:--card-rot="{(si % 2 === 0 ? -2 : 2) + (si % 3) * 0.5}deg"
-                onclick={() => selectedSkill = skill}
-              >
-                <div class="rm-tarot-card-inner">
-                  <div class="rm-tarot-top">
-                    <span class="rm-tarot-level">{toRomanNumeral(skill.current_level)}</span>
-                    <span class="rm-tarot-pack">{skill.pack_name}</span>
-                  </div>
-                  <div class="rm-tarot-art">
-                    <div class="rm-tarot-star-stack">
-                      <div class="rm-tarot-star rm-ts-1"></div>
-                      <div class="rm-tarot-star rm-ts-2"></div>
-                      <div class="rm-tarot-star rm-ts-3"></div>
-                      <div class="rm-tarot-star rm-ts-4"></div>
-                      <div class="rm-tarot-star rm-ts-5"></div>
-                    </div>
-                    <div class="rm-tarot-stripe"></div>
-                  </div>
-                  <div class="rm-tarot-name-strip">
-                    <span class="rm-tarot-name">{skill.skill.name}</span>
-                  </div>
-                  <div class="rm-tarot-bottom">
-                    <div class="rm-tarot-progress">
-                      <div class="rm-tarot-progress-fill" style:width="{getSkillProgressPercent(skill)}%"></div>
-                    </div>
-                    <span class="rm-tarot-lv">LV {skill.current_level}</span>
-                  </div>
-                </div>
-              </button>
-            {/each}
+          <!-- Level 1: 3D Nebula Card Gallery -->
+          <div class="rm-nebula-container">
+            <SkillNebula
+              skills={skillData.skills}
+              onCardClick={(skill) => { selectedSkill = skill; }}
+            />
           </div>
         {:else if skillData && selectedSkill}
           <!-- Level 2: Skill Detail -->
@@ -1676,21 +1645,32 @@
     pointer-events: none;
   }
 
-  /* Card gallery */
-  .rm-skill-gallery {
-    flex: 1;
-    display: flex;
-    flex-wrap: wrap;
-    align-content: flex-start;
-    gap: clamp(1rem, 1.5vw, 2.5rem);
-    padding: clamp(1.5rem, 2.5vh, 4rem) clamp(2rem, 4vw, 6rem) clamp(6rem, 10vh, 10rem);
-    overflow-y: auto;
-    height: 100%;
-    box-sizing: border-box;
+  /* 3D Nebula container */
+  .rm-nebula-container {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    animation: rm-nebula-fade-in 400ms ease forwards;
   }
 
-  /* Tarot card */
-  .rm-tarot-card {
+  @keyframes rm-nebula-fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  /* Nebula card hover override — scale instead of translateY+rotateX which fights CSS3D transforms */
+  :global(.rm-nebula-card.rm-tarot-card) {
+    transform: none;
+    transition: transform 160ms ease;
+  }
+
+  :global(.rm-nebula-card.rm-tarot-card:hover) {
+    transform: scale(1.06);
+    z-index: 5;
+  }
+
+  /* Tarot card — :global because nebula cards are created programmatically outside Svelte template */
+  :global(.rm-tarot-card) {
     display: block;
     border: none;
     background: none;
@@ -1699,14 +1679,16 @@
     width: clamp(120px, 10vw, 200px);
     transform: rotate(var(--card-rot, 0deg));
     transition: transform 200ms ease;
+    font-family: "p5hatty", "Orbitron", Arial, sans-serif;
+    color: var(--rm-white);
   }
 
-  .rm-tarot-card:hover {
+  :global(.rm-tarot-card:hover) {
     transform: translateY(-6px) rotateX(4deg) rotate(var(--card-rot, 0deg));
     z-index: 5;
   }
 
-  .rm-tarot-card-inner {
+  :global(.rm-tarot-card-inner) {
     aspect-ratio: 0.6 / 1;
     display: flex;
     flex-direction: column;
@@ -1715,24 +1697,24 @@
   }
 
   /* Top band (white) */
-  .rm-tarot-top {
-    background: var(--rm-white);
-    color: var(--rm-black);
-    padding: clamp(0.2rem, 0.3vw, 0.5rem) clamp(0.3rem, 0.4vw, 0.7rem);
+  :global(.rm-tarot-top) {
+    background: #ffffff;
+    color: #000000;
+    padding: 3px 5px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     flex-shrink: 0;
   }
 
-  .rm-tarot-level {
-    font-size: clamp(0.7rem, 0.7vw, 1.2rem);
+  :global(.rm-tarot-level) {
+    font-size: 11px;
     font-weight: 800;
     letter-spacing: 0.06em;
   }
 
-  .rm-tarot-pack {
-    font-size: clamp(0.4rem, 0.38vw, 0.65rem);
+  :global(.rm-tarot-pack) {
+    font-size: 7px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.06em;
@@ -1745,9 +1727,9 @@
   }
 
   /* Art area (black) */
-  .rm-tarot-art {
+  :global(.rm-tarot-art) {
     flex: 1;
-    background: var(--rm-black);
+    background: #000000;
     position: relative;
     overflow: hidden;
     display: flex;
@@ -1756,17 +1738,17 @@
     opacity: 0.35;
   }
 
-  .rm-tarot-card--leveled .rm-tarot-art {
+  :global(.rm-tarot-card--leveled .rm-tarot-art) {
     opacity: 1;
   }
 
-  .rm-tarot-star-stack {
+  :global(.rm-tarot-star-stack) {
     position: absolute;
     width: 70%;
     aspect-ratio: 1;
   }
 
-  .rm-tarot-star {
+  :global(.rm-tarot-star) {
     position: absolute;
     inset: 0;
     clip-path: polygon(
@@ -1783,72 +1765,72 @@
     );
   }
 
-  .rm-ts-1 { background: var(--rm-white); transform: scale(0.85); }
-  .rm-ts-2 { background: var(--rm-black); transform: scale(0.68); }
-  .rm-ts-3 { background: var(--rm-white); transform: scale(0.51); }
-  .rm-ts-4 { background: var(--rm-black); transform: scale(0.34); }
-  .rm-ts-5 { background: var(--rm-white); transform: scale(0.17); }
+  :global(.rm-ts-1) { background: #ffffff; transform: scale(0.85); }
+  :global(.rm-ts-2) { background: #000000; transform: scale(0.68); }
+  :global(.rm-ts-3) { background: #ffffff; transform: scale(0.51); }
+  :global(.rm-ts-4) { background: #000000; transform: scale(0.34); }
+  :global(.rm-ts-5) { background: #ffffff; transform: scale(0.17); }
 
-  .rm-tarot-stripe {
+  :global(.rm-tarot-stripe) {
     position: absolute;
     top: 0;
     left: 40%;
     width: 35%;
     height: 100%;
-    background: var(--rm-red);
+    background: #E5191C;
     opacity: 0.35;
     transform: skewX(-20deg);
   }
 
-  .rm-tarot-card--leveled .rm-tarot-stripe {
+  :global(.rm-tarot-card--leveled .rm-tarot-stripe) {
     opacity: 0.7;
   }
 
   /* Center name strip (red) */
-  .rm-tarot-name-strip {
-    background: var(--rm-red);
-    padding: clamp(0.15rem, 0.2vw, 0.35rem) clamp(0.3rem, 0.4vw, 0.7rem);
+  :global(.rm-tarot-name-strip) {
+    background: #E5191C;
+    padding: 2px 5px;
     flex-shrink: 0;
     overflow: hidden;
   }
 
-  .rm-tarot-name {
+  :global(.rm-tarot-name) {
     display: block;
-    font-size: clamp(0.5rem, 0.48vw, 0.85rem);
+    font-size: 8px;
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    color: var(--rm-white);
+    color: #ffffff;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
 
   /* Bottom band (black) */
-  .rm-tarot-bottom {
-    background: var(--rm-black);
-    padding: clamp(0.2rem, 0.25vw, 0.45rem) clamp(0.3rem, 0.4vw, 0.7rem);
+  :global(.rm-tarot-bottom) {
+    background: #000000;
+    padding: 3px 5px;
     display: flex;
     align-items: center;
-    gap: clamp(0.25rem, 0.3vw, 0.5rem);
+    gap: 4px;
     flex-shrink: 0;
   }
 
-  .rm-tarot-progress {
+  :global(.rm-tarot-progress) {
     flex: 1;
-    height: clamp(3px, 0.3vw, 6px);
+    height: 4px;
     background: rgba(255, 255, 255, 0.15);
     overflow: hidden;
   }
 
-  .rm-tarot-progress-fill {
+  :global(.rm-tarot-progress-fill) {
     height: 100%;
-    background: var(--rm-red);
+    background: #E5191C;
     transition: width 300ms ease;
   }
 
-  .rm-tarot-lv {
-    font-size: clamp(0.45rem, 0.42vw, 0.7rem);
+  :global(.rm-tarot-lv) {
+    font-size: 7px;
     font-weight: 700;
     letter-spacing: 0.06em;
     color: rgba(255, 255, 255, 0.6);
@@ -1856,31 +1838,31 @@
   }
 
   /* Muted state for level-0 cards */
-  .rm-tarot-card:not(.rm-tarot-card--leveled) .rm-tarot-card-inner {
+  :global(.rm-tarot-card:not(.rm-tarot-card--leveled) .rm-tarot-card-inner) {
     border-color: rgba(255, 255, 255, 0.08);
   }
 
-  .rm-tarot-card:not(.rm-tarot-card--leveled) .rm-tarot-top {
+  :global(.rm-tarot-card:not(.rm-tarot-card--leveled) .rm-tarot-top) {
     background: rgba(255, 255, 255, 0.3);
   }
 
-  .rm-tarot-card:not(.rm-tarot-card--leveled) .rm-tarot-name-strip {
+  :global(.rm-tarot-card:not(.rm-tarot-card--leveled) .rm-tarot-name-strip) {
     background: rgba(229, 25, 28, 0.35);
   }
 
-  .rm-tarot-card:not(.rm-tarot-card--leveled) .rm-tarot-lv {
+  :global(.rm-tarot-card:not(.rm-tarot-card--leveled) .rm-tarot-lv) {
     color: rgba(255, 255, 255, 0.3);
   }
 
   /* Large card (detail view) */
-  .rm-tarot-card--large {
+  :global(.rm-tarot-card--large) {
     width: 100%;
     max-width: clamp(180px, 18vw, 320px);
     cursor: default;
     transform: none;
   }
 
-  .rm-tarot-card--large:hover {
+  :global(.rm-tarot-card--large:hover) {
     transform: none;
   }
 
