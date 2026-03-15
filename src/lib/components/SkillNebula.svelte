@@ -44,18 +44,17 @@
     return result;
   }
 
-  function buildCardElement(skill: SkillWithLevel, index: number): HTMLButtonElement {
+  function buildCardElement(skill: SkillWithLevel): HTMLDivElement {
     const leveled = skill.current_level > 0;
     const progressPct = skill.max_points > 0
       ? (skill.current_points / skill.max_points) * 100
       : 0;
 
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = `rm-tarot-card rm-nebula-card${leveled ? ' rm-tarot-card--leveled' : ''}`;
-    btn.style.width = '160px';
+    const el = document.createElement('div');
+    el.className = `rm-tarot-card rm-nebula-card${leveled ? ' rm-tarot-card--leveled' : ''}`;
+    el.style.width = '160px';
 
-    btn.innerHTML = `
+    el.innerHTML = `
       <div class="rm-tarot-card-inner">
         <div class="rm-tarot-top">
           <span class="rm-tarot-level">${ROMAN[skill.current_level] ?? skill.current_level}</span>
@@ -83,7 +82,7 @@
       </div>
     `;
 
-    return btn;
+    return el;
   }
 
   function escapeHtml(s: string): string {
@@ -119,18 +118,38 @@
     controls.maxDistance = 2800;
     controls.enablePan = false;
 
-    // Drag vs click detection
+    // Card element → skill map for event delegation
+    const cardSkillMap = new Map<HTMLElement, SkillWithLevel>();
+
+    // Drag vs click: track on the container (where OrbitControls captures pointer)
     let pointerDownPos = { x: 0, y: 0 };
     let isDragging = false;
+    let pointerDownTarget: EventTarget | null = null;
 
-    renderer.domElement.addEventListener('pointerdown', (e: PointerEvent) => {
+    el.addEventListener('pointerdown', (e: PointerEvent) => {
       pointerDownPos = { x: e.clientX, y: e.clientY };
+      pointerDownTarget = e.target;
       isDragging = false;
     });
-    renderer.domElement.addEventListener('pointermove', (e: PointerEvent) => {
-      const dx = e.clientX - pointerDownPos.x;
-      const dy = e.clientY - pointerDownPos.y;
-      if (Math.sqrt(dx * dx + dy * dy) > 5) isDragging = true;
+    el.addEventListener('pointermove', (e: PointerEvent) => {
+      if (!isDragging) {
+        const dx = e.clientX - pointerDownPos.x;
+        const dy = e.clientY - pointerDownPos.y;
+        if (dx * dx + dy * dy > 25) isDragging = true;
+      }
+    });
+    el.addEventListener('pointerup', (e: PointerEvent) => {
+      if (isDragging) return;
+
+      // Find which card was clicked — check both pointerdown target and pointerup target
+      const target = (pointerDownTarget as HTMLElement) ?? (e.target as HTMLElement);
+      const cardEl = target.closest?.('.rm-nebula-card') as HTMLElement | null;
+      if (!cardEl) return;
+
+      const skill = cardSkillMap.get(cardEl);
+      if (!skill) return;
+
+      onCardClick(skill);
     });
 
     // Create cards with per-card random wobble offsets
@@ -140,17 +159,14 @@
 
     for (let i = 0; i < skills.length; i++) {
       const skill = skills[i];
-      const cardEl = buildCardElement(skill, i);
+      const cardEl = buildCardElement(skill);
 
-      cardEl.addEventListener('pointerup', () => {
-        if (!isDragging) onCardClick(skill);
-      });
+      cardSkillMap.set(cardEl, skill);
 
       const obj = new CSS3DObject(cardEl);
       const pos = positions[i];
       obj.position.set(pos.x, pos.y, pos.z);
 
-      // Small random rotation offsets applied after lookAt each frame
       wobbles.push({
         x: (seededRandom(i, 3) - 0.5) * 0.25,
         y: (seededRandom(i, 4) - 0.5) * 0.3,
@@ -197,6 +213,7 @@
         obj.element.remove();
       }
       renderer.domElement.remove();
+      cardSkillMap.clear();
     };
   });
 </script>

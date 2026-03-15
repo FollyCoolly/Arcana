@@ -8,7 +8,7 @@
   import P5MenuItem from "$lib/P5MenuItem.svelte";
   import type { LetterConfig } from "$lib/P5MenuItem.svelte";
   import type { AchievementData, Achievement, PackAchievements } from "$lib/types/achievement";
-  import type { SkillData, SkillWithLevel } from "$lib/types/skill";
+  import type { SkillData, SkillWithLevel, SkillNode } from "$lib/types/skill";
   import SkillNebula from "$lib/components/SkillNebula.svelte";
 
   type StatusMetric = {
@@ -518,6 +518,19 @@
     return after ? formatGroupName(after) : achievementId;
   }
 
+  function computeHexRows(nodes: SkillNode[], cols: number): SkillNode[][] {
+    const rows: SkillNode[][] = [];
+    let idx = 0;
+    let rowIdx = 0;
+    while (idx < nodes.length) {
+      const rowCols = (rowIdx % 2 === 0) ? cols : cols - 1;
+      rows.push(nodes.slice(idx, idx + rowCols));
+      idx += rowCols;
+      rowIdx++;
+    }
+    return rows;
+  }
+
   type CategoryGroup = {
     category: string;
     achievements: Achievement[];
@@ -976,16 +989,22 @@
                 <P5Text text={selectedSkill.skill.name} fontSize={52} />
               </div>
 
-              <div class="rm-skill-node-grid">
-                {#each selectedSkill.skill.nodes as node, ni}
-                  {@const unlocked = isNodeUnlocked(node.achievement_id)}
-                  <div
-                    class="rm-skill-node-hex"
-                    class:rm-skill-node-hex--unlocked={unlocked}
-                  >
-                    <span class="rm-node-status">{unlocked ? "✓" : "○"}</span>
-                    <span class="rm-node-name">{getAchievementName(node.achievement_id)}</span>
-                    <span class="rm-node-points">+{node.points}</span>
+              <div class="rm-skill-node-grid" style="--cols: 8">
+                {#each computeHexRows(selectedSkill.skill.nodes, 8) as row, rowIdx}
+                  <div class="rm-hex-row" class:rm-hex-row--odd={rowIdx % 2 === 1}>
+                    {#each row as node}
+                      {@const unlocked = isNodeUnlocked(node.achievement_id)}
+                      <div class="rm-hex-border">
+                        <div
+                          class="rm-skill-node-hex"
+                          class:rm-skill-node-hex--unlocked={unlocked}
+                        >
+                          <span class="rm-node-status">{unlocked ? "✓" : "○"}</span>
+                          <span class="rm-node-name">{getAchievementName(node.achievement_id)}</span>
+                          <span class="rm-node-points">+{node.points}</span>
+                        </div>
+                      </div>
+                    {/each}
                   </div>
                 {/each}
               </div>
@@ -1658,14 +1677,15 @@
     to   { opacity: 1; }
   }
 
-  /* Nebula card hover override — scale instead of translateY+rotateX which fights CSS3D transforms */
+  /* Nebula card — use `scale` property (not `transform`) because CSS3DRenderer
+     overwrites inline transform with matrix3d() every frame */
   :global(.rm-nebula-card.rm-tarot-card) {
-    transform: none;
-    transition: transform 160ms ease;
+    cursor: pointer;
+    transition: scale 160ms ease;
   }
 
   :global(.rm-nebula-card.rm-tarot-card:hover) {
-    transform: scale(1.06);
+    scale: 1.12;
     z-index: 5;
   }
 
@@ -1854,10 +1874,10 @@
     color: rgba(255, 255, 255, 0.3);
   }
 
-  /* Large card (detail view) */
+  /* Large card (detail view) — ~2.5× nebula card size */
   :global(.rm-tarot-card--large) {
-    width: 100%;
-    max-width: clamp(180px, 18vw, 320px);
+    width: clamp(400px, 27.5vw, 625px);
+    margin-top: clamp(4rem, 10vh, 12rem);
     cursor: default;
     transform: none;
   }
@@ -1866,27 +1886,29 @@
     transform: none;
   }
 
-  /* Skill detail layout */
+  /* Skill detail layout — left 1/3, right 2/3 */
   .rm-skill-detail {
     flex: 1;
     display: grid;
-    grid-template-columns: clamp(180px, 18vw, 320px) 1fr;
-    gap: clamp(1.5rem, 2.5vw, 4rem);
+    grid-template-columns: 1fr 2fr;
+    gap: clamp(1.5rem, 2vw, 3rem);
     overflow: hidden;
     height: 100%;
-    padding: clamp(1.5rem, 2.5vh, 4rem) clamp(2rem, 4vw, 6rem) clamp(6rem, 10vh, 10rem);
+    padding: clamp(1.5rem, 2.5vh, 4rem) clamp(2rem, 3vw, 5rem) clamp(6rem, 10vh, 10rem);
     box-sizing: border-box;
   }
 
   .rm-skill-detail-left {
     display: flex;
     flex-direction: column;
+    align-items: center;
     gap: clamp(0.8rem, 1vw, 1.5rem);
     overflow-y: auto;
-    padding-right: clamp(0.5rem, 1vw, 1.5rem);
+    padding: 0 clamp(1rem, 2vw, 3rem);
   }
 
   .rm-skill-stats {
+    width: clamp(400px, 27.5vw, 625px);
     display: flex;
     flex-direction: column;
     gap: clamp(0.2rem, 0.3vw, 0.5rem);
@@ -1916,6 +1938,7 @@
 
   .rm-skill-description {
     margin: 0;
+    width: clamp(400px, 27.5vw, 625px);
     font-size: clamp(0.6rem, 0.55vw, 0.95rem);
     color: rgba(255, 255, 255, 0.55);
     line-height: 1.5;
@@ -1923,53 +1946,92 @@
 
   .rm-skill-detail-right {
     overflow-y: auto;
-    padding-right: clamp(6rem, 10vw, 16rem);
+    padding-right: clamp(2rem, 4vw, 8rem);
   }
 
   .rm-skill-detail-header {
     margin-bottom: clamp(1rem, 1.5vw, 2.5rem);
   }
 
-  /* Honeycomb node grid */
+  /*
+   * Honeycomb node grid — pointy-top hexagons
+   *
+   * Geometry: pointy-top hex → width = size × √3, height = size × 2
+   * clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)
+   *
+   * Tessellation:
+   * - Horizontal spacing = hex-w (no gap → shared vertical edges)
+   * - Vertical stride = hex-h × 0.75 (top/bottom points nest into adjacent row)
+   * - Even rows (0, 2, 4…) flush left; odd rows offset right by hex-w / 2
+   * - Use flex wrap with negative top margin for vertical nesting
+   *
+   * --cols computed dynamically via JS, but CSS handles the layout.
+   */
   .rm-skill-node-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(clamp(100px, 9vw, 160px), 1fr));
-    gap: clamp(0.4rem, 0.5vw, 0.8rem) clamp(0.3rem, 0.4vw, 0.6rem);
+    --hex-w: clamp(80px, 6.5vw, 180px);
+    --hex-h: calc(var(--hex-w) * 1.1547);  /* 2/√3 ≈ 1.1547 */
+    --cols: 8;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    width: calc(var(--hex-w) * var(--cols) + var(--hex-w) / 2);
+    padding-bottom: calc(var(--hex-h) * 0.25);
   }
 
-  .rm-skill-node-grid > :nth-child(even) {
-    transform: translateY(25%);
+  .rm-hex-row {
+    display: flex;
+    width: 100%;
   }
 
+  .rm-hex-row:not(:first-child) {
+    margin-top: calc(var(--hex-h) * -0.25);
+  }
+
+  .rm-hex-row--odd {
+    padding-left: calc(var(--hex-w) / 2);
+  }
+
+  /* Hex border wrapper — thick white outline via larger clipped background */
+  .rm-hex-border {
+    width: var(--hex-w);
+    height: var(--hex-h);
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    background: var(--rm-white);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  /* Inner hex content — locked: black bg, white text */
   .rm-skill-node-hex {
-    aspect-ratio: 1.15 / 1;
-    clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+    width: calc(100% - 10px);
+    height: calc(100% - 10px);
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
     background: var(--rm-black);
+    color: var(--rm-white);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: clamp(0.1rem, 0.15vw, 0.25rem);
-    padding: clamp(0.4rem, 0.5vw, 0.8rem) clamp(0.8rem, 1vw, 1.5rem);
-    opacity: 0.35;
-    transition: opacity 120ms ease;
+    gap: clamp(0.1rem, 0.2vw, 0.3rem);
+    padding: clamp(0.4rem, 0.5vw, 0.8rem) clamp(0.8rem, 1vw, 1.4rem);
+    transition: background 150ms ease, color 150ms ease;
   }
 
+  /* Unlocked: red bg, black text */
   .rm-skill-node-hex--unlocked {
-    opacity: 1;
+    background: var(--rm-red);
+    color: var(--rm-black);
   }
 
   .rm-node-status {
-    font-size: clamp(0.7rem, 0.65vw, 1.1rem);
+    font-size: clamp(0.9rem, 1vw, 1.6rem);
     font-weight: 800;
   }
 
-  .rm-skill-node-hex--unlocked .rm-node-status {
-    color: var(--rm-red);
-  }
-
   .rm-node-name {
-    font-size: clamp(0.45rem, 0.42vw, 0.7rem);
+    font-size: clamp(0.55rem, 0.7vw, 1rem);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.06em;
@@ -1983,13 +2045,13 @@
   }
 
   .rm-node-points {
-    font-size: clamp(0.5rem, 0.48vw, 0.8rem);
+    font-size: clamp(0.55rem, 0.7vw, 1rem);
     font-weight: 800;
-    color: rgba(255, 255, 255, 0.5);
+    opacity: 0.7;
   }
 
   .rm-skill-node-hex--unlocked .rm-node-points {
-    color: var(--rm-red);
+    opacity: 1;
   }
 
   @media (max-width: 980px) {
