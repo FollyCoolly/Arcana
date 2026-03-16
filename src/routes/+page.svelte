@@ -1183,20 +1183,26 @@
           <p class="state-text error" style="padding: 2rem;">{craftingError}</p>
         {:else if craftingData}
           <div class="rm-craft-layout">
-            <!-- LEFT: recipe list -->
+            <!-- LEFT: recipe menu -->
             <div class="rm-craft-menu">
-              {#each craftingData.recipes as recipe}
+              {#each craftingData.recipes as recipe, i}
                 <button
                   type="button"
                   class="rm-craft-menu-item"
                   class:is-active={selectedRecipe?.id === recipe.id}
+                  style="transform: rotate({i % 2 === 0 ? -0.4 : 0.4}deg);"
                   onclick={() => { selectedRecipe = recipe; }}
                 >
-                  <span class="rm-craft-menu-name">{recipe.name}</span>
-                  <span class="rm-craft-menu-meta">
-                    {#if recipe.recipe_type}{recipe.recipe_type}{/if}
-                    {#if recipe.time} · {recipe.time}{/if}
-                  </span>
+                  <div class="rm-craft-menu-stripe">
+                    <span class="rm-craft-menu-type">{recipe.recipe_type ?? '—'}</span>
+                    {#if recipe.time}
+                      <span class="rm-craft-menu-time">{recipe.time}</span>
+                    {/if}
+                  </div>
+                  <div class="rm-craft-menu-body">
+                    <span class="rm-craft-menu-name">{recipe.name}</span>
+                    <span class="rm-craft-menu-sub">{recipe.ingredient_count} mat · {recipe.step_count} steps</span>
+                  </div>
                 </button>
               {/each}
             </div>
@@ -1206,26 +1212,29 @@
               {#if selectedRecipe}
                 <!-- Top: ingredients box -->
                 <div class="rm-craft-ingredients">
-                  <h4 class="rm-craft-section-title">INGREDIENTS
-                    <span class="rm-craft-count">{selectedRecipe.ingredient_count}</span>
-                  </h4>
-                  <div class="rm-craft-ingredient-list">
-                    {#each selectedRecipe.ingredients as ing}
-                      <span class="rm-craft-ingredient-tag">{ing}</span>
+                  <div class="rm-craft-ing-header">
+                    <span class="rm-craft-ing-label">INGREDIENTS</span>
+                    <span class="rm-craft-ing-count">{selectedRecipe.ingredient_count}</span>
+                  </div>
+                  <div class="rm-craft-ing-list">
+                    {#each selectedRecipe.ingredients as ing, i}
+                      <span class="rm-craft-ing-tag" style="transform: rotate({i % 2 === 0 ? -0.6 : 0.6}deg);">{ing}</span>
                     {/each}
                   </div>
                 </div>
 
                 <!-- Bottom: paper-style detail panel -->
                 <div class="rm-craft-paper">
-                  <div class="rm-craft-paper-header">
-                    <h2 class="rm-craft-paper-title">{selectedRecipe.name}</h2>
-                    <div class="rm-craft-paper-meta">
+                  <div class="rm-craft-paper-head">
+                    <div class="rm-craft-paper-title-row">
+                      <h2 class="rm-craft-paper-title">{selectedRecipe.name}</h2>
+                    </div>
+                    <div class="rm-craft-paper-tags">
                       {#if selectedRecipe.recipe_type}
                         <span class="rm-craft-paper-tag">{selectedRecipe.recipe_type}</span>
                       {/if}
                       {#if selectedRecipe.difficulty}
-                        <span class="rm-craft-paper-tag">{selectedRecipe.difficulty}</span>
+                        <span class="rm-craft-paper-tag rm-craft-paper-tag--red">{selectedRecipe.difficulty}</span>
                       {/if}
                       {#if selectedRecipe.servings}
                         <span class="rm-craft-paper-tag">{selectedRecipe.servings}</span>
@@ -1238,11 +1247,11 @@
 
                   {#if selectedRecipe.steps.length > 0}
                     <div class="rm-craft-steps">
-                      <h4 class="rm-craft-section-title">STEPS</h4>
+                      <h4 class="rm-craft-section-label">STEPS</h4>
                       <ol class="rm-craft-step-list">
                         {#each selectedRecipe.steps as step, i}
                           <li class="rm-craft-step">
-                            <span class="rm-craft-step-num">{i + 1}</span>
+                            <span class="rm-craft-step-num">{String(i + 1).padStart(2, '0')}</span>
                             <span class="rm-craft-step-text">{step}</span>
                           </li>
                         {/each}
@@ -1251,19 +1260,19 @@
                   {/if}
 
                   {#if selectedRecipe.tags.length > 0}
-                    <div class="rm-craft-tags">
+                    <div class="rm-craft-foot-tags">
                       {#each selectedRecipe.tags as tag}
-                        <span class="rm-craft-tag">{tag}</span>
+                        <span class="rm-craft-foot-tag">{tag}</span>
                       {/each}
                     </div>
                   {/if}
 
                   {#if selectedRecipe.source}
-                    <p class="rm-craft-source">Source: {selectedRecipe.source}</p>
+                    <p class="rm-craft-source">SOURCE: {selectedRecipe.source}</p>
                   {/if}
 
                   {#if Object.keys(selectedRecipe.extra).length > 0}
-                    <div class="rm-craft-extra">
+                    <div class="rm-craft-foot-tags" style="margin-top: clamp(0.3rem, 0.4vw, 0.5rem);">
                       {#each Object.entries(selectedRecipe.extra) as [key, val]}
                         <span class="rm-craft-paper-tag">{key}: {val}</span>
                       {/each}
@@ -1272,7 +1281,7 @@
                 </div>
               {:else}
                 <div class="rm-craft-empty">
-                  <p>Select a recipe from the list</p>
+                  <span class="rm-craft-empty-text">SELECT A RECIPE</span>
                 </div>
               {/if}
             </div>
@@ -2919,182 +2928,252 @@
     clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 3% 100%);
   }
 
-  /* ── Crafting ── */
+  /* ─── Crafting screen ─── */
 
   .rm-craft-layout {
+    flex: 1;
     display: grid;
-    grid-template-columns: clamp(180px, 18vw, 280px) 1fr;
-    gap: clamp(0.8rem, 1.2vw, 1.5rem);
-    height: calc(100vh - 140px);
-    padding: 0 clamp(1rem, 2vw, 3rem) clamp(1rem, 1.5vw, 2rem);
+    grid-template-columns: 1fr 2fr;
+    overflow: hidden;
+    height: 100%;
   }
 
+  /* ── Left: recipe menu ── */
   .rm-craft-menu {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: clamp(0.3rem, 0.35vw, 0.5rem);
     overflow-y: auto;
-    padding-right: clamp(0.3rem, 0.4vw, 0.6rem);
+    height: 100%;
+    padding: clamp(1.5rem, 2.5vh, 4rem) clamp(0.8rem, 1.2vw, 2rem) clamp(6rem, 10vh, 10rem) clamp(1.5rem, 2.5vw, 4rem);
+    box-sizing: border-box;
   }
 
   .rm-craft-menu::-webkit-scrollbar { width: 3px; }
-  .rm-craft-menu::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+  .rm-craft-menu::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); }
 
   .rm-craft-menu-item {
     display: flex;
     flex-direction: column;
-    gap: 2px;
-    padding: clamp(0.4rem, 0.5vw, 0.7rem) clamp(0.5rem, 0.6vw, 0.8rem);
-    background: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-left: 3px solid transparent;
-    color: rgba(255, 255, 255, 0.6);
-    text-align: left;
+    background: var(--rm-black);
+    border: none;
+    padding: 0;
     cursor: pointer;
+    text-align: left;
     font-family: inherit;
-    transition: all 0.15s;
+    color: var(--rm-white);
+    clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 3% 100%);
+    transition: transform 120ms ease;
   }
 
   .rm-craft-menu-item:hover {
-    background: rgba(255, 255, 255, 0.04);
-    color: rgba(255, 255, 255, 0.85);
-    border-left-color: rgba(229, 25, 28, 0.3);
+    transform: rotate(0deg) scale(1.03) !important;
+    z-index: 2;
   }
 
   .rm-craft-menu-item.is-active {
-    background: rgba(229, 25, 28, 0.08);
-    border-left-color: var(--rm-red);
-    color: var(--rm-white);
+    outline: 2px solid var(--rm-red);
+    outline-offset: -2px;
+  }
+
+  .rm-craft-menu-stripe {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--rm-white);
+    color: var(--rm-black);
+    padding: clamp(0.15rem, 0.2vw, 0.3rem) clamp(0.5rem, 0.7vw, 1.2rem);
+    margin: clamp(0.1rem, 0.15vw, 0.25rem) clamp(0.1rem, 0.15vw, 0.25rem) 0;
+    clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 1.5% 100%);
+  }
+
+  .rm-craft-menu-type {
+    font-size: clamp(0.5rem, 0.45vw, 0.75rem);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .rm-craft-menu-time {
+    font-size: clamp(0.45rem, 0.4vw, 0.65rem);
+    font-weight: 600;
+    opacity: 0.5;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .rm-craft-menu-body {
+    padding: clamp(0.2rem, 0.3vw, 0.5rem) clamp(0.5rem, 0.7vw, 1.2rem) clamp(0.3rem, 0.4vw, 0.6rem) clamp(0.7rem, 0.9vw, 1.5rem);
   }
 
   .rm-craft-menu-name {
-    font-size: clamp(0.7rem, 0.7vw, 1rem);
-    font-weight: 700;
-    letter-spacing: 0.02em;
+    display: block;
+    font-size: clamp(0.65rem, 0.62vw, 1rem);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    line-height: 1.3;
   }
 
-  .rm-craft-menu-meta {
-    font-size: clamp(0.5rem, 0.5vw, 0.75rem);
-    opacity: 0.45;
-    letter-spacing: 0.03em;
+  .rm-craft-menu-sub {
+    display: block;
+    font-size: clamp(0.45rem, 0.42vw, 0.7rem);
+    color: rgba(255, 255, 255, 0.35);
+    font-weight: 600;
+    margin-top: 1px;
+    letter-spacing: 0.04em;
   }
 
+  /* ── Right: detail column ── */
   .rm-craft-detail {
     display: flex;
     flex-direction: column;
-    gap: clamp(0.6rem, 0.8vw, 1rem);
+    gap: clamp(0.5rem, 0.6vw, 0.8rem);
     overflow-y: auto;
-    min-height: 0;
+    height: 100%;
+    padding: clamp(1.5rem, 2.5vh, 4rem) clamp(8rem, 14vw, 20rem) clamp(6rem, 10vh, 10rem) clamp(1.5rem, 2.5vw, 4rem);
+    box-sizing: border-box;
   }
 
   .rm-craft-detail::-webkit-scrollbar { width: 3px; }
-  .rm-craft-detail::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+  .rm-craft-detail::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); }
 
   .rm-craft-empty {
     display: flex;
     align-items: center;
     justify-content: center;
     height: 100%;
-    color: rgba(255, 255, 255, 0.25);
+  }
+
+  .rm-craft-empty-text {
     font-size: clamp(0.8rem, 0.8vw, 1.2rem);
-    letter-spacing: 0.08em;
+    font-weight: 800;
+    letter-spacing: 0.15em;
+    color: rgba(255, 255, 255, 0.15);
     text-transform: uppercase;
   }
 
-  /* Ingredients box */
+  /* ── Ingredients box ── */
   .rm-craft-ingredients {
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    padding: clamp(0.6rem, 0.8vw, 1rem) clamp(0.8rem, 1vw, 1.3rem);
-    background: rgba(0, 0, 0, 0.3);
+    background: var(--rm-black);
+    clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 2% 100%);
+    padding: clamp(0.6rem, 0.8vw, 1rem) clamp(0.8rem, 1vw, 1.5rem);
+    transform: rotate(-0.3deg);
   }
 
-  .rm-craft-section-title {
-    font-size: clamp(0.55rem, 0.55vw, 0.8rem);
+  .rm-craft-ing-header {
+    display: flex;
+    align-items: center;
+    gap: 0.6em;
+    margin-bottom: clamp(0.4rem, 0.5vw, 0.7rem);
+  }
+
+  .rm-craft-ing-label {
+    font-size: clamp(0.55rem, 0.55vw, 0.85rem);
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 0.15em;
     color: var(--rm-red);
-    margin: 0 0 clamp(0.4rem, 0.5vw, 0.7rem);
-    display: flex;
-    align-items: center;
-    gap: 0.5em;
+    border-left: 0.2rem solid var(--rm-red);
+    padding-left: clamp(0.3rem, 0.4vw, 0.6rem);
   }
 
-  .rm-craft-count {
-    font-size: 0.85em;
-    color: rgba(255, 255, 255, 0.35);
+  .rm-craft-ing-count {
+    font-size: clamp(0.55rem, 0.55vw, 0.85rem);
     font-weight: 700;
+    color: rgba(255, 255, 255, 0.35);
   }
 
-  .rm-craft-ingredient-list {
+  .rm-craft-ing-list {
     display: flex;
     flex-wrap: wrap;
     gap: clamp(0.25rem, 0.3vw, 0.4rem);
   }
 
-  .rm-craft-ingredient-tag {
-    font-size: clamp(0.6rem, 0.6vw, 0.9rem);
-    padding: clamp(0.15rem, 0.2vw, 0.3rem) clamp(0.4rem, 0.5vw, 0.7rem);
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    color: rgba(255, 255, 255, 0.8);
-    letter-spacing: 0.02em;
+  .rm-craft-ing-tag {
+    font-size: clamp(0.58rem, 0.55vw, 0.9rem);
+    font-weight: 700;
+    padding: clamp(0.12rem, 0.15vw, 0.25rem) clamp(0.4rem, 0.5vw, 0.7rem);
+    background: var(--rm-white);
+    color: var(--rm-black);
+    clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 2% 100%);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
   }
 
-  /* Paper panel */
+  /* ── Paper panel ── */
   .rm-craft-paper {
     flex: 1;
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    background: rgba(0, 0, 0, 0.6);
+    background: rgba(5, 5, 5, 0.95);
+    border: 2px solid rgba(255, 255, 255, 0.35);
+    clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 1% 100%);
     padding: clamp(1.2rem, 1.5vw, 2rem) clamp(1.5rem, 2vw, 2.5rem);
     overflow-y: auto;
-    box-shadow:
-      inset 0 0 40px rgba(0, 0, 0, 0.4),
-      0 0 1px rgba(255, 255, 255, 0.1);
     position: relative;
+    transform: rotate(0.2deg);
   }
 
   .rm-craft-paper::before {
     content: '';
     position: absolute;
-    inset: 4px;
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    inset: 5px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
     pointer-events: none;
   }
 
   .rm-craft-paper::-webkit-scrollbar { width: 3px; }
-  .rm-craft-paper::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 2px; }
+  .rm-craft-paper::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); }
 
-  .rm-craft-paper-header {
+  .rm-craft-paper-head {
     margin-bottom: clamp(1rem, 1.2vw, 1.8rem);
     padding-bottom: clamp(0.6rem, 0.8vw, 1rem);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: 2px solid var(--rm-white);
   }
 
   .rm-craft-paper-title {
     font-size: clamp(1.2rem, 1.3vw, 2rem);
     font-weight: 800;
     margin: 0 0 clamp(0.3rem, 0.4vw, 0.6rem);
-    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
   }
 
-  .rm-craft-paper-meta {
+  .rm-craft-paper-tags {
     display: flex;
     flex-wrap: wrap;
     gap: clamp(0.3rem, 0.4vw, 0.5rem);
   }
 
   .rm-craft-paper-tag {
-    font-size: clamp(0.55rem, 0.55vw, 0.8rem);
-    padding: clamp(0.1rem, 0.12vw, 0.2rem) clamp(0.35rem, 0.4vw, 0.6rem);
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    font-size: clamp(0.55rem, 0.52vw, 0.8rem);
+    font-weight: 700;
+    padding: clamp(0.1rem, 0.12vw, 0.2rem) clamp(0.4rem, 0.5vw, 0.7rem);
+    background: rgba(255, 255, 255, 0.08);
     color: rgba(255, 255, 255, 0.6);
-    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 3% 100%);
   }
 
+  .rm-craft-paper-tag--red {
+    background: var(--rm-red);
+    color: var(--rm-white);
+  }
+
+  /* Steps */
   .rm-craft-steps {
     margin-bottom: clamp(1rem, 1.2vw, 1.8rem);
+  }
+
+  .rm-craft-section-label {
+    font-size: clamp(0.55rem, 0.55vw, 0.85rem);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--rm-red);
+    margin: 0 0 clamp(0.4rem, 0.5vw, 0.7rem);
+    border-left: 0.2rem solid var(--rm-red);
+    padding-left: clamp(0.3rem, 0.4vw, 0.6rem);
   }
 
   .rm-craft-step-list {
@@ -3103,7 +3182,7 @@
     margin: 0;
     display: flex;
     flex-direction: column;
-    gap: clamp(0.35rem, 0.4vw, 0.6rem);
+    gap: clamp(0.2rem, 0.25vw, 0.35rem);
   }
 
   .rm-craft-step {
@@ -3111,58 +3190,58 @@
     align-items: flex-start;
     gap: clamp(0.5rem, 0.6vw, 0.8rem);
     padding: clamp(0.3rem, 0.4vw, 0.5rem) 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   }
 
   .rm-craft-step-num {
     flex-shrink: 0;
-    width: clamp(1.2rem, 1.2vw, 1.6rem);
-    height: clamp(1.2rem, 1.2vw, 1.6rem);
+    width: clamp(1.4rem, 1.3vw, 1.8rem);
+    height: clamp(1.4rem, 1.3vw, 1.8rem);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: clamp(0.5rem, 0.5vw, 0.75rem);
+    font-size: clamp(0.5rem, 0.48vw, 0.75rem);
     font-weight: 800;
-    border: 1px solid rgba(229, 25, 28, 0.4);
-    color: var(--rm-red);
+    background: var(--rm-red);
+    color: var(--rm-white);
+    clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 8% 100%);
   }
 
   .rm-craft-step-text {
-    font-size: clamp(0.65rem, 0.65vw, 1rem);
-    color: rgba(255, 255, 255, 0.8);
-    line-height: 1.6;
+    font-size: clamp(0.65rem, 0.62vw, 1rem);
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.85);
+    line-height: 1.7;
     letter-spacing: 0.01em;
+    padding-top: clamp(0.15rem, 0.2vw, 0.3rem);
   }
 
-  .rm-craft-tags {
+  /* Tags & source */
+  .rm-craft-foot-tags {
     display: flex;
     flex-wrap: wrap;
-    gap: clamp(0.2rem, 0.3vw, 0.4rem);
-    margin-bottom: clamp(0.6rem, 0.8vw, 1rem);
+    gap: clamp(0.25rem, 0.3vw, 0.4rem);
+    margin-bottom: clamp(0.5rem, 0.6vw, 0.8rem);
   }
 
-  .rm-craft-tag {
-    font-size: clamp(0.5rem, 0.5vw, 0.75rem);
+  .rm-craft-foot-tag {
+    font-size: clamp(0.5rem, 0.48vw, 0.75rem);
+    font-weight: 700;
     padding: clamp(0.08rem, 0.1vw, 0.15rem) clamp(0.3rem, 0.35vw, 0.5rem);
-    border: 1px solid rgba(229, 25, 28, 0.25);
-    color: rgba(229, 25, 28, 0.7);
-    letter-spacing: 0.04em;
+    background: rgba(229, 25, 28, 0.15);
+    color: var(--rm-red);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 4% 100%);
   }
 
   .rm-craft-source {
-    font-size: clamp(0.5rem, 0.5vw, 0.75rem);
+    font-size: clamp(0.5rem, 0.48vw, 0.75rem);
+    font-weight: 700;
     color: rgba(255, 255, 255, 0.3);
-    letter-spacing: 0.04em;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
     margin: 0;
-  }
-
-  .rm-craft-extra {
-    display: flex;
-    flex-wrap: wrap;
-    gap: clamp(0.2rem, 0.3vw, 0.4rem);
-    margin-top: clamp(0.4rem, 0.5vw, 0.7rem);
-    padding-top: clamp(0.4rem, 0.5vw, 0.7rem);
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
   }
 
   @media (max-width: 980px) {
