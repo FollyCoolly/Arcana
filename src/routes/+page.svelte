@@ -194,6 +194,11 @@
   let selectedMedia = $state<MediaItem | null>(null);
   let galleryFilterSource = $state<string | null>(null);
 
+  type GallerySortKey = 'rating' | 'date';
+  type GallerySortOrder = 'asc' | 'desc';
+  let gallerySortKey = $state<GallerySortKey>('rating');
+  let gallerySortOrder = $state<GallerySortOrder>('desc');
+
   let commandRef = $state<HTMLElement | undefined>(undefined);
   let menuItemRefs = $state<(HTMLButtonElement | undefined)[]>([]);
 
@@ -604,6 +609,20 @@
     }
   }
 
+  const GALLERY_SORT_OPTIONS: { key: GallerySortKey; label: string }[] = [
+    { key: 'rating', label: '评分' },
+    { key: 'date', label: '看完' },
+  ];
+
+  function toggleGallerySort(key: GallerySortKey) {
+    if (gallerySortKey === key) {
+      gallerySortOrder = gallerySortOrder === 'asc' ? 'desc' : 'asc';
+    } else {
+      gallerySortKey = key;
+      gallerySortOrder = 'desc';
+    }
+  }
+
   function getFilteredGalleryItems(): MediaItem[] {
     if (!galleryData) return [];
 
@@ -613,12 +632,38 @@
       items = items.filter(i => i.source_id === galleryFilterSource);
     }
 
+    const dir = gallerySortOrder === 'asc' ? 1 : -1;
+    items = [...items].sort((a, b) => {
+      switch (gallerySortKey) {
+        case 'rating': {
+          const ar = a.my_rating ?? a.rating ?? -1;
+          const br = b.my_rating ?? b.rating ?? -1;
+          if (ar !== br) return dir * (ar - br);
+          return a.name.localeCompare(b.name);
+        }
+        case 'date': {
+          const ad = a.date_finished ?? '';
+          const bd = b.date_finished ?? '';
+          if (ad !== bd) return dir * ad.localeCompare(bd);
+          return a.name.localeCompare(b.name);
+        }
+        default:
+          return 0;
+      }
+    });
+
     return items;
   }
 
   function getCardRotation(index: number): string {
     const rotations = [-1.2, 0.8, -0.5, 1.4, -1.0, 0.6, -1.5, 1.1, -0.3, 0.9];
     return `${rotations[index % rotations.length]}deg`;
+  }
+
+  function getDisplayRating(item: MediaItem): { value: number; isPersonal: boolean } | null {
+    if (item.my_rating !== null) return { value: item.my_rating, isPersonal: true };
+    if (item.rating !== null) return { value: item.rating, isPersonal: false };
+    return null;
   }
 
   function formatRating(rating: number | null): string {
@@ -1426,6 +1471,23 @@
                   {/each}
                 </div>
               {/if}
+
+              <div class="rm-items-filter-section">
+                <h4 class="rm-items-filter-title">Sort</h4>
+                {#each GALLERY_SORT_OPTIONS as opt}
+                  <button
+                    type="button"
+                    class="rm-items-filter-btn"
+                    class:is-active={gallerySortKey === opt.key}
+                    onclick={() => toggleGallerySort(opt.key)}
+                  >
+                    {opt.label}
+                    {#if gallerySortKey === opt.key}
+                      <span class="rm-items-sort-arrow">{gallerySortOrder === 'asc' ? '↑' : '↓'}</span>
+                    {/if}
+                  </button>
+                {/each}
+              </div>
             </div>
 
             <!-- RIGHT: waterfall cover wall -->
@@ -1435,6 +1497,7 @@
               {:else}
                 <div class="rm-gallery-wall">
                   {#each getFilteredGalleryItems() as item, i}
+                    {@const displayRating = getDisplayRating(item)}
                     <button
                       type="button"
                       class="rm-gallery-card"
@@ -1459,9 +1522,9 @@
                       </div>
                       <div class="rm-gallery-card-info">
                         <span class="rm-gallery-card-name">{item.name}</span>
-                        {#if item.rating !== null}
-                          <div class="rm-gallery-card-stars">
-                            {#each ratingToStars(item.rating) as star}
+                        {#if displayRating}
+                          <div class="rm-gallery-card-stars" class:is-community={!displayRating.isPersonal}>
+                            {#each ratingToStars(displayRating.value) as star}
                               <span class="rm-gallery-star rm-gallery-star--{star}">★</span>
                             {/each}
                           </div>
@@ -3524,20 +3587,19 @@
   .rm-gallery-content {
     overflow-y: auto;
     height: 100%;
-    padding: clamp(2rem, 3.5vh, 5rem) clamp(2rem, 3vw, 5rem) clamp(7rem, 12vh, 12rem) clamp(1.5rem, 2.5vw, 4rem);
+    padding: clamp(6rem, 10vh, 12rem) clamp(2rem, 3vw, 5rem) clamp(7rem, 12vh, 12rem) clamp(1.5rem, 2.5vw, 4rem);
     box-sizing: border-box;
   }
 
   .rm-gallery-wall {
-    columns: 5;
-    column-gap: clamp(0.8rem, 1vw, 1.6rem);
+    display: flex;
+    flex-wrap: wrap;
+    gap: clamp(0.8rem, 1vw, 1.6rem);
   }
 
   .rm-gallery-card {
     display: block;
-    width: 100%;
-    break-inside: avoid;
-    margin-bottom: clamp(1rem, 1.2vw, 1.8rem);
+    width: calc((100% - 4 * clamp(0.8rem, 1vw, 1.6rem)) / 5);
     border: none;
     background: var(--rm-white);
     cursor: pointer;
@@ -3622,6 +3684,12 @@
     color: rgba(0, 0, 0, 0.15);
   }
 
+  .rm-gallery-card-stars.is-community .rm-gallery-star--full,
+  .rm-gallery-card-stars.is-community .rm-gallery-star--half {
+    color: var(--rm-black);
+    opacity: 0.35;
+  }
+
   /* ── Gallery detail ── */
 
   .rm-gallery-detail {
@@ -3639,12 +3707,12 @@
     display: grid;
     grid-template-columns: auto 1fr;
     gap: clamp(1.5rem, 2.5vw, 4rem);
-    max-width: 900px;
+    max-width: 70%;
     width: 100%;
   }
 
   .rm-gallery-detail-cover {
-    width: clamp(180px, 16vw, 320px);
+    width: clamp(330px, 33vw, 780px);
     flex-shrink: 0;
   }
 
@@ -3662,12 +3730,12 @@
   .rm-gallery-detail-info {
     display: flex;
     flex-direction: column;
-    gap: clamp(0.5rem, 0.8vw, 1.2rem);
+    gap: clamp(0.75rem, 1.2vw, 1.8rem);
   }
 
   .rm-gallery-detail-title {
     margin: 0;
-    font-size: clamp(1.4rem, 1.8vw, 3rem);
+    font-size: clamp(2.1rem, 2.7vw, 4.5rem);
     font-weight: 900;
     letter-spacing: 0.04em;
     text-transform: uppercase;
@@ -3676,7 +3744,7 @@
 
   .rm-gallery-detail-original {
     margin: 0;
-    font-size: clamp(0.65rem, 0.6vw, 1rem);
+    font-size: clamp(0.975rem, 0.9vw, 1.5rem);
     color: rgba(255, 255, 255, 0.45);
     font-weight: 600;
     letter-spacing: 0.03em;
@@ -3685,19 +3753,19 @@
   .rm-gallery-detail-meta {
     display: flex;
     flex-direction: column;
-    gap: clamp(0.15rem, 0.2vw, 0.3rem);
+    gap: clamp(0.225rem, 0.3vw, 0.45rem);
   }
 
   .rm-gallery-detail-row {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
-    padding: clamp(0.15rem, 0.2vw, 0.35rem) 0;
+    padding: clamp(0.225rem, 0.3vw, 0.525rem) 0;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   }
 
   .rm-gallery-detail-label {
-    font-size: clamp(0.55rem, 0.5vw, 0.85rem);
+    font-size: clamp(0.825rem, 0.75vw, 1.275rem);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.1em;
@@ -3705,7 +3773,7 @@
   }
 
   .rm-gallery-detail-value {
-    font-size: clamp(0.65rem, 0.6vw, 1rem);
+    font-size: clamp(0.975rem, 0.9vw, 1.5rem);
     font-weight: 800;
     letter-spacing: 0.04em;
   }
@@ -3722,7 +3790,7 @@
   }
 
   .rm-gallery-detail-tag {
-    font-size: clamp(0.5rem, 0.46vw, 0.75rem);
+    font-size: clamp(0.75rem, 0.69vw, 1.125rem);
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
