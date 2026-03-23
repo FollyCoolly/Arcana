@@ -12,3 +12,4 @@ vite.config.ts.timestamp-*
 .claude/settings.local.json
 *.pyc
 /docs/tmp
+scripts/config.json
