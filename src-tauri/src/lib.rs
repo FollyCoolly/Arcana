@@ -53,7 +53,6 @@ pub fn run() {
             commands::achievements::load_achievements,
             commands::skills::load_skills,
             commands::items::load_items,
-            commands::crafting::load_crafting,
             commands::gallery::load_gallery,
         ])
         .run(tauri::generate_context!())

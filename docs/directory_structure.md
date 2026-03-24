@@ -25,8 +25,6 @@
     - [新增文件](#新增文件-1)
   - [阶段五：Gallery 媒体画廊](#阶段五gallery-媒体画廊)
     - [新增文件](#新增文件-2)
-  - [阶段六：Crafting 制作系统](#阶段六crafting-制作系统)
-    - [新增文件](#新增文件-3)
   - [阶段七：完整版本](#阶段七完整版本)
     - [完整目录树](#完整目录树)
   - [演变总结](#演变总结)
@@ -316,46 +314,6 @@ RealityMod/
 
 ---
 
-## 阶段六：Crafting 制作系统
-
-**目标**：实现配方管理功能。
-
-### 新增文件
-
-```diff
-RealityMod/
-├── src-tauri/
-│   ├── src/
-│   │   ├── models/
-+  │   │   │   └── recipe.rs         # Recipe 数据结构
-│   │   │
-│   │   └── commands/
-+  │   │       └── crafting.rs       # 配方相关命令
-│
-├── src/
-│   ├── lib/
-│   │   ├── components/
-+  │   │   │   └── crafting/         # 制作模块组件
-+  │   │   │       ├── RecipeList.svelte
-+  │   │   │       ├── RecipeCard.svelte
-+  │   │   │       └── RecipeDetail.svelte
-│   │   │
-│   │   ├── stores/
-+  │   │   │   └── craftingStore.ts
-│   │   │
-│   │   └── types/
-+  │   │       └── recipe.ts
-│   │
-│   ├── routes/
-+  │   │   └── crafting/
-+  │   │       └── +page.svelte
-│
-├── data/
-+  │   └── recipes.json              # 配方数据
-```
-
----
-
 ## 阶段七：完整版本
 
 所有模块开发完成后的完整目录结构。
@@ -398,8 +356,7 @@ RealityMod/
 │   │   │   ├── skills.rs
 │   │   │   ├── packs.rs
 │   │   │   ├── items.rs
-│   │   │   ├── gallery.rs
-│   │   │   └── crafting.rs
+│   │   │   └── gallery.rs
 │   │   │
 │   │   └── importers/            # 外部数据导入器
 │   │       ├── mod.rs
@@ -441,11 +398,6 @@ RealityMod/
 │   │   │   │   ├── MediaGrid.svelte
 │   │   │   │   ├── MediaCard.svelte
 │   │   │   │   └── FilterBar.svelte
-│   │   │   │
-│   │   │   └── crafting/         # Crafting 模块
-│   │   │       ├── RecipeList.svelte
-│   │   │       ├── RecipeCard.svelte
-│   │   │       └── RecipeDetail.svelte
 │   │   │
 │   │   ├── stores/               # 状态管理
 │   │   │   ├── statusStore.ts
@@ -453,8 +405,7 @@ RealityMod/
 │   │   │   ├── skillStore.ts
 │   │   │   ├── packStore.ts
 │   │   │   ├── itemStore.ts
-│   │   │   ├── galleryStore.ts
-│   │   │   └── craftingStore.ts
+│   │   │   └── galleryStore.ts
 │   │   │
 │   │   ├── utils/                # 工具函数
 │   │   │   ├── formatters.ts
@@ -480,9 +431,7 @@ RealityMod/
 │   │   │   └── +page.svelte
 │   │   ├── items/
 │   │   │   └── +page.svelte
-│   │   ├── gallery/
-│   │   │   └── +page.svelte
-│   │   └── crafting/
+│   │   └── gallery/
 │   │       └── +page.svelte
 │   │
 │   ├── app.html
@@ -545,7 +494,6 @@ RealityMod/
 | **阶段三**       | `achievement.rs`<br>`skill.rs`<br>`pack.rs` | `/achievements`<br>`/skills` | `skill_calculator.rs`<br>`achievement_checker.rs`<br>`pack_manager.rs` | `packs/` 目录               |
 | **阶段四**       | `item.rs`                                   | `/items`                     | -                                                                      | `items.json`                |
 | **阶段五**       | `media.rs`                                  | `/gallery`                   | -                                                                      | `imports/` 目录<br>导入脚本 |
-| **阶段六**       | `recipe.rs`                                 | `/crafting`                  | -                                                                      | `recipes.json`              |
 
 ---
 
