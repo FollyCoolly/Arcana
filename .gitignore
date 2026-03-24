@@ -13,3 +13,4 @@ vite.config.ts.timestamp-*
 *.pyc
 /docs/tmp
 scripts/config.json
+scripts/.steam_cache.json

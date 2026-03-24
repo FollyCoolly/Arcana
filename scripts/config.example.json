@@ -1,5 +1,7 @@
 {
   "bangumi_uid": "",
+  "steam_api_key": "",
+  "steam_id": "",
   "top_tags_count": 5,
   "user_agent": "RealityMod/gallery-fetcher"
 }

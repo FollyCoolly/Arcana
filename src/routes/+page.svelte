@@ -186,7 +186,7 @@
   let selectedMedia = $state<MediaItem | null>(null);
   let galleryFilterSource = $state<string | null>(null);
 
-  type GallerySortKey = 'rating' | 'date';
+  type GallerySortKey = 'rating' | 'date' | 'playtime';
   type GallerySortOrder = 'asc' | 'desc';
   let gallerySortKey = $state<GallerySortKey>('rating');
   let gallerySortOrder = $state<GallerySortOrder>('desc');
@@ -578,6 +578,7 @@
 
   const GALLERY_SORT_OPTIONS: { key: GallerySortKey; label: string }[] = [
     { key: 'rating', label: '评分' },
+    { key: 'playtime', label: '时长' },
     { key: 'date', label: '看完' },
   ];
 
@@ -606,6 +607,12 @@
           const ar = a.my_rating ?? a.rating ?? -1;
           const br = b.my_rating ?? b.rating ?? -1;
           if (ar !== br) return dir * (ar - br);
+          return a.name.localeCompare(b.name);
+        }
+        case 'playtime': {
+          const ah = (a.extra.playtime_hours as number) ?? -1;
+          const bh = (b.extra.playtime_hours as number) ?? -1;
+          if (ah !== bh) return dir * (ah - bh);
           return a.name.localeCompare(b.name);
         }
         case 'date': {
@@ -648,6 +655,12 @@
       else stars.push('empty');
     }
     return stars;
+  }
+
+  function getMediaType(item: MediaItem): string {
+    if (!galleryData) return 'unknown';
+    const src = galleryData.sources.find(s => s.id === item.source_id);
+    return src?.media_type ?? 'unknown';
   }
 
   function handleCoverError(e: Event) {
@@ -1337,6 +1350,7 @@
                 <div class="rm-gallery-wall">
                   {#each getFilteredGalleryItems() as item, i}
                     {@const displayRating = getDisplayRating(item)}
+                    {@const itemMediaType = getMediaType(item)}
                     <button
                       type="button"
                       class="rm-gallery-card"
@@ -1361,7 +1375,21 @@
                       </div>
                       <div class="rm-gallery-card-info">
                         <span class="rm-gallery-card-name">{item.name}</span>
-                        {#if displayRating}
+                        {#if itemMediaType === 'game'}
+                          <div class="rm-gallery-card-game-meta">
+                            {#if item.extra.playtime_hours}
+                              <span class="rm-gallery-card-playtime">{item.extra.playtime_hours}h</span>
+                            {/if}
+                            {#if item.extra.achievement_total}
+                              <div class="rm-gallery-card-ach">
+                                <div class="rm-gallery-card-ach-bar">
+                                  <div class="rm-gallery-card-ach-fill" style="width: {((item.extra.achievement_unlocked as number ?? 0) / (item.extra.achievement_total as number) * 100).toFixed(0)}%"></div>
+                                </div>
+                                <span class="rm-gallery-card-ach-text">{item.extra.achievement_unlocked ?? 0}/{item.extra.achievement_total}</span>
+                              </div>
+                            {/if}
+                          </div>
+                        {:else if displayRating}
                           <div class="rm-gallery-card-stars" class:is-community={!displayRating.isPersonal}>
                             {#each ratingToStars(displayRating.value) as star}
                               <span class="rm-gallery-star rm-gallery-star--{star}">★</span>
@@ -1394,54 +1422,83 @@
                   <p class="rm-gallery-detail-original">{selectedMedia.name_original}</p>
                 {/if}
 
-                <div class="rm-gallery-detail-meta">
-                  {#if selectedMedia.rating !== null}
-                    <div class="rm-gallery-detail-row">
-                      <span class="rm-gallery-detail-label">RATING</span>
-                      <span class="rm-gallery-detail-value">{formatRating(selectedMedia.rating)}</span>
-                    </div>
-                  {/if}
-                  {#if selectedMedia.my_rating !== null}
-                    <div class="rm-gallery-detail-row">
-                      <span class="rm-gallery-detail-label">MY RATING</span>
-                      <span class="rm-gallery-detail-value rm-gallery-detail-myrating">{formatRating(selectedMedia.my_rating)}</span>
-                    </div>
-                  {/if}
-                  {#if selectedMedia.episodes !== null}
-                    <div class="rm-gallery-detail-row">
-                      <span class="rm-gallery-detail-label">EPISODES</span>
-                      <span class="rm-gallery-detail-value">{selectedMedia.episodes}</span>
-                    </div>
-                  {/if}
-                  {#if selectedMedia.date_started}
-                    <div class="rm-gallery-detail-row">
-                      <span class="rm-gallery-detail-label">STARTED</span>
-                      <span class="rm-gallery-detail-value">{selectedMedia.date_started}</span>
-                    </div>
-                  {/if}
-                  {#if selectedMedia.date_finished}
-                    <div class="rm-gallery-detail-row">
-                      <span class="rm-gallery-detail-label">FINISHED</span>
-                      <span class="rm-gallery-detail-value">{selectedMedia.date_finished}</span>
-                    </div>
-                  {/if}
-                </div>
+                {#if getMediaType(selectedMedia) === 'game'}
+                  <!-- Game-specific detail -->
+                  <div class="rm-gallery-detail-meta">
+                    {#if selectedMedia.extra.playtime_hours != null}
+                      <div class="rm-gallery-detail-row">
+                        <span class="rm-gallery-detail-label">PLAYTIME</span>
+                        <span class="rm-gallery-detail-value">{selectedMedia.extra.playtime_hours}h</span>
+                      </div>
+                    {/if}
+                    {#if selectedMedia.extra.achievement_total}
+                      <div class="rm-gallery-detail-row">
+                        <span class="rm-gallery-detail-label">ACHIEVEMENTS</span>
+                        <span class="rm-gallery-detail-value">{selectedMedia.extra.achievement_unlocked ?? 0} / {selectedMedia.extra.achievement_total}</span>
+                      </div>
+                      <div class="rm-gallery-detail-ach-bar">
+                        <div class="rm-gallery-detail-ach-fill" style="width: {((selectedMedia.extra.achievement_unlocked as number ?? 0) / (selectedMedia.extra.achievement_total as number) * 100).toFixed(0)}%"></div>
+                      </div>
+                    {/if}
+                    {#if selectedMedia.extra.release_date}
+                      <div class="rm-gallery-detail-row">
+                        <span class="rm-gallery-detail-label">RELEASE</span>
+                        <span class="rm-gallery-detail-value">{selectedMedia.extra.release_date}</span>
+                      </div>
+                    {/if}
+                    {#if selectedMedia.rating !== null}
+                      <div class="rm-gallery-detail-row">
+                        <span class="rm-gallery-detail-label">METACRITIC</span>
+                        <span class="rm-gallery-detail-value">{formatRating(selectedMedia.rating)}</span>
+                      </div>
+                    {/if}
+                    {#if selectedMedia.extra.steam_url}
+                      <div class="rm-gallery-detail-row">
+                        <span class="rm-gallery-detail-label">STEAM</span>
+                        <span class="rm-gallery-detail-value">{selectedMedia.extra.steam_url}</span>
+                      </div>
+                    {/if}
+                  </div>
+                {:else}
+                  <!-- Default (anime/media) detail -->
+                  <div class="rm-gallery-detail-meta">
+                    {#if selectedMedia.rating !== null}
+                      <div class="rm-gallery-detail-row">
+                        <span class="rm-gallery-detail-label">RATING</span>
+                        <span class="rm-gallery-detail-value">{formatRating(selectedMedia.rating)}</span>
+                      </div>
+                    {/if}
+                    {#if selectedMedia.my_rating !== null}
+                      <div class="rm-gallery-detail-row">
+                        <span class="rm-gallery-detail-label">MY RATING</span>
+                        <span class="rm-gallery-detail-value rm-gallery-detail-myrating">{formatRating(selectedMedia.my_rating)}</span>
+                      </div>
+                    {/if}
+                    {#if selectedMedia.episodes !== null}
+                      <div class="rm-gallery-detail-row">
+                        <span class="rm-gallery-detail-label">EPISODES</span>
+                        <span class="rm-gallery-detail-value">{selectedMedia.episodes}</span>
+                      </div>
+                    {/if}
+                    {#if selectedMedia.date_started}
+                      <div class="rm-gallery-detail-row">
+                        <span class="rm-gallery-detail-label">STARTED</span>
+                        <span class="rm-gallery-detail-value">{selectedMedia.date_started}</span>
+                      </div>
+                    {/if}
+                    {#if selectedMedia.date_finished}
+                      <div class="rm-gallery-detail-row">
+                        <span class="rm-gallery-detail-label">FINISHED</span>
+                        <span class="rm-gallery-detail-value">{selectedMedia.date_finished}</span>
+                      </div>
+                    {/if}
+                  </div>
+                {/if}
 
                 {#if selectedMedia.tags.length > 0}
                   <div class="rm-gallery-detail-tags">
                     {#each selectedMedia.tags as tag}
                       <span class="rm-gallery-detail-tag">{tag}</span>
-                    {/each}
-                  </div>
-                {/if}
-
-                {#if Object.keys(selectedMedia.extra).length > 0}
-                  <div class="rm-gallery-detail-extra">
-                    {#each Object.entries(selectedMedia.extra) as [key, val]}
-                      <div class="rm-gallery-detail-row">
-                        <span class="rm-gallery-detail-label">{key.toUpperCase()}</span>
-                        <span class="rm-gallery-detail-value">{val}</span>
-                      </div>
                     {/each}
                   </div>
                 {/if}
@@ -3213,6 +3270,53 @@
     opacity: 0.35;
   }
 
+  /* ── Game card meta ── */
+
+  .rm-gallery-card-game-meta {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(0.06rem, 0.08vw, 0.12rem);
+  }
+
+  .rm-gallery-card-playtime {
+    font-size: clamp(0.42rem, 0.4vw, 0.65rem);
+    font-weight: 900;
+    color: var(--rm-black);
+    letter-spacing: 0.06em;
+    line-height: 1;
+  }
+
+  .rm-gallery-card-ach {
+    display: flex;
+    align-items: center;
+    gap: clamp(0.15rem, 0.2vw, 0.3rem);
+  }
+
+  .rm-gallery-card-ach-bar {
+    flex: 1;
+    height: clamp(2px, 0.2vw, 4px);
+    background: var(--rm-black);
+    position: relative;
+    clip-path: polygon(2% 0%, 100% 0%, 98% 100%, 0% 100%);
+  }
+
+  .rm-gallery-card-ach-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background: var(--rm-red);
+  }
+
+  .rm-gallery-card-ach-text {
+    font-size: clamp(0.32rem, 0.3vw, 0.5rem);
+    font-weight: 700;
+    color: rgba(0, 0, 0, 0.45);
+    letter-spacing: 0.04em;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
   /* ── Gallery detail ── */
 
   .rm-gallery-detail {
@@ -3323,8 +3427,23 @@
     padding: clamp(0.15rem, 0.2vw, 0.3rem) clamp(0.5rem, 0.6vw, 1rem);
   }
 
-  .rm-gallery-detail-extra {
-    margin-top: clamp(0.3rem, 0.4vw, 0.6rem);
+  /* ── Game detail achievement bar ── */
+
+  .rm-gallery-detail-ach-bar {
+    width: 100%;
+    height: clamp(6px, 0.5vw, 10px);
+    background: var(--rm-black);
+    position: relative;
+    clip-path: polygon(1% 0%, 100% 0%, 99% 100%, 0% 100%);
+    margin-top: clamp(0.15rem, 0.2vw, 0.3rem);
+  }
+
+  .rm-gallery-detail-ach-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background: var(--rm-red);
   }
 
   @media (max-width: 980px) {
