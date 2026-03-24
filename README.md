@@ -127,6 +127,7 @@ graph LR
 - [UI 设计规范](docs/ui_design_spec.md) - 主菜单与子菜单交互规范
 - [Schema 总览](docs/schema/README.md) - 数据结构文档导航
 - [Status Schema](docs/schema/status.md) - Status 指标定义与数值结构
+- [AI Agent 集成方案](docs/ai_agent_integration.md) - AI Agent 接入方案与平台调研
 
 ---
 
@@ -246,7 +247,17 @@ npm run tauri dev
 - [x] 实现菜谱列表展示
 - [x] 实现配方详情（材料、步骤）
 
-### 阶段七：优化与完善
+### 阶段七：AI Agent 集成
+
+**目标**：通过 MCP Server 接入 AI Agent 生态
+
+- [ ] 实现 RealityMod MCP Server（Rust），暴露数据读写 tools
+- [ ] 接入 Nanobot，验证 IM 场景（飞书/QQ/Telegram）
+- [ ] 实现原生 P5 风格 NPC 对话 UI
+
+详见 [AI Agent 集成方案](docs/ai_agent_integration.md)
+
+### 阶段八：优化与完善
 
 - [ ] 数据导出/备份功能
 - [ ] 主题系统（暗色/亮色模式）
