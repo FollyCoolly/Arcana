@@ -42,8 +42,8 @@
     metrics: StatusMetric[];
   };
 
-  type MenuScreen = "main" | "status" | "achievements" | "skills" | "items" | "gallery";
-  type MenuItemId = "status" | "skills" | "achievements" | "items" | "gallery";
+  type MenuScreen = "main" | "status" | "achievements" | "skills" | "items" | "gallery" | "tasks";
+  type MenuItemId = "status" | "skills" | "achievements" | "items" | "gallery" | "tasks";
 
   type MenuItem = {
     id: MenuItemId;
@@ -81,6 +81,12 @@
       id: "gallery",
       label: "Gallery",
       description: "Books, media, and games aggregation hub.",
+      enabled: true,
+    },
+    {
+      id: "tasks",
+      label: "Tasks",
+      description: "Daily and long-term task tracking.",
       enabled: true,
     },
   ];
@@ -132,6 +138,13 @@
       { char: 'E', size: '1.1em',  yOffset: -2, rotate: -3 },
       { char: 'r', size: '0.93em', yOffset: 3, rotate: 4, color: 'black' },
       { char: 'Y', size: '1.02em', yOffset: -1, rotate: -5 },
+    ],
+    tasks: [
+      { char: 'T', size: '1.15em', yOffset: -3, rotate: -5, weight: 800 },
+      { char: 'a', size: '0.88em', yOffset: 3, rotate: 4, color: 'black', rounded: true },
+      { char: 'S', size: '1.08em', yOffset: -1, rotate: -3 },
+      { char: 'k', size: '0.82em', yOffset: 2, rotate: 5, color: 'black', outline: true },
+      { char: 'S', size: '0.78em', yOffset: -2, rotate: -4 },
     ],
   };
 
@@ -191,7 +204,7 @@
     { rot: -20, clip: 'polygon(2% 0%, 99% 6%, 96% 96%, 0% 88%)' },     // Achievements
     { rot: -8,  clip: 'polygon(0% 10%, 100% 3%, 98% 94%, 2% 100%)' },  // Items
     { rot: -2,  clip: 'polygon(1% 4%, 97% 0%, 100% 90%, 3% 96%)' },    // Gallery
-    { rot: 2,   clip: 'polygon(0% 6%, 98% 0%, 100% 100%, 2% 92%)' },   // Crafting
+    { rot: 2,   clip: 'polygon(0% 6%, 98% 0%, 100% 100%, 2% 92%)' },   // Tasks
   ];
 
   $effect(() => {
@@ -813,6 +826,8 @@
       await openItemsScreen();
     } else if (item.id === "gallery") {
       await openGalleryScreen();
+    } else if (item.id === "tasks") {
+      setMenuFeedback("Tasks module coming soon.");
     }
   }
 
