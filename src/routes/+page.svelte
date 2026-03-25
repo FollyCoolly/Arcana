@@ -1381,7 +1381,7 @@
                     onclick={() => selectGalleryCategory(cat.id)}
                   >
                     <span class="rm-gallery-nav-icon">{cat.icon}</span>
-                    <P5MenuItem letters={GALLERY_CATEGORY_LETTERS[cat.id]} active={galleryActiveCategory === cat.id} />
+                    <P5MenuItem letters={GALLERY_CATEGORY_LETTERS[cat.id]} />
                   </button>
                 {/each}
               </nav>
@@ -3214,7 +3214,7 @@
   .rm-gallery-layout {
     flex: 1;
     display: grid;
-    grid-template-columns: 1fr 3fr;
+    grid-template-columns: auto 1fr;
     overflow: hidden;
     height: 100%;
   }
@@ -3232,19 +3232,33 @@
   .rm-gallery-nav {
     display: flex;
     flex-direction: column;
+    align-items: flex-start;
     gap: clamp(0.3rem, 0.5vh, 0.6rem);
   }
 
   .rm-gallery-nav-item {
-    display: flex;
+    position: relative;
+    display: inline-flex;
     align-items: center;
     gap: clamp(0.4rem, 0.8vw, 1rem);
     background: none;
     border: none;
     cursor: pointer;
-    padding: clamp(0.2rem, 0.4vh, 0.5rem) 0;
+    padding: clamp(0.3rem, 0.5vh, 0.6rem) clamp(0.6rem, 1vw, 1.2rem);
     opacity: 0.35;
     transition: opacity 140ms ease, transform 140ms ease;
+  }
+
+  .rm-gallery-nav-item::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--rm-red, #E5191C);
+    clip-path: polygon(4% 8%, 98% 0%, 96% 94%, 1% 100%);
+    transform: skewX(-2deg) rotate(-0.5deg);
+    opacity: 0;
+    z-index: -1;
+    transition: opacity 120ms ease, transform 120ms ease;
   }
 
   .rm-gallery-nav-item:hover {
@@ -3255,8 +3269,13 @@
     opacity: 1;
   }
 
+  .rm-gallery-nav-item.is-active::before {
+    opacity: 1;
+    transform: skewX(-3deg) rotate(-1deg);
+  }
+
   .rm-gallery-nav-item :global(.p5m) {
-    font-size: clamp(1.4rem, 3.5vw, 2.5rem);
+    font-size: clamp(2.1rem, 5.25vw, 3.75rem);
   }
 
   .rm-gallery-nav-icon {
@@ -3270,10 +3289,6 @@
     width: clamp(1.8rem, 3vw, 3rem);
     transform: rotate(-8deg) skewX(-5deg);
     line-height: 1;
-  }
-
-  .rm-gallery-nav-item.is-active .rm-gallery-nav-icon {
-    color: var(--rm-red);
   }
 
   .rm-gallery-content {
