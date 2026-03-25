@@ -224,7 +224,6 @@ npm run tauri dev
 - [x] 设计 Items JSON Schema
 - [x] 实现物品列表展示
 - [x] 实现物品分类（衣服、数码产品等）
-- [ ] 实现物品详情页
 - [x] 添加购买日期、价格等统计功能
 
 ### 阶段五：Gallery 媒体画廊
@@ -233,11 +232,11 @@ npm run tauri dev
 
 - [x] 设计媒体数据的 JSON Schema（书籍、电影、游戏）
 - [x] 实现 Gallery 封面墙展示
-- [ ] 实现数据筛选和排序
+- [x] 实现数据筛选和排序
 - [ ] 创建外部数据导入脚本
-  - [ ] Bangumi 导入脚本
-  - [ ] Steam 导入脚本
-  - [ ] Goodreads/豆瓣读书导入脚本
+  - [x] Bangumi 导入脚本
+  - [x] Steam 导入脚本
+  - [x] 豆瓣导入脚本
 
 ### 阶段六：Crafting 制作系统
 

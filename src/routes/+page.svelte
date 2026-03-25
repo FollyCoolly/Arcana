@@ -184,12 +184,67 @@
   let galleryError = $state<string | null>(null);
   let galleryData = $state<GalleryData | null>(null);
   let selectedMedia = $state<MediaItem | null>(null);
-  let galleryFilterSource = $state<string | null>(null);
 
   type GallerySortKey = 'rating' | 'date' | 'playtime';
   type GallerySortOrder = 'asc' | 'desc';
   let gallerySortKey = $state<GallerySortKey>('rating');
   let gallerySortOrder = $state<GallerySortOrder>('desc');
+
+  type GalleryCategory = 'anime' | 'game' | 'tv' | 'movie' | 'book';
+  let galleryActiveCategory = $state<GalleryCategory>('anime');
+
+  const GALLERY_CATEGORIES: {
+    id: GalleryCategory;
+    label: string;
+    icon: string;
+    mediaTypes: string[];
+    sortOptions: { key: GallerySortKey; label: string }[];
+  }[] = [
+    { id: 'anime', label: 'Anime', icon: 'A', mediaTypes: ['anime'],
+      sortOptions: [{ key: 'rating', label: '评分' }, { key: 'date', label: '看完' }] },
+    { id: 'game', label: 'Games', icon: 'G', mediaTypes: ['game'],
+      sortOptions: [{ key: 'playtime', label: '时长' }, { key: 'rating', label: '评分' }] },
+    { id: 'tv', label: 'TV', icon: 'T', mediaTypes: ['tv'],
+      sortOptions: [{ key: 'rating', label: '评分' }, { key: 'date', label: '看完' }] },
+    { id: 'movie', label: 'Movie', icon: 'M', mediaTypes: ['movie'],
+      sortOptions: [{ key: 'rating', label: '评分' }, { key: 'date', label: '看完' }] },
+    { id: 'book', label: 'Book', icon: 'B', mediaTypes: ['book'],
+      sortOptions: [{ key: 'rating', label: '评分' }, { key: 'date', label: '读完' }] },
+  ];
+
+  const GALLERY_CATEGORY_LETTERS: Record<GalleryCategory, LetterConfig[]> = {
+    anime: [
+      { char: 'A', size: '1.15em', yOffset: -2, rotate: -5, weight: 800 },
+      { char: 'n', size: '0.85em', yOffset: 3, rotate: 4, color: 'black', rounded: true },
+      { char: 'i', size: '0.80em', yOffset: -1, rotate: -3 },
+      { char: 'M', size: '1.0em', yOffset: 2, rotate: 5, color: 'black', outline: true },
+      { char: 'e', size: '0.78em', yOffset: -2, rotate: -4 },
+    ],
+    game: [
+      { char: 'G', size: '1.18em', yOffset: -3, rotate: -6, weight: 800 },
+      { char: 'a', size: '0.85em', yOffset: 3, rotate: 4, color: 'black' },
+      { char: 'M', size: '0.80em', yOffset: -1, rotate: -3 },
+      { char: 'e', size: '0.92em', yOffset: 2, rotate: 5, color: 'black', rounded: true },
+      { char: 'S', size: '1.05em', yOffset: -2, rotate: -4 },
+    ],
+    tv: [
+      { char: 'T', size: '1.2em', yOffset: -3, rotate: -5, weight: 800 },
+      { char: 'V', size: '1.1em', yOffset: 2, rotate: 4, color: 'black', outline: true },
+    ],
+    movie: [
+      { char: 'M', size: '1.15em', yOffset: -2, rotate: -5, weight: 800 },
+      { char: 'o', size: '0.82em', yOffset: 3, rotate: 4, color: 'black', rounded: true },
+      { char: 'V', size: '0.90em', yOffset: -1, rotate: -3 },
+      { char: 'i', size: '0.78em', yOffset: 2, rotate: 5, color: 'black' },
+      { char: 'E', size: '1.05em', yOffset: -2, rotate: -4 },
+    ],
+    book: [
+      { char: 'B', size: '1.18em', yOffset: -3, rotate: -6, weight: 800 },
+      { char: 'o', size: '0.82em', yOffset: 3, rotate: 3, color: 'black', rounded: true },
+      { char: 'O', size: '0.90em', yOffset: -1, rotate: -4 },
+      { char: 'K', size: '1.05em', yOffset: 2, rotate: 5, color: 'black', outline: true },
+    ],
+  };
 
   let commandRef = $state<HTMLElement | undefined>(undefined);
   let menuItemRefs = $state<(HTMLButtonElement | undefined)[]>([]);
@@ -570,17 +625,24 @@
   async function openGalleryScreen() {
     currentScreen = "gallery";
     selectedMedia = null;
-    galleryFilterSource = null;
+    galleryActiveCategory = 'anime';
+    gallerySortKey = 'rating';
+    gallerySortOrder = 'desc';
     if (!galleryData && !galleryLoading) {
       await loadGalleryData();
     }
   }
 
-  const GALLERY_SORT_OPTIONS: { key: GallerySortKey; label: string }[] = [
-    { key: 'rating', label: '评分' },
-    { key: 'playtime', label: '时长' },
-    { key: 'date', label: '看完' },
-  ];
+  function selectGalleryCategory(id: GalleryCategory) {
+    galleryActiveCategory = id;
+    const cat = GALLERY_CATEGORIES.find(c => c.id === id)!;
+    gallerySortKey = cat.sortOptions[0].key;
+    gallerySortOrder = 'desc';
+  }
+
+  function getActiveSortOptions(): { key: GallerySortKey; label: string }[] {
+    return GALLERY_CATEGORIES.find(c => c.id === galleryActiveCategory)?.sortOptions ?? [];
+  }
 
   function toggleGallerySort(key: GallerySortKey) {
     if (gallerySortKey === key) {
@@ -594,11 +656,10 @@
   function getFilteredGalleryItems(): MediaItem[] {
     if (!galleryData) return [];
 
-    let items = galleryData.items;
+    const cat = GALLERY_CATEGORIES.find(c => c.id === galleryActiveCategory);
+    if (!cat) return [];
 
-    if (galleryFilterSource) {
-      items = items.filter(i => i.source_id === galleryFilterSource);
-    }
+    let items = galleryData.items.filter(i => cat.mediaTypes.includes(getMediaType(i)));
 
     const dir = gallerySortOrder === 'asc' ? 1 : -1;
     items = [...items].sort((a, b) => {
@@ -1291,42 +1352,25 @@
           <p class="state-text error" style="padding: 2rem;">{galleryError}</p>
         {:else if galleryData && !selectedMedia}
           <div class="rm-gallery-layout">
-            <!-- LEFT: filter sidebar -->
+            <!-- LEFT: category nav + sort -->
             <div class="rm-gallery-sidebar">
-              <div class="rm-items-stat-block">
-                <div class="rm-items-stat-row">
-                  <span class="rm-items-stat-label">TOTAL</span>
-                  <span class="rm-items-stat-value">{galleryData.stats.total_items}</span>
-                </div>
-              </div>
-
-              <!-- By source -->
-              {#if galleryData.sources.length > 1}
-                <div class="rm-items-filter-section">
-                  <h4 class="rm-items-filter-title">Sources</h4>
+              <nav class="rm-gallery-nav">
+                {#each GALLERY_CATEGORIES as cat}
                   <button
                     type="button"
-                    class="rm-items-filter-btn"
-                    class:is-active={!galleryFilterSource}
-                    onclick={() => { galleryFilterSource = null; }}
-                  >All</button>
-                  {#each galleryData.sources as src}
-                    <button
-                      type="button"
-                      class="rm-items-filter-btn"
-                      class:is-active={galleryFilterSource === src.id}
-                      onclick={() => { galleryFilterSource = galleryFilterSource === src.id ? null : src.id; }}
-                    >
-                      {src.icon} {src.name}
-                      <span class="rm-items-filter-count">{src.item_count}</span>
-                    </button>
-                  {/each}
-                </div>
-              {/if}
+                    class="rm-gallery-nav-item"
+                    class:is-active={galleryActiveCategory === cat.id}
+                    onclick={() => selectGalleryCategory(cat.id)}
+                  >
+                    <span class="rm-gallery-nav-icon">{cat.icon}</span>
+                    <P5MenuItem letters={GALLERY_CATEGORY_LETTERS[cat.id]} active={galleryActiveCategory === cat.id} />
+                  </button>
+                {/each}
+              </nav>
 
               <div class="rm-items-filter-section">
                 <h4 class="rm-items-filter-title">Sort</h4>
-                {#each GALLERY_SORT_OPTIONS as opt}
+                {#each getActiveSortOptions() as opt}
                   <button
                     type="button"
                     class="rm-items-filter-btn"
@@ -3162,6 +3206,56 @@
     height: 100%;
     padding: clamp(1.5rem, 2.5vh, 4rem) clamp(1.2rem, 2vw, 3rem) clamp(6rem, 10vh, 10rem) clamp(1.5rem, 2.5vw, 4rem);
     box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: clamp(1.5rem, 2.5vh, 3rem);
+  }
+
+  .rm-gallery-nav {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(0.3rem, 0.5vh, 0.6rem);
+  }
+
+  .rm-gallery-nav-item {
+    display: flex;
+    align-items: center;
+    gap: clamp(0.4rem, 0.8vw, 1rem);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: clamp(0.2rem, 0.4vh, 0.5rem) 0;
+    opacity: 0.35;
+    transition: opacity 140ms ease, transform 140ms ease;
+  }
+
+  .rm-gallery-nav-item:hover {
+    opacity: 0.7;
+  }
+
+  .rm-gallery-nav-item.is-active {
+    opacity: 1;
+  }
+
+  .rm-gallery-nav-item :global(.p5m) {
+    font-size: clamp(1.4rem, 3.5vw, 2.5rem);
+  }
+
+  .rm-gallery-nav-icon {
+    font-family: "p5hatty", "Orbitron", Arial, sans-serif;
+    font-size: clamp(1.3rem, 2.2vw, 2.2rem);
+    font-weight: 900;
+    color: var(--rm-white);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: clamp(1.8rem, 3vw, 3rem);
+    transform: rotate(-8deg) skewX(-5deg);
+    line-height: 1;
+  }
+
+  .rm-gallery-nav-item.is-active .rm-gallery-nav-icon {
+    color: var(--rm-red);
   }
 
   .rm-gallery-content {
