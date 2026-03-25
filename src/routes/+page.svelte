@@ -724,8 +724,26 @@
     return src?.media_type ?? 'unknown';
   }
 
+  function proxyCover(url: string | null | undefined): string | undefined {
+    if (!url) return undefined;
+    if (url.includes('doubanio.com')) {
+      return `http://imgproxy.localhost/${encodeURIComponent(url)}`;
+    }
+    return url;
+  }
+
   function handleCoverError(e: Event) {
     const img = e.target as HTMLImageElement;
+    const retries = Number(img.dataset.retries ?? 0);
+    if (retries < 3) {
+      img.dataset.retries = String(retries + 1);
+      setTimeout(() => {
+        const src = img.src;
+        img.src = '';
+        img.src = src;
+      }, 1000 * (retries + 1));
+      return;
+    }
     img.style.display = 'none';
     const fallback = img.nextElementSibling as HTMLElement | null;
     if (fallback) fallback.style.display = 'flex';
@@ -1392,7 +1410,7 @@
                 <p class="state-text" style="padding: 2rem;">No items match the current filter.</p>
               {:else}
                 <div class="rm-gallery-wall">
-                  {#each getFilteredGalleryItems() as item, i}
+                  {#each getFilteredGalleryItems() as item, i (item.id)}
                     {@const displayRating = getDisplayRating(item)}
                     {@const itemMediaType = getMediaType(item)}
                     <button
@@ -1404,7 +1422,7 @@
                       <div class="rm-gallery-card-frame">
                         {#if item.cover}
                           <img
-                            src={item.cover}
+                            src={proxyCover(item.cover)}
                             alt={item.name}
                             class="rm-gallery-card-img"
                             loading="lazy"
@@ -1453,7 +1471,7 @@
             <div class="rm-gallery-detail-inner">
               <div class="rm-gallery-detail-cover">
                 {#if selectedMedia.cover}
-                  <img src={selectedMedia.cover} alt={selectedMedia.name} class="rm-gallery-detail-img" />
+                  <img src={proxyCover(selectedMedia.cover)} alt={selectedMedia.name} class="rm-gallery-detail-img" />
                 {:else}
                   <div class="rm-gallery-card-placeholder rm-gallery-detail-placeholder">
                     <span class="rm-gallery-card-placeholder-text">{selectedMedia.name.charAt(0)}</span>
