@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { invoke } from "@tauri-apps/api/core";
+  import { invoke, convertFileSrc } from "@tauri-apps/api/core";
   import type { UnlistenFn } from "@tauri-apps/api/event";
   import { getCurrentWindow } from "@tauri-apps/api/window";
   import P5Text from "$lib/P5Text.svelte";
@@ -174,6 +174,7 @@
   let itemError = $state<string | null>(null);
   let itemData = $state<ItemData | null>(null);
   let selectedItem = $state<ItemWithComputed | null>(null);
+  let itemDetailMode = $state(false);
   let itemFilterSource = $state<string | null>(null);
   let itemFilterCategory = $state<string | null>(null);
   let itemSortKey = $state<ItemSortKey>('name');
@@ -596,6 +597,7 @@
   async function openItemsScreen() {
     currentScreen = "items";
     selectedItem = null;
+    itemDetailMode = false;
     itemFilterSource = null;
     itemFilterCategory = null;
     if (!itemData && !itemLoading) {
@@ -768,6 +770,16 @@
     }
   }
 
+  function getItemSortValue(item: ItemWithComputed): string {
+    switch (itemSortKey) {
+      case 'price': return formatPrice(item.price);
+      case 'daily_cost': return formatDailyCost(item.daily_cost) + '/d';
+      case 'date': return item.purchase_date ?? '—';
+      case 'days_owned': return item.days_owned !== null ? item.days_owned + '天' : '—';
+      default: return '';
+    }
+  }
+
   function getFilteredSortedItems(): ItemWithComputed[] {
     if (!itemData) return [];
 
@@ -801,6 +813,15 @@
     });
 
     return sorted;
+  }
+
+  function getFilteredItemStats(): { total: number; value: number; avgDaily: number } {
+    const items = getFilteredSortedItems();
+    const total = items.length;
+    const value = items.reduce((sum, i) => sum + (i.price ?? 0), 0);
+    const dailyCosts = items.map(i => i.daily_cost).filter((c): c is number => c !== null);
+    const avgDaily = dailyCosts.length > 0 ? dailyCosts.reduce((a, b) => a + b, 0) / dailyCosts.length : 0;
+    return { total, value, avgDaily };
   }
 
   function formatExtraValue(val: unknown): string {
@@ -928,6 +949,8 @@
       event.preventDefault();
       if (currentScreen === "skills" && selectedSkill) {
         selectedSkill = null;
+      } else if (currentScreen === "items" && itemDetailMode) {
+        itemDetailMode = false;
       } else if (currentScreen === "items" && selectedItem) {
         selectedItem = null;
       } else if (currentScreen === "gallery" && selectedMedia) {
@@ -1579,87 +1602,61 @@
           <P5Text text="Items" fontSize={82} />
         </div>
 
-        <button type="button" class="rm-back-btn" onclick={() => {
-          if (selectedItem) {
-            selectedItem = null;
-          } else {
-            currentScreen = "main";
-          }
-        }}>
-          <img src="/ui/back.png" alt="Back" class="rm-back-img" />
-        </button>
-
         {#if itemLoading}
           <p class="state-text" style="padding: 2rem;">Loading items...</p>
         {:else if itemError}
           <p class="state-text error" style="padding: 2rem;">{itemError}</p>
-        {:else if itemData && !selectedItem}
+        {:else if itemData && !itemDetailMode}
+          {@const filteredStats = getFilteredItemStats()}
           <div class="rm-items-layout">
-            <!-- LEFT: Stats sidebar -->
+            <!-- LEFT: Category nav + stats -->
             <div class="rm-items-sidebar">
+              <nav class="rm-items-cat-nav">
+                <button
+                  type="button"
+                  class="rm-items-cat-btn"
+                  class:is-active={!itemFilterCategory}
+                  onclick={() => { itemFilterCategory = null; selectedItem = null; }}
+                >
+                  <span class="rm-items-cat-label">ALL</span>
+                  <span class="rm-items-cat-count">{itemData.stats.total_items}</span>
+                </button>
+                {#each itemData.stats.by_main_category as cat, i}
+                  <button
+                    type="button"
+                    class="rm-items-cat-btn"
+                    class:is-active={itemFilterCategory === cat.name}
+                    class:rm-items-cat-even={i % 2 === 0}
+                    onclick={() => { itemFilterCategory = itemFilterCategory === cat.name ? null : cat.name; selectedItem = null; }}
+                  >
+                    <span class="rm-items-cat-label">{cat.name}</span>
+                    <span class="rm-items-cat-count">{cat.item_count}</span>
+                  </button>
+                {/each}
+              </nav>
+
               <div class="rm-items-stat-block">
                 <div class="rm-items-stat-row">
                   <span class="rm-items-stat-label">TOTAL</span>
-                  <span class="rm-items-stat-value">{itemData.stats.total_items}</span>
+                  <span class="rm-items-stat-value">{filteredStats.total}</span>
                 </div>
                 <div class="rm-items-stat-row">
                   <span class="rm-items-stat-label">VALUE</span>
-                  <span class="rm-items-stat-value">{formatPrice(itemData.stats.total_value)}</span>
+                  <span class="rm-items-stat-value">{formatPrice(filteredStats.value)}</span>
                 </div>
                 <div class="rm-items-stat-row">
                   <span class="rm-items-stat-label">AVG/DAY</span>
-                  <span class="rm-items-stat-value rm-items-daily">{formatDailyCost(itemData.stats.average_daily_cost)}</span>
+                  <span class="rm-items-stat-value rm-items-daily">{formatDailyCost(filteredStats.avgDaily)}</span>
                 </div>
               </div>
 
-              <!-- By source -->
-              <div class="rm-items-filter-section">
-                <h4 class="rm-items-filter-title">Sources</h4>
-                <button
-                  type="button"
-                  class="rm-items-filter-btn"
-                  class:is-active={!itemFilterSource}
-                  onclick={() => { itemFilterSource = null; }}
-                >All</button>
-                {#each itemData.stats.by_source as src}
-                  <button
-                    type="button"
-                    class="rm-items-filter-btn"
-                    class:is-active={itemFilterSource === src.source_id}
-                    onclick={() => { itemFilterSource = itemFilterSource === src.source_id ? null : src.source_id; }}
-                  >
-                    {src.source_icon} {src.source_name}
-                    <span class="rm-items-filter-count">{src.item_count}</span>
-                  </button>
-                {/each}
-              </div>
-
-              <!-- By category -->
-              <div class="rm-items-filter-section">
-                <h4 class="rm-items-filter-title">Categories</h4>
-                <button
-                  type="button"
-                  class="rm-items-filter-btn"
-                  class:is-active={!itemFilterCategory}
-                  onclick={() => { itemFilterCategory = null; }}
-                >All</button>
-                {#each itemData.stats.by_main_category as cat}
-                  <button
-                    type="button"
-                    class="rm-items-filter-btn"
-                    class:is-active={itemFilterCategory === cat.name}
-                    onclick={() => { itemFilterCategory = itemFilterCategory === cat.name ? null : cat.name; }}
-                  >
-                    {cat.name}
-                    <span class="rm-items-filter-count">{cat.item_count}</span>
-                  </button>
-                {/each}
-              </div>
+              <button type="button" class="rm-items-back-btn" onclick={() => { currentScreen = "main"; }}>
+                <img src="/ui/back.png" alt="Back" class="rm-back-img" />
+              </button>
             </div>
 
-            <!-- RIGHT: Items grid -->
+            <!-- RIGHT: Sort + list + summary -->
             <div class="rm-items-content">
-              <!-- Sort bar -->
               <div class="rm-items-sort-bar">
                 {#each ITEM_SORT_OPTIONS as opt}
                   <button
@@ -1674,123 +1671,128 @@
                     {/if}
                   </button>
                 {/each}
-                <span class="rm-items-result-count">{getFilteredSortedItems().length} items</span>
+                <span class="rm-items-result-count">{filteredStats.total}</span>
               </div>
 
-              <!-- Item cards grid -->
-              <div class="rm-items-grid">
-                {#each getFilteredSortedItems() as item}
+              <div class="rm-items-list">
+                {#each getFilteredSortedItems() as item, i}
+                  {@const sortVal = getItemSortValue(item)}
                   <button
                     type="button"
-                    class="rm-item-card"
+                    class="rm-item-row"
+                    class:is-selected={selectedItem?.id === item.id}
                     onclick={() => { selectedItem = item; }}
                   >
-                    <div class="rm-item-card-header">
-                      <span class="rm-item-card-category">{item.main_category ?? '—'}</span>
-                      {#if item.sub_category}
-                        <span class="rm-item-card-subcategory">{item.sub_category}</span>
-                      {/if}
-                    </div>
-                    <div class="rm-item-card-body">
-                      <p class="rm-item-card-name">{item.name}</p>
-                      {#if item.brand}
-                        <p class="rm-item-card-brand">{item.brand}</p>
-                      {/if}
-                      <div class="rm-item-card-stats">
-                        <span class="rm-item-card-price">{formatPrice(item.price)}</span>
-                        <span class="rm-item-card-daily">{formatDailyCost(item.daily_cost)}/d</span>
-                      </div>
-                      {#if item.days_owned !== null}
-                        <p class="rm-item-card-days">{item.days_owned} days</p>
-                      {/if}
-                    </div>
+                    <span class="rm-item-row-name">{item.name}</span>
+                    {#if sortVal}
+                      <span class="rm-item-row-attr">{sortVal}</span>
+                    {/if}
                   </button>
                 {/each}
               </div>
+
+              <div class="rm-items-summary">
+                {#if selectedItem}
+                  <span class="rm-items-summary-chip">{formatPrice(selectedItem.price)}</span>
+                  {#if selectedItem.days_owned !== null}
+                    <span class="rm-items-summary-chip">{selectedItem.days_owned}天</span>
+                  {/if}
+                  <span class="rm-items-summary-chip rm-items-daily">{formatDailyCost(selectedItem.daily_cost)}/d</span>
+                  {#if selectedItem.color}
+                    <span class="rm-items-summary-chip">{selectedItem.color}</span>
+                  {/if}
+                  {#each Object.entries(selectedItem.extra).slice(0, 2) as [, val]}
+                    <span class="rm-items-summary-chip">{formatExtraValue(val)}</span>
+                  {/each}
+                  <button
+                    type="button"
+                    class="rm-items-detail-btn"
+                    onclick={() => { itemDetailMode = true; }}
+                  >详情 →</button>
+                {:else}
+                  <span class="rm-items-summary-hint">选择物品查看摘要</span>
+                {/if}
+              </div>
             </div>
           </div>
-        {:else if itemData && selectedItem}
-          <!-- Item detail view -->
-          <div class="rm-item-detail">
-            <div class="rm-item-detail-left">
-              <div class="rm-item-detail-name">
-                <P5Text text={selectedItem.name} fontSize={62} />
-              </div>
 
-              {#if selectedItem.brand}
-                <p class="rm-item-detail-brand">{selectedItem.brand}</p>
-              {/if}
+        {:else if itemData && itemDetailMode && selectedItem}
+          <!-- Item detail view (Gallery-style) -->
+          <div class="rm-gallery-detail">
+            <button type="button" class="rm-items-back-btn rm-items-back-btn--detail" onclick={() => { itemDetailMode = false; }}>
+              <img src="/ui/back.png" alt="Back" class="rm-back-img" />
+            </button>
 
-              <div class="rm-item-detail-table">
-                {#if selectedItem.price !== null}
-                  <div class="rm-item-detail-row">
-                    <span class="rm-item-detail-label">PRICE</span>
-                    <span class="rm-item-detail-value">{formatPrice(selectedItem.price)}</span>
-                  </div>
-                {/if}
-                {#if selectedItem.daily_cost !== null}
-                  <div class="rm-item-detail-row">
-                    <span class="rm-item-detail-label">DAILY</span>
-                    <span class="rm-item-detail-value rm-items-daily">{formatDailyCost(selectedItem.daily_cost)}/day</span>
-                  </div>
-                {/if}
-                {#if selectedItem.days_owned !== null}
-                  <div class="rm-item-detail-row">
-                    <span class="rm-item-detail-label">OWNED</span>
-                    <span class="rm-item-detail-value">{selectedItem.days_owned} days</span>
-                  </div>
-                {/if}
-                {#if selectedItem.purchase_date}
-                  <div class="rm-item-detail-row">
-                    <span class="rm-item-detail-label">DATE</span>
-                    <span class="rm-item-detail-value">{selectedItem.purchase_date}</span>
-                  </div>
-                {/if}
-                {#if selectedItem.purchase_channel}
-                  <div class="rm-item-detail-row">
-                    <span class="rm-item-detail-label">FROM</span>
-                    <span class="rm-item-detail-value">{selectedItem.purchase_channel}</span>
-                  </div>
-                {/if}
-                {#if selectedItem.main_category}
-                  <div class="rm-item-detail-row">
-                    <span class="rm-item-detail-label">CATEGORY</span>
-                    <span class="rm-item-detail-value">{selectedItem.main_category}{selectedItem.sub_category ? ` / ${selectedItem.sub_category}` : ''}</span>
-                  </div>
-                {/if}
-                {#if selectedItem.color}
-                  <div class="rm-item-detail-row">
-                    <span class="rm-item-detail-label">COLOR</span>
-                    <span class="rm-item-detail-value">{selectedItem.color}</span>
-                  </div>
-                {/if}
-              </div>
-            </div>
-
-            <div class="rm-item-detail-right">
-              <!-- Extra attributes -->
-              {#if Object.keys(selectedItem.extra).length > 0}
-                <h4 class="rm-item-extra-title">Attributes</h4>
-                <div class="rm-item-extra-list">
-                  {#each Object.entries(selectedItem.extra) as [key, val]}
-                    <div class="rm-item-extra-row">
-                      <span class="rm-item-extra-key">{key}</span>
-                      <span class="rm-item-extra-val">{formatExtraValue(val)}</span>
-                    </div>
-                  {/each}
-                </div>
-              {/if}
-
-              <!-- Image -->
+            <div class="rm-gallery-detail-inner">
               {#if selectedItem.image}
-                <div class="rm-item-image-wrap">
+                <div class="rm-gallery-detail-cover">
                   <img
-                    src="https://asset.localhost/{selectedItem.image}"
+                    src={convertFileSrc(selectedItem.image)}
                     alt={selectedItem.name}
-                    class="rm-item-image"
+                    class="rm-gallery-detail-img"
                   />
                 </div>
               {/if}
+
+              <div class="rm-gallery-detail-info">
+                <h2 class="rm-gallery-detail-title">{selectedItem.name}</h2>
+                {#if selectedItem.brand}
+                  <p class="rm-gallery-detail-original">{selectedItem.brand}</p>
+                {/if}
+
+                <div class="rm-gallery-detail-meta">
+                  {#if selectedItem.price !== null}
+                    <div class="rm-gallery-detail-row">
+                      <span class="rm-gallery-detail-label">PRICE</span>
+                      <span class="rm-gallery-detail-value">{formatPrice(selectedItem.price)}</span>
+                    </div>
+                  {/if}
+                  {#if selectedItem.daily_cost !== null}
+                    <div class="rm-gallery-detail-row">
+                      <span class="rm-gallery-detail-label">DAILY</span>
+                      <span class="rm-gallery-detail-value" style="color: var(--rm-red)">{formatDailyCost(selectedItem.daily_cost)}/day</span>
+                    </div>
+                  {/if}
+                  {#if selectedItem.days_owned !== null}
+                    <div class="rm-gallery-detail-row">
+                      <span class="rm-gallery-detail-label">OWNED</span>
+                      <span class="rm-gallery-detail-value">{selectedItem.days_owned} days</span>
+                    </div>
+                  {/if}
+                  {#if selectedItem.purchase_date}
+                    <div class="rm-gallery-detail-row">
+                      <span class="rm-gallery-detail-label">DATE</span>
+                      <span class="rm-gallery-detail-value">{selectedItem.purchase_date}</span>
+                    </div>
+                  {/if}
+                  {#if selectedItem.purchase_channel}
+                    <div class="rm-gallery-detail-row">
+                      <span class="rm-gallery-detail-label">FROM</span>
+                      <span class="rm-gallery-detail-value">{selectedItem.purchase_channel}</span>
+                    </div>
+                  {/if}
+                  {#if selectedItem.main_category}
+                    <div class="rm-gallery-detail-row">
+                      <span class="rm-gallery-detail-label">CATEGORY</span>
+                      <span class="rm-gallery-detail-value">{selectedItem.main_category}{selectedItem.sub_category ? ` / ${selectedItem.sub_category}` : ''}</span>
+                    </div>
+                  {/if}
+                  {#if selectedItem.color}
+                    <div class="rm-gallery-detail-row">
+                      <span class="rm-gallery-detail-label">COLOR</span>
+                      <span class="rm-gallery-detail-value">{selectedItem.color}</span>
+                    </div>
+                  {/if}
+                </div>
+
+                {#if Object.keys(selectedItem.extra).length > 0}
+                  <div class="rm-gallery-detail-tags">
+                    {#each Object.entries(selectedItem.extra) as [key, val]}
+                      <span class="rm-gallery-detail-tag">{key}: {formatExtraValue(val)}</span>
+                    {/each}
+                  </div>
+                {/if}
+              </div>
             </div>
           </div>
         {:else}
@@ -2848,46 +2850,107 @@
   }
 
   .rm-items-layout {
-    flex: 1;
     display: grid;
-    grid-template-columns: 1fr 2fr;
+    grid-template-columns: clamp(10rem, 20vw, 18rem) 1fr;
     overflow: hidden;
-    height: 100%;
+    height: 75vh;
+    margin: auto 0;
   }
 
-  /* ── Left sidebar ── */
+  /* ── Left sidebar: category nav + stats ── */
   .rm-items-sidebar {
-    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
     height: 100%;
-    padding: clamp(1.5rem, 2.5vh, 4rem) clamp(1.2rem, 2vw, 3rem) clamp(6rem, 10vh, 10rem) clamp(1.5rem, 2.5vw, 4rem);
+    padding: clamp(1rem, 1.5vh, 2rem) clamp(1rem, 1.5vw, 2.5rem) clamp(1rem, 1.5vh, 2rem);
     box-sizing: border-box;
+    overflow-y: auto;
+  }
+
+  .rm-items-cat-nav {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(0.3rem, 0.4vw, 0.6rem);
+    margin-bottom: auto;
+  }
+
+  .rm-items-cat-btn {
+    display: flex;
+    align-items: center;
+    gap: clamp(0.3rem, 0.4vw, 0.6rem);
+    width: fit-content;
+    border: none;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--rm-white);
+    cursor: pointer;
+    padding: clamp(0.3rem, 0.4vw, 0.6rem) clamp(0.8rem, 1vw, 1.6rem);
+    font-family: inherit;
+    font-size: clamp(0.65rem, 0.6vw, 1rem);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    clip-path: polygon(4% 0%, 100% 0%, 96% 100%, 0% 100%);
+    transform: skewX(-5deg);
+    opacity: 0.45;
+    transition: opacity 140ms ease, background 140ms ease, color 140ms ease;
+  }
+
+  /* Snake layout: even items align right */
+  .rm-items-cat-btn.rm-items-cat-even {
+    align-self: flex-end;
+  }
+
+  .rm-items-cat-btn:hover {
+    opacity: 0.75;
+    background: rgba(255, 255, 255, 0.12);
+  }
+
+  .rm-items-cat-btn.is-active {
+    opacity: 1;
+    background: var(--rm-red);
+    color: var(--rm-white);
+  }
+
+  .rm-items-cat-label {
+    transform: skewX(5deg);
+  }
+
+  .rm-items-cat-count {
+    transform: skewX(5deg);
+    font-size: 0.75em;
+    opacity: 0.55;
+  }
+
+  .rm-items-cat-btn.is-active .rm-items-cat-count {
+    opacity: 0.8;
   }
 
   .rm-items-stat-block {
     display: flex;
     flex-direction: column;
-    gap: clamp(0.2rem, 0.3vw, 0.5rem);
-    margin-bottom: clamp(1.5rem, 2vw, 3rem);
+    gap: clamp(0.15rem, 0.2vw, 0.4rem);
+    margin-top: clamp(1.5rem, 2.5vh, 3rem);
+    padding-top: clamp(1rem, 1.5vh, 2rem);
+    border-top: 2px solid rgba(255, 255, 255, 0.08);
   }
 
   .rm-items-stat-row {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
-    padding: clamp(0.15rem, 0.2vw, 0.35rem) 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding: clamp(0.1rem, 0.15vw, 0.25rem) 0;
   }
 
   .rm-items-stat-label {
-    font-size: clamp(0.6rem, 0.55vw, 0.95rem);
+    font-size: clamp(0.55rem, 0.5vw, 0.85rem);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.1em;
-    color: rgba(255, 255, 255, 0.5);
+    color: rgba(255, 255, 255, 0.4);
   }
 
   .rm-items-stat-value {
-    font-size: clamp(0.75rem, 0.7vw, 1.2rem);
+    font-size: clamp(0.7rem, 0.65vw, 1.1rem);
     font-weight: 800;
     letter-spacing: 0.04em;
   }
@@ -2895,6 +2958,197 @@
   .rm-items-daily {
     color: var(--rm-red);
   }
+
+  .rm-items-back-btn {
+    display: block;
+    margin-top: clamp(1rem, 1.5vh, 2rem);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    width: fit-content;
+  }
+
+  .rm-items-back-btn--detail {
+    position: fixed;
+    bottom: clamp(1.5rem, 2.5vh, 4rem);
+    left: clamp(1.5rem, 2.5vw, 4rem);
+    z-index: 10;
+  }
+
+  /* ── Right content: sort + list + summary ── */
+  .rm-items-content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: clamp(1rem, 1.5vh, 2rem) clamp(6rem, 10vw, 16rem) clamp(1rem, 1.5vh, 2rem) clamp(1.5rem, 2vw, 3rem);
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+
+  .rm-items-sort-bar {
+    display: flex;
+    align-items: center;
+    gap: clamp(0.3rem, 0.4vw, 0.6rem);
+    margin-bottom: clamp(0.6rem, 0.8vw, 1.2rem);
+    flex-wrap: wrap;
+    flex-shrink: 0;
+  }
+
+  .rm-items-sort-btn {
+    border: none;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--rm-white);
+    cursor: pointer;
+    padding: clamp(0.2rem, 0.25vw, 0.4rem) clamp(0.5rem, 0.6vw, 1rem);
+    font-family: inherit;
+    font-size: clamp(0.58rem, 0.52vw, 0.9rem);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    opacity: 0.45;
+    transform: skewX(-3deg);
+    transition: opacity 140ms ease, background 140ms ease;
+  }
+
+  .rm-items-sort-btn:hover {
+    opacity: 0.75;
+  }
+
+  .rm-items-sort-btn.is-active {
+    opacity: 1;
+    background: var(--rm-red);
+  }
+
+  .rm-items-sort-arrow {
+    margin-left: 0.2em;
+  }
+
+  .rm-items-result-count {
+    margin-left: auto;
+    font-size: clamp(0.55rem, 0.5vw, 0.85rem);
+    font-weight: 800;
+    color: rgba(255, 255, 255, 0.35);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  /* ── Item list (parallelogram) ── */
+  .rm-items-list {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: clamp(0.1rem, 0.15vw, 0.25rem);
+    transform: skewX(-4deg);
+    border: 2px solid var(--rm-white);
+    padding: clamp(0.3rem, 0.4vw, 0.6rem);
+    background: var(--rm-black);
+  }
+
+  .rm-item-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border: none;
+    background: transparent;
+    color: var(--rm-white);
+    cursor: pointer;
+    padding: clamp(0.4rem, 0.55vw, 0.9rem) clamp(1rem, 1.2vw, 2rem);
+    font-family: inherit;
+    font-size: clamp(1.1rem, 1.1vw, 1.8rem);
+    font-weight: 800;
+    text-align: left;
+    transition: background 140ms ease;
+    flex-shrink: 0;
+    transform: skewX(4deg);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .rm-item-row:last-child {
+    border-bottom: none;
+  }
+
+  .rm-item-row:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .rm-item-row.is-selected {
+    background: var(--rm-red);
+  }
+
+  .rm-item-row-name {
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .rm-item-row-attr {
+    flex-shrink: 0;
+    margin-left: clamp(0.8rem, 1vw, 1.6rem);
+    font-weight: 700;
+    opacity: 0.6;
+    white-space: nowrap;
+    font-size: 0.85em;
+  }
+
+  .rm-item-row.is-selected .rm-item-row-attr {
+    opacity: 0.9;
+  }
+
+  /* ── Bottom summary bar ── */
+  .rm-items-summary {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: clamp(0.4rem, 0.5vw, 0.8rem);
+    padding: clamp(0.6rem, 0.8vw, 1.2rem) clamp(0.8rem, 1vw, 1.6rem);
+    border-top: 2px solid rgba(255, 255, 255, 0.1);
+    min-height: clamp(2rem, 3vw, 3.5rem);
+    flex-wrap: wrap;
+  }
+
+  .rm-items-summary-chip {
+    font-size: clamp(0.6rem, 0.55vw, 0.95rem);
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    padding: clamp(0.15rem, 0.2vw, 0.3rem) clamp(0.4rem, 0.5vw, 0.8rem);
+    background: rgba(255, 255, 255, 0.08);
+    clip-path: polygon(3% 0%, 100% 0%, 97% 100%, 0% 100%);
+  }
+
+  .rm-items-summary-hint {
+    font-size: clamp(0.6rem, 0.55vw, 0.95rem);
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.25);
+    letter-spacing: 0.04em;
+  }
+
+  .rm-items-detail-btn {
+    margin-left: auto;
+    border: none;
+    background: var(--rm-red);
+    color: var(--rm-white);
+    cursor: pointer;
+    padding: clamp(0.3rem, 0.35vw, 0.5rem) clamp(0.8rem, 1vw, 1.6rem);
+    font-family: inherit;
+    font-size: clamp(0.6rem, 0.55vw, 0.95rem);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    clip-path: polygon(4% 0%, 100% 0%, 96% 100%, 0% 100%);
+    transform: skewX(-3deg);
+    transition: opacity 140ms ease;
+  }
+
+  .rm-items-detail-btn:hover {
+    opacity: 0.85;
+  }
+
+  /* ── Shared filter styles (used by Gallery) ── */
 
   .rm-items-filter-section {
     margin-bottom: clamp(1rem, 1.5vw, 2.5rem);
@@ -2933,280 +3187,6 @@
 
   .rm-items-filter-btn.is-active {
     opacity: 1;
-  }
-
-  .rm-items-filter-count {
-    font-size: clamp(0.55rem, 0.5vw, 0.85rem);
-    opacity: 0.5;
-    margin-left: 0.3em;
-  }
-
-  /* ── Right content ── */
-  .rm-items-content {
-    overflow-y: auto;
-    height: 100%;
-    padding: clamp(1.5rem, 2.5vh, 4rem) clamp(8rem, 14vw, 20rem) clamp(6rem, 10vh, 10rem) clamp(1.5rem, 2.5vw, 4rem);
-    box-sizing: border-box;
-  }
-
-  .rm-items-sort-bar {
-    display: flex;
-    align-items: center;
-    gap: clamp(0.3rem, 0.4vw, 0.6rem);
-    margin-bottom: clamp(1rem, 1.5vw, 2.5rem);
-    flex-wrap: wrap;
-  }
-
-  .rm-items-sort-btn {
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    background: transparent;
-    color: var(--rm-white);
-    cursor: pointer;
-    padding: clamp(0.2rem, 0.25vw, 0.4rem) clamp(0.5rem, 0.6vw, 1rem);
-    font-family: inherit;
-    font-size: clamp(0.6rem, 0.55vw, 0.95rem);
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    opacity: 0.5;
-    transition: opacity 140ms ease, background 140ms ease;
-  }
-
-  .rm-items-sort-btn:hover {
-    opacity: 0.8;
-  }
-
-  .rm-items-sort-btn.is-active {
-    opacity: 1;
-    background: var(--rm-red);
-    border-color: var(--rm-red);
-  }
-
-  .rm-items-sort-arrow {
-    margin-left: 0.2em;
-  }
-
-  .rm-items-result-count {
-    margin-left: auto;
-    font-size: clamp(0.6rem, 0.55vw, 0.95rem);
-    font-weight: 700;
-    color: rgba(255, 255, 255, 0.4);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-  }
-
-  .rm-items-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(max(200px, 13vw), 1fr));
-    gap: clamp(0.6rem, 0.6vw, 1.2rem);
-  }
-
-  .rm-item-card {
-    background: var(--rm-black);
-    border: none;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    cursor: pointer;
-    transform: rotate(-0.5deg);
-    clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 3% 100%);
-    transition: transform 120ms ease;
-    text-align: left;
-    font-family: inherit;
-    color: var(--rm-white);
-  }
-
-  .rm-item-card:nth-child(even) {
-    transform: rotate(0.5deg);
-  }
-
-  .rm-item-card:hover {
-    transform: rotate(0deg) scale(1.03);
-    z-index: 2;
-  }
-
-  .rm-item-card-header {
-    display: flex;
-    align-items: center;
-    gap: clamp(0.3rem, 0.4vw, 0.6rem);
-    background: var(--rm-white);
-    color: var(--rm-black);
-    padding: clamp(0.25rem, 0.35vw, 0.6rem) clamp(0.7rem, 0.9vw, 1.6rem);
-    margin: clamp(0.15rem, 0.2vw, 0.35rem) clamp(0.15rem, 0.2vw, 0.35rem) 0;
-    clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 1.5% 100%);
-  }
-
-  .rm-item-card-category {
-    font-size: clamp(0.6rem, 0.55vw, 0.95rem);
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-  }
-
-  .rm-item-card-subcategory {
-    font-size: clamp(0.5rem, 0.45vw, 0.8rem);
-    font-weight: 600;
-    opacity: 0.5;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-  }
-
-  .rm-item-card-body {
-    padding: clamp(0.3rem, 0.4vw, 0.7rem) clamp(0.7rem, 0.9vw, 1.6rem) clamp(0.4rem, 0.5vw, 0.8rem) clamp(1rem, 1.2vw, 2rem);
-  }
-
-  .rm-item-card-name {
-    margin: 0;
-    font-size: clamp(0.75rem, 0.7vw, 1.2rem);
-    font-weight: 800;
-    line-height: 1.3;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-  }
-
-  .rm-item-card-brand {
-    margin: clamp(0.1rem, 0.15vw, 0.2rem) 0 0;
-    font-size: clamp(0.55rem, 0.5vw, 0.85rem);
-    color: rgba(255, 255, 255, 0.45);
-    font-weight: 600;
-  }
-
-  .rm-item-card-stats {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    margin-top: clamp(0.3rem, 0.4vw, 0.6rem);
-  }
-
-  .rm-item-card-price {
-    font-size: clamp(0.85rem, 0.8vw, 1.4rem);
-    font-weight: 800;
-  }
-
-  .rm-item-card-daily {
-    font-size: clamp(0.6rem, 0.55vw, 0.95rem);
-    font-weight: 700;
-    color: var(--rm-red);
-  }
-
-  .rm-item-card-days {
-    margin: clamp(0.1rem, 0.15vw, 0.2rem) 0 0;
-    font-size: clamp(0.55rem, 0.5vw, 0.85rem);
-    color: rgba(255, 255, 255, 0.35);
-    font-weight: 600;
-  }
-
-  /* ── Item detail ── */
-
-  .rm-item-detail {
-    flex: 1;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: clamp(1.5rem, 2vw, 3rem);
-    overflow: hidden;
-    height: 100%;
-    padding: clamp(1.5rem, 2.5vh, 4rem) clamp(2rem, 3vw, 5rem) clamp(6rem, 10vh, 10rem);
-    box-sizing: border-box;
-  }
-
-  .rm-item-detail-left {
-    overflow-y: auto;
-    padding: clamp(1rem, 2vw, 3rem);
-  }
-
-  .rm-item-detail-name {
-    margin-bottom: clamp(0.5rem, 0.8vw, 1.5rem);
-  }
-
-  .rm-item-detail-brand {
-    margin: 0 0 clamp(1rem, 1.5vw, 2.5rem);
-    font-size: clamp(0.7rem, 0.65vw, 1.1rem);
-    color: rgba(255, 255, 255, 0.5);
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-  }
-
-  .rm-item-detail-table {
-    display: flex;
-    flex-direction: column;
-    gap: clamp(0.2rem, 0.3vw, 0.5rem);
-  }
-
-  .rm-item-detail-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    padding: clamp(0.15rem, 0.2vw, 0.35rem) 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  }
-
-  .rm-item-detail-label {
-    font-size: clamp(0.6rem, 0.55vw, 0.95rem);
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: rgba(255, 255, 255, 0.5);
-  }
-
-  .rm-item-detail-value {
-    font-size: clamp(0.75rem, 0.7vw, 1.2rem);
-    font-weight: 800;
-    letter-spacing: 0.04em;
-  }
-
-  .rm-item-detail-right {
-    overflow-y: auto;
-    padding: clamp(1rem, 2vw, 3rem);
-  }
-
-  .rm-item-extra-title {
-    margin: 0 0 clamp(0.4rem, 0.5vw, 0.9rem);
-    font-size: clamp(0.72rem, 0.62vw, 1.3rem);
-    color: var(--rm-red);
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    border-left: 0.2rem solid var(--rm-red);
-    padding-left: clamp(0.4rem, 0.5vw, 1rem);
-  }
-
-  .rm-item-extra-list {
-    display: flex;
-    flex-direction: column;
-    gap: clamp(0.15rem, 0.2vw, 0.35rem);
-    margin-bottom: clamp(1.5rem, 2vw, 3rem);
-  }
-
-  .rm-item-extra-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    padding: clamp(0.12rem, 0.15vw, 0.3rem) 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  }
-
-  .rm-item-extra-key {
-    font-size: clamp(0.6rem, 0.55vw, 0.95rem);
-    font-weight: 700;
-    color: rgba(255, 255, 255, 0.5);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-  }
-
-  .rm-item-extra-val {
-    font-size: clamp(0.7rem, 0.65vw, 1.1rem);
-    font-weight: 700;
-  }
-
-  .rm-item-image-wrap {
-    margin-top: clamp(1rem, 1.5vw, 2.5rem);
-  }
-
-  .rm-item-image {
-    max-width: 100%;
-    max-height: 50vh;
-    display: block;
-    clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 3% 100%);
   }
 
   /* ── Gallery ── */
