@@ -38,3 +38,7 @@ export type GalleryData = {
     items: MediaItem[];
     stats: GalleryStats;
 };
+
+export type GallerySortKey = 'rating' | 'date' | 'playtime';
+export type GallerySortOrder = 'asc' | 'desc';
+export type GalleryCategory = 'anime' | 'game' | 'tv' | 'movie' | 'book';
