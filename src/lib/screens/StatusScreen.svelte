@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
   import P5Text from "$lib/P5Text.svelte";
+  import RadarChart from "$lib/components/RadarChart.svelte";
   import type { StatusData, StatusMetric, MetricGroup } from "$lib/types/status";
   import { formatGroupName } from "$lib/utils/format";
 
@@ -10,8 +11,18 @@
   let loading = $state(false);
   let errorMessage = $state<string | null>(null);
   let statusData = $state<StatusData | null>(initialStatusData);
+  let selectedDimension = $state<string | null>("chest");
 
-  const STRENGTH_SUBGROUP_ORDER = ["chest", "back", "shoulders", "biceps", "triceps", "legs", "core"];
+  const RADAR_DIMENSIONS: { key: string; label: string; parts: string[] }[] = [
+    { key: "chest", label: "Chest", parts: ["chest", "front_delts"] },
+    { key: "back", label: "Back", parts: ["back", "mid_back", "upper_back", "lower_back", "lats", "traps", "rear_delts"] },
+    { key: "shoulders", label: "Shoulders", parts: ["shoulders", "side_delts", "front_delts", "rear_delts"] },
+    { key: "biceps", label: "Biceps", parts: ["biceps", "brachialis", "forearms"] },
+    { key: "triceps", label: "Triceps", parts: ["triceps"] },
+    { key: "legs", label: "Legs", parts: ["quads", "glutes", "hamstrings", "adductors", "abductors", "glute_medius", "calves", "soleus"] },
+    { key: "core", label: "Core", parts: ["abs", "core", "obliques", "hip_flexors"] },
+    { key: "cardio", label: "Cardio", parts: ["cardio"] },
+  ];
 
   function formatValue(value: number): string {
     return Number.isInteger(value) ? String(value) : value.toFixed(1).replace(/\.0$/, "");
@@ -107,7 +118,7 @@
         unit: "",
         value_type: "number",
         value: statusData.bmi,
-        body_parts: [],
+        body_parts: {},
       };
 
       const existing = groups.find((group) => group.name === "body");
@@ -121,36 +132,95 @@
     return groups;
   }
 
-  function getStrengthSubGroups(): { subGroup: string; metrics: StatusMetric[] }[] {
-    if (!statusData) {
-      return [];
+  function getPerformanceMetrics(): StatusMetric[] {
+    if (!statusData) return [];
+    return statusData.metrics.filter(
+      (m) => m.category === "performance" && m.value !== null && m.value !== undefined
+    );
+  }
+
+  function computeMetricRatio(metric: StatusMetric): number | null {
+    if (metric.value === null || metric.value === undefined) return null;
+    if (metric.target_max !== undefined && metric.target_max !== null) {
+      return metric.value / metric.target_max;
     }
-
-    const bySubGroup = new Map<string, StatusMetric[]>();
-
-    for (const metric of statusData.metrics) {
-      if (metric.group !== "strength") continue;
-      if (metric.value === null || metric.value === undefined) continue;
-
-      const sg = metric.sub_group ?? "other";
-      const list = bySubGroup.get(sg) ?? [];
-      list.push(metric);
-      bySubGroup.set(sg, list);
+    if (metric.target_min !== undefined && metric.target_min !== null) {
+      return metric.target_min / metric.value;
     }
+    return null;
+  }
 
-    const result: { subGroup: string; metrics: StatusMetric[] }[] = [];
-    for (const sg of STRENGTH_SUBGROUP_ORDER) {
-      const metrics = bySubGroup.get(sg);
-      if (metrics && metrics.length > 0) {
-        result.push({ subGroup: sg, metrics });
-        bySubGroup.delete(sg);
+  function computeDimensionLevels(): { key: string; label: string; level: number; score: number }[] {
+    const perfMetrics = getPerformanceMetrics();
+
+    return RADAR_DIMENSIONS.map((dim) => {
+      let totalWeightedScore = 0;
+      let totalWeight = 0;
+
+      for (const metric of perfMetrics) {
+        const ratio = computeMetricRatio(metric);
+        if (ratio === null) continue;
+
+        let maxWeight = 0;
+        for (const part of dim.parts) {
+          const w = metric.body_parts[part];
+          if (w !== undefined && w > maxWeight) {
+            maxWeight = w;
+          }
+        }
+
+        if (maxWeight > 0) {
+          totalWeightedScore += ratio * maxWeight;
+          totalWeight += maxWeight;
+        }
+      }
+
+      if (totalWeight === 0) {
+        return { key: dim.key, label: dim.label, level: 0, score: 0 };
+      }
+
+      const score = Math.min(totalWeightedScore / totalWeight, 1);
+      let level: number;
+      if (score >= 0.8) level = 5;
+      else if (score >= 0.6) level = 4;
+      else if (score >= 0.4) level = 3;
+      else if (score >= 0.2) level = 2;
+      else level = 1;
+
+      return { key: dim.key, label: dim.label, level, score };
+    });
+  }
+
+  function getDimensionMetrics(dimKey: string): { primary: StatusMetric[]; secondary: StatusMetric[] } {
+    const perfMetrics = getPerformanceMetrics();
+    const dim = RADAR_DIMENSIONS.find((d) => d.key === dimKey);
+    if (!dim) return { primary: [], secondary: [] };
+
+    const primary: StatusMetric[] = [];
+    const secondary: StatusMetric[] = [];
+
+    for (const metric of perfMetrics) {
+      // Check if metric has any body_part in this dimension
+      const hasBodyPartMatch = dim.parts.some((part) => metric.body_parts[part] !== undefined);
+      if (!hasBodyPartMatch) continue;
+
+      // Primary: sub_group matches dimension key, or group=endurance and dimension=cardio
+      const isPrimary =
+        metric.sub_group === dimKey ||
+        (metric.group === "endurance" && dimKey === "cardio");
+
+      if (isPrimary) {
+        primary.push(metric);
+      } else {
+        secondary.push(metric);
       }
     }
-    for (const [sg, metrics] of bySubGroup.entries()) {
-      result.push({ subGroup: sg, metrics });
-    }
 
-    return result;
+    return { primary, secondary };
+  }
+
+  function handleDimensionSelect(key: string) {
+    selectedDimension = key;
   }
 
   async function loadStatusData() {
@@ -228,43 +298,45 @@
         {/if}
       </div>
 
-      <!-- RIGHT COLUMN: Performance -->
+      <!-- RIGHT COLUMN: Performance Radar -->
       <div class="rm-col-performance">
-        {#if getStrengthSubGroups().length > 0}
+        <div class="rm-radar-wrap">
+          <RadarChart
+            dimensions={computeDimensionLevels()}
+            bind:selectedKey={selectedDimension}
+            onSelect={handleDimensionSelect}
+          />
+        </div>
+
+        {#if selectedDimension}
+          {@const dimMetrics = getDimensionMetrics(selectedDimension)}
           <div class="rm-group-block">
-            <P5Text text="Strength" fontSize={62} />
-            {#each getStrengthSubGroups() as sg}
-              <div class="rm-subgroup-block">
-                <h5 class="rm-subgroup-title">{formatGroupName(sg.subGroup)}</h5>
-                <div class="rm-metric-grid">
-                  {#each sg.metrics as metric}
-                    <article class="rm-metric-card">
-                      <p class="rm-metric-name">{metric.name}</p>
-                      <p class="rm-metric-value">{formatMetricValue(metric)}</p>
-                    </article>
-                  {/each}
-                </div>
+            <P5Text text={formatGroupName(selectedDimension)} fontSize={62} />
+            {#if dimMetrics.primary.length > 0}
+              <div class="rm-metric-grid">
+                {#each dimMetrics.primary as metric}
+                  <article class="rm-metric-card">
+                    <p class="rm-metric-name">{metric.name}</p>
+                    <p class="rm-metric-value">{formatMetricValue(metric)}</p>
+                  </article>
+                {/each}
               </div>
-            {/each}
+            {/if}
+            {#if dimMetrics.secondary.length > 0}
+              <div class="rm-metric-grid rm-metric-grid--secondary">
+                {#each dimMetrics.secondary as metric}
+                  <article class="rm-metric-card rm-metric-card--secondary">
+                    <p class="rm-metric-name">{metric.name}</p>
+                    <p class="rm-metric-value">{formatMetricValue(metric)}</p>
+                  </article>
+                {/each}
+              </div>
+            {/if}
+            {#if dimMetrics.primary.length === 0 && dimMetrics.secondary.length === 0}
+              <p class="state-text">No metrics for this dimension.</p>
+            {/if}
           </div>
         {/if}
-
-        {#each getCategoryGroups("performance").filter(g => g.name !== "strength") as group}
-          <div class="rm-group-block">
-            <P5Text text={formatGroupName(group.name)} fontSize={62} />
-            <div
-              class="rm-metric-grid"
-              class:rm-metric-grid--endurance={group.name === "endurance"}
-            >
-              {#each group.metrics as metric}
-                <article class="rm-metric-card">
-                  <p class="rm-metric-name">{metric.name}</p>
-                  <p class="rm-metric-value">{formatMetricValue(metric)}</p>
-                </article>
-              {/each}
-            </div>
-          </div>
-        {/each}
       </div>
     {:else}
       <p class="state-text">Status data is not available yet.</p>
@@ -322,8 +394,12 @@
     gap: clamp(0.4rem, 0.5vw, 1rem);
   }
 
-  .rm-metric-grid--endurance {
-    grid-template-columns: repeat(auto-fill, minmax(max(180px, 12vw), 1fr));
+  .rm-radar-wrap {
+    padding: clamp(0.5rem, 1vh, 1rem) 0;
+  }
+
+  .rm-metric-grid--secondary {
+    margin-top: clamp(0.5rem, 0.5vw, 1rem);
   }
 
   .rm-metric-card {
@@ -363,18 +439,8 @@
     line-height: 1.2;
   }
 
-  .rm-subgroup-block {
-    margin-top: 0.25rem;
-  }
-
-  .rm-subgroup-title {
-    margin: clamp(0.75rem, 0.9vw, 1.75rem) 0 clamp(0.3rem, 0.4vw, 0.8rem);
-    font-size: clamp(0.72rem, 0.62vw, 1.3rem);
-    color: var(--rm-red);
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    border-left: 0.2rem solid var(--rm-red);
-    padding-left: clamp(0.4rem, 0.5vw, 1rem);
+  .rm-metric-card--secondary {
+    opacity: 0.55;
   }
 
   @media (max-width: 980px) {

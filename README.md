@@ -233,7 +233,7 @@ npm run tauri dev
 - [x] 设计媒体数据的 JSON Schema（书籍、电影、游戏）
 - [x] 实现 Gallery 封面墙展示
 - [x] 实现数据筛选和排序
-- [ ] 创建外部数据导入脚本
+- [x] 创建外部数据导入脚本
   - [x] Bangumi 导入脚本
   - [x] Steam 导入脚本
   - [x] 豆瓣导入脚本

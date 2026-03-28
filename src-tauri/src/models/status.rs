@@ -19,7 +19,7 @@ pub struct MetricDefinition {
     pub value_type: String,
     pub target_max: Option<f64>,
     pub target_min: Option<f64>,
-    pub body_parts: Option<Vec<String>>,
+    pub body_parts: Option<HashMap<String, f64>>,
     pub description: Option<String>,
 }
 
@@ -47,7 +47,7 @@ pub struct StatusMetric {
     pub value: Option<f64>,
     pub target_max: Option<f64>,
     pub target_min: Option<f64>,
-    pub body_parts: Vec<String>,
+    pub body_parts: HashMap<String, f64>,
     pub description: Option<String>,
 }
 

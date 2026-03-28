@@ -39,7 +39,7 @@
 - `value_type` (`string`, 必填)：当前建议 `number`
 - `target_max` (`number`, 可选)：目标上限，仅建议用于 `performance` 指标
 - `target_min` (`number`, 可选)：目标下限，仅建议用于 `performance` 指标
-- `body_parts` (`string[]`, 可选)：相关部位标签
+- `body_parts` (`Record<string, number>`, 可选)：相关部位及权重映射，key 为部位标签，value 为权重 0~1
 - `description` (`string`, 可选)：简短说明
 
 约定：
@@ -60,7 +60,6 @@
       "group": "body",
       "unit": "kg",
       "value_type": "number",
-      "body_parts": [],
       "description": "Current body weight"
     },
     {
@@ -71,7 +70,7 @@
       "unit": "kg",
       "value_type": "number",
       "target_max": 90,
-      "body_parts": ["lats", "biceps"],
+      "body_parts": { "lats": 1.0, "biceps": 0.5 },
       "description": "Best 5-rep max on lat pulldown"
     }
   ]

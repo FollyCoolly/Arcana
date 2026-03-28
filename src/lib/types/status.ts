@@ -9,7 +9,7 @@ export type StatusMetric = {
     value: number | null;
     target_max?: number;
     target_min?: number;
-    body_parts: string[];
+    body_parts: Record<string, number>;
     description?: string;
 };
 
