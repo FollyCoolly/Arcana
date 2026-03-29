@@ -26,7 +26,6 @@
 | `name` | string | 是 | 显示名称 |
 | `description` | string | 是 | 成就描述 |
 | `difficulty` | enum | 是 | 难度等级 |
-| `category` | string | 是 | 包内分组名称 |
 | `tags` | string[] | 否 | 标签，用于筛选 |
 | `prerequisites` | string[] | 否 | 前置成就 ID 列表（同包内），AND 逻辑 |
 
@@ -56,7 +55,6 @@
       "name": "Hello, World!",
       "description": "Write your first program in any language.",
       "difficulty": "beginner",
-      "category": "fundamentals",
       "tags": ["coding", "milestone"],
       "prerequisites": []
     },
@@ -65,7 +63,6 @@
       "name": "First Pull Request",
       "description": "Have a pull request merged into an open-source project.",
       "difficulty": "intermediate",
-      "category": "open_source",
       "tags": ["git", "collaboration"],
       "prerequisites": ["programmer::hello_world"]
     }
@@ -122,7 +119,7 @@
 
 1. 成就 ID 必须以 `<manifest.id>::` 开头
 2. `prerequisites` 只能引用同包内的有效成就 ID
-3. `prerequisites` 关系必须构成 DAG（无环）
+3. `prerequisites` 关系必须构成 DAG（无环）——加载时通过 DFS 环检测强制执行
 4. 同包内成就 ID 不可重复
-5. `difficulty` 必须是枚举值之一
+5. `difficulty` 必须是枚举值之一（由 serde 反序列化时强制校验）
 6. `achieved_at` 若存在，格式必须为 `YYYY`、`YYYY-MM` 或 `YYYY-MM-DD` 之一

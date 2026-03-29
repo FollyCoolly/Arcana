@@ -2,8 +2,7 @@
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
   import P5Text from "$lib/P5Text.svelte";
-  import type { AchievementData, Achievement, PackAchievements } from "$lib/types/achievement";
-  import { formatGroupName } from "$lib/utils/format";
+  import type { AchievementData, PackAchievements } from "$lib/types/achievement";
 
   let { onBack, achievementData: externalData = null, onAchievementDataLoaded }: {
     onBack: () => void;
@@ -15,26 +14,6 @@
   let achievementError = $state<string | null>(null);
   let achievementData = $state<AchievementData | null>(externalData);
   let selectedPackIndex = $state(0);
-
-  type CategoryGroup = {
-    category: string;
-    achievements: Achievement[];
-  };
-
-  function getPackCategories(pack: PackAchievements): CategoryGroup[] {
-    const groups = new Map<string, Achievement[]>();
-
-    for (const achievement of pack.achievements) {
-      const list = groups.get(achievement.category) ?? [];
-      list.push(achievement);
-      groups.set(achievement.category, list);
-    }
-
-    return Array.from(groups.entries()).map(([category, achievements]) => ({
-      category,
-      achievements,
-    }));
-  }
 
   function getDifficultyLabel(difficulty: string): string {
     return difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
@@ -135,37 +114,32 @@
             <P5Text text={pack.pack_name} fontSize={52} />
             <span class="rm-ach-stats">{stats.unlocked} / {stats.total}</span>
           </div>
-          {#each getPackCategories(pack) as group}
-            <div class="rm-ach-category-block">
-              <h4 class="rm-ach-category-title">{formatGroupName(group.category)}</h4>
-              <div class="rm-achievement-grid">
-                {#each group.achievements as achievement}
-                  {@const unlocked = achievementData.progress[achievement.id]}
-                  <article class="rm-achievement-card" class:is-unlocked={!!unlocked}>
-                    <div class="rm-achievement-card-header">
-                      <span class="rm-achievement-status-icon">{unlocked ? "✓" : "○"}</span>
-                      <span class="rm-achievement-name">{achievement.name}</span>
-                      <span class="rm-difficulty rm-difficulty--{achievement.difficulty}">{getDifficultyLabel(achievement.difficulty)}</span>
-                    </div>
-                    <p class="rm-achievement-desc">{achievement.description}</p>
-                    {#if unlocked?.achieved_at}
-                      <p class="rm-achievement-date">{unlocked.achieved_at}</p>
-                    {/if}
-                    {#if unlocked?.note}
-                      <p class="rm-achievement-note">{unlocked.note}</p>
-                    {/if}
-                    {#if achievement.prerequisites.length > 0}
-                      <div class="rm-achievement-prereqs">
-                        {#each achievement.prerequisites as prereq}
-                          <span class="rm-prereq-tag">{prereq.split("::")[1]?.replace(/_/g, " ") ?? prereq}</span>
-                        {/each}
-                      </div>
-                    {/if}
-                  </article>
-                {/each}
-              </div>
-            </div>
-          {/each}
+          <div class="rm-achievement-grid">
+            {#each pack.achievements as achievement}
+              {@const unlocked = achievementData.progress[achievement.id]}
+              <article class="rm-achievement-card" class:is-unlocked={!!unlocked}>
+                <div class="rm-achievement-card-header">
+                  <span class="rm-achievement-status-icon">{unlocked ? "✓" : "○"}</span>
+                  <span class="rm-achievement-name">{achievement.name}</span>
+                  <span class="rm-difficulty rm-difficulty--{achievement.difficulty}">{getDifficultyLabel(achievement.difficulty)}</span>
+                </div>
+                <p class="rm-achievement-desc">{achievement.description}</p>
+                {#if unlocked?.achieved_at}
+                  <p class="rm-achievement-date">{unlocked.achieved_at}</p>
+                {/if}
+                {#if unlocked?.note}
+                  <p class="rm-achievement-note">{unlocked.note}</p>
+                {/if}
+                {#if achievement.prerequisites.length > 0}
+                  <div class="rm-achievement-prereqs">
+                    {#each achievement.prerequisites as prereq}
+                      <span class="rm-prereq-tag">{prereq.split("::")[1]?.replace(/_/g, " ") ?? prereq}</span>
+                    {/each}
+                  </div>
+                {/if}
+              </article>
+            {/each}
+          </div>
         {/if}
       </div>
     {:else}
@@ -244,20 +218,6 @@
     color: var(--rm-black);
     -webkit-text-stroke: 0.05em var(--rm-white);
     paint-order: stroke fill;
-  }
-
-  .rm-ach-category-block + .rm-ach-category-block {
-    margin-top: clamp(1.5rem, 2vw, 3rem);
-  }
-
-  .rm-ach-category-title {
-    margin: 0 0 clamp(0.4rem, 0.5vw, 0.9rem);
-    font-size: clamp(0.72rem, 0.62vw, 1.3rem);
-    color: var(--rm-red);
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    border-left: 0.2rem solid var(--rm-red);
-    padding-left: clamp(0.4rem, 0.5vw, 1rem);
   }
 
   .rm-achievement-grid {

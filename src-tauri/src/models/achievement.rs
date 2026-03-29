@@ -3,6 +3,16 @@ use std::collections::HashMap;
 
 // --- Deserialization structs (from JSON files) ---
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Difficulty {
+    Beginner,
+    Intermediate,
+    Advanced,
+    Expert,
+    Legendary,
+}
+
 #[derive(Debug, Deserialize)]
 #[allow(dead_code)]
 pub struct AchievementFile {
@@ -15,8 +25,7 @@ pub struct AchievementDef {
     pub id: String,
     pub name: String,
     pub description: String,
-    pub difficulty: String,
-    pub category: String,
+    pub difficulty: Difficulty,
     #[serde(default)]
     pub tags: Vec<String>,
     #[serde(default)]

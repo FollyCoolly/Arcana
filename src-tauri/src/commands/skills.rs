@@ -116,11 +116,16 @@ pub fn load_skills() -> Result<SkillData, String> {
             let max_points: u32 = skill.nodes.iter().map(|n| n.points).sum();
 
             let mut current_level: u32 = 0;
+            let mut accumulated_keys: Vec<&str> = Vec::new();
             for threshold in &skill.level_thresholds {
-                let all_keys_unlocked = threshold
-                    .required_key_achievements
-                    .iter()
-                    .all(|id| unlocked_ids.contains(id));
+                accumulated_keys.extend(
+                    threshold
+                        .required_key_achievements
+                        .iter()
+                        .map(|s| s.as_str()),
+                );
+                let all_keys_unlocked =
+                    accumulated_keys.iter().all(|id| unlocked_ids.contains(*id));
 
                 if total_points >= threshold.points_required && all_keys_unlocked {
                     current_level = threshold.level;

@@ -5,7 +5,6 @@ export type Achievement = {
     name: string;
     description: string;
     difficulty: Difficulty;
-    category: string;
     tags: string[];
     prerequisites: string[];
 };

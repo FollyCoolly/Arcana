@@ -10,7 +10,7 @@
 
 1. **积分放在技能侧**：技能树节点包含 `points`，成就定义不含积分。看技能树就能知道每个节点值多少分。
 2. **无边（edges）**：技能树只定义节点，不定义边。前端渲染时根据 `achievements.prerequisites` 推导连线。
-3. **无位置（position）**：节点不存储布局坐标，前端根据成就的 `difficulty`、`category`、`tags` 等属性动态计算布局。
+3. **无位置（position）**：节点不存储布局坐标，前端根据成就的 `difficulty`、`tags` 等属性动态计算布局。
 
 ## `skills.json`（每包）
 
@@ -50,7 +50,7 @@
 |------|------|------|------|
 | `level` | number | 是 | 等级编号（1-indexed） |
 | `points_required` | number | 是 | 累计所需积分 |
-| `required_key_achievements` | string[] | 否 | 该等级必须解锁的成就 ID 列表（省略视为 `[]`） |
+| `required_key_achievements` | string[] | 否 | 该等级**新增**的关键成就 ID（增量式，低等级的自动继承；省略视为 `[]`） |
 
 ### 示例
 
@@ -93,7 +93,9 @@
 
 要达到某等级需**同时满足**：
 - 积分 >= `points_required`
-- `required_key_achievements` 中列出的每个成就都已解锁
+- 该等级及所有更低等级的 `required_key_achievements` 中列出的每个成就都已解锁
+
+`required_key_achievements` 是**增量式**的：每个等级只列出该等级**新增**的关键成就，算法自动从低等级向上累积。
 
 ```
 calculate_skill_level(skill, unlocked_achievement_ids):
@@ -104,9 +106,10 @@ calculate_skill_level(skill, unlocked_achievement_ids):
             total_points += node.points
 
     current_level = 0
+    accumulated_keys = []
     for threshold in skill.level_thresholds (ascending by level):
-        required_keys = threshold.required_key_achievements ?? []
-        all_keys_unlocked = all(id in unlocked_achievement_ids for id in required_keys)
+        accumulated_keys += threshold.required_key_achievements ?? []
+        all_keys_unlocked = all(id in unlocked_achievement_ids for id in accumulated_keys)
 
         if total_points >= threshold.points_required AND all_keys_unlocked:
             current_level = threshold.level
@@ -118,13 +121,14 @@ calculate_skill_level(skill, unlocked_achievement_ids):
 
 ### 计算示例
 
-以 `programmer::programming_general` 为例，假设用户已解锁 `hello_world` 和 `first_pr_merged`：
+以 `programmer::programming_general` 为例，假设用户已解锁 `hello_world`、`first_pr_merged`、`shipped_side_project`：
 
-- `node_hello_world` 贡献 5 分，`node_first_pr` 贡献 10 分 → total_points = 15
-- Level 1：15 >= 5，无 key 要求 → 通过
-- Level 2：15 >= 15，无 key 要求 → 通过
-- Level 3：15 >= 30 → 不满足 → break
-- 结果：Level 2
+- `node_hello_world` 贡献 5 分，`node_first_pr` 贡献 10 分，`node_shipped` 贡献 20 分 → total_points = 35
+- Level 1：35 >= 5，accumulated_keys = [] → 通过
+- Level 2：35 >= 15，accumulated_keys = [] → 通过
+- Level 3：35 >= 30，accumulated_keys = [`shipped_side_project`]，已解锁 → 通过
+- Level 4：35 >= 50 → 不满足 → break
+- 结果：Level 3
 
 ## 连线推导算法（前端渲染）
 

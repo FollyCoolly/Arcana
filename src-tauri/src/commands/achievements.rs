@@ -1,9 +1,7 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use crate::models::achievement::*;
 use crate::storage::json_store::{read_json_file, resolve_data_dir};
-
-const VALID_DIFFICULTIES: &[&str] = &["beginner", "intermediate", "advanced", "expert", "legendary"];
 
 #[tauri::command]
 pub fn load_achievements() -> Result<AchievementData, String> {
@@ -67,16 +65,6 @@ pub fn load_achievements() -> Result<AchievementData, String> {
                     achievement.id
                 ));
             }
-
-            // Valid difficulty
-            if !VALID_DIFFICULTIES.contains(&achievement.difficulty.as_str()) {
-                return Err(format!(
-                    "Achievement '{}' has invalid difficulty '{}'. Must be one of: {}",
-                    achievement.id,
-                    achievement.difficulty,
-                    VALID_DIFFICULTIES.join(", ")
-                ));
-            }
         }
 
         // Validate prerequisites reference valid IDs within this pack
@@ -89,6 +77,11 @@ pub fn load_achievements() -> Result<AchievementData, String> {
                     ));
                 }
             }
+        }
+
+        // Validate prerequisite DAG has no cycles
+        if let Some(cycle_msg) = detect_cycle(&achievement_file.achievements) {
+            return Err(format!("Pack '{}': {}", pack_id, cycle_msg));
         }
 
         packs.push(PackAchievements {
@@ -106,4 +99,58 @@ pub fn load_achievements() -> Result<AchievementData, String> {
         packs,
         progress: progress.unlocked,
     })
+}
+
+/// Detect cycles in the prerequisite graph using iterative DFS.
+/// Returns a message describing the first cycle found, or None if acyclic.
+fn detect_cycle(achievements: &[AchievementDef]) -> Option<String> {
+    // Build adjacency: id -> list of prerequisite ids
+    let adj: HashMap<&str, Vec<&str>> = achievements
+        .iter()
+        .map(|a| {
+            (
+                a.id.as_str(),
+                a.prerequisites.iter().map(|p| p.as_str()).collect(),
+            )
+        })
+        .collect();
+
+    // 0 = unvisited, 1 = in current path, 2 = fully visited
+    let mut state: HashMap<&str, u8> = adj.keys().map(|&id| (id, 0u8)).collect();
+
+    for &start in adj.keys() {
+        if state[start] == 2 {
+            continue;
+        }
+
+        let mut stack: Vec<(&str, usize)> = vec![(start, 0)];
+        *state.get_mut(start).unwrap() = 1;
+
+        while let Some((node, idx)) = stack.last_mut() {
+            let prereqs = adj.get(*node).map(|v| v.as_slice()).unwrap_or(&[]);
+            if *idx < prereqs.len() {
+                let next = prereqs[*idx];
+                *idx += 1;
+                match state[next] {
+                    0 => {
+                        *state.get_mut(next).unwrap() = 1;
+                        stack.push((next, 0));
+                    }
+                    1 => {
+                        return Some(format!(
+                            "prerequisite cycle detected involving '{}'",
+                            next
+                        ));
+                    }
+                    _ => {} // already fully visited
+                }
+            } else {
+                let finished = *node;
+                *state.get_mut(finished).unwrap() = 2;
+                stack.pop();
+            }
+        }
+    }
+
+    None
 }
