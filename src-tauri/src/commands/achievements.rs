@@ -97,7 +97,7 @@ pub fn load_achievements() -> Result<AchievementData, String> {
 
     Ok(AchievementData {
         packs,
-        progress: progress.unlocked,
+        progress: progress.achievements,
     })
 }
 

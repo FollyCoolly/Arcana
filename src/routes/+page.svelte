@@ -15,8 +15,8 @@
   import ItemsScreen from "$lib/screens/ItemsScreen.svelte";
   import GalleryScreen from "$lib/screens/GalleryScreen.svelte";
 
-  type MenuScreen = "main" | "status" | "achievements" | "skills" | "items" | "gallery" | "tasks";
-  type MenuItemId = "status" | "skills" | "achievements" | "items" | "gallery" | "tasks";
+  type MenuScreen = "main" | "status" | "achievements" | "skills" | "items" | "gallery" | "missions";
+  type MenuItemId = "status" | "skills" | "achievements" | "items" | "gallery" | "missions";
 
   type MenuItem = {
     id: MenuItemId;
@@ -31,7 +31,7 @@
     { id: "achievements", label: "Achievements", description: "Milestones and timeline tracking.", enabled: true },
     { id: "items", label: "Items", description: "Personal inventory and purchase awareness.", enabled: true },
     { id: "gallery", label: "Gallery", description: "Books, media, and games aggregation hub.", enabled: true },
-    { id: "tasks", label: "Tasks", description: "Daily and long-term task tracking.", enabled: true },
+    { id: "missions", label: "Missions", description: "Daily and long-term mission tracking.", enabled: true },
   ];
 
   const MENU_LETTER_DATA: Record<MenuItemId, LetterConfig[]> = {
@@ -81,12 +81,15 @@
       { char: 'r', size: '0.93em', yOffset: 3, rotate: 4, color: 'black' },
       { char: 'Y', size: '1.02em', yOffset: -1, rotate: -5 },
     ],
-    tasks: [
-      { char: 'T', size: '1.15em', yOffset: -3, rotate: -5, weight: 800 },
-      { char: 'a', size: '0.88em', yOffset: 3, rotate: 4, color: 'black', rounded: true },
+    missions: [
+      { char: 'M', size: '1.18em', yOffset: -3, rotate: -6, weight: 800 },
+      { char: 'i', size: '0.82em', yOffset: 4, rotate: 4, color: 'black', outline: true },
       { char: 'S', size: '1.08em', yOffset: -1, rotate: -3 },
-      { char: 'k', size: '0.82em', yOffset: 2, rotate: 5, color: 'black', outline: true },
-      { char: 'S', size: '0.78em', yOffset: -2, rotate: -4 },
+      { char: 's', size: '0.88em', yOffset: 3, rotate: 5, color: 'black', rounded: true },
+      { char: 'I', size: '0.85em', yOffset: -2, rotate: -4 },
+      { char: 'o', size: '0.78em', yOffset: 2, rotate: 3, color: 'black' },
+      { char: 'N', size: '1.1em', yOffset: -1, rotate: -5 },
+      { char: 's', size: '0.76em', yOffset: 1, rotate: 4, color: 'black', outline: true },
     ],
   };
 
@@ -204,8 +207,8 @@
 
     focusedMenuIndex = index;
 
-    if (item.id === "tasks") {
-      setMenuFeedback("Tasks module coming soon.");
+    if (item.id === "missions") {
+      setMenuFeedback("Missions module coming soon.");
       return;
     }
 

@@ -12,10 +12,10 @@ pub fn load_skills() -> Result<SkillData, String> {
     let loaded_packs_path = data_dir.join("loaded_packs.json");
     let loaded_packs: LoadedPacksFile = read_json_file(&loaded_packs_path)?;
 
-    // 2. Read achievement progress → build set of unlocked IDs
+    // 2. Read achievement progress → build set of active IDs (tracked + achieved)
     let progress_path = data_dir.join("achievement_progress.json");
     let progress: AchievementProgressFile = read_json_file(&progress_path)?;
-    let unlocked_ids: HashSet<String> = progress.unlocked.keys().cloned().collect();
+    let unlocked_ids: HashSet<String> = progress.achievements.keys().cloned().collect();
 
     // 3. For each pack: load manifest + achievements + skills, validate, compute levels
     let mut all_skills = Vec::new();

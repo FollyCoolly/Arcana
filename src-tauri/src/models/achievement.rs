@@ -32,19 +32,33 @@ pub struct AchievementDef {
     pub prerequisites: Vec<String>,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum AchievementStatus {
+    Tracked,
+    Achieved,
+}
+
 #[derive(Debug, Deserialize)]
 #[allow(dead_code)]
 pub struct AchievementProgressFile {
     pub version: u32,
-    pub unlocked: HashMap<String, UnlockInfo>,
+    pub achievements: HashMap<String, AchievementProgress>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct UnlockInfo {
-    #[serde(default)]
+pub struct AchievementProgress {
+    pub status: AchievementStatus,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub achieved_at: Option<String>,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tracked_at: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub note: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub progress_detail: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub may_be_incomplete: Option<bool>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -71,7 +85,7 @@ pub struct PackManifest {
 #[derive(Debug, Serialize)]
 pub struct AchievementData {
     pub packs: Vec<PackAchievements>,
-    pub progress: HashMap<String, UnlockInfo>,
+    pub progress: HashMap<String, AchievementProgress>,
 }
 
 #[derive(Debug, Serialize)]

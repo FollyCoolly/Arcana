@@ -77,22 +77,35 @@
 ```json
 {
   "version": 1,
-  "unlocked": {}
+  "achievements": {}
 }
 ```
 
-### `unlocked` 字段
+### `achievements` 字段
 
-平坦 map，key 为成就 ID，value 为解锁详情对象：
+平坦 map，key 为成就 ID，value 为进度/达成详情对象。**只记录 tracked 和 achieved 的成就，locked 成就不在此文件中。**
 
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `achieved_at` | string | 否 | 实际达成日期，支持 `YYYY`、`YYYY-MM`、`YYYY-MM-DD` 三种精度 |
-| `note` | string | 否 | 用户备注 |
+**三态语义：**
+- **不在 map 中** = locked（未开始）
+- `status: "tracked"` = AI 正在追踪进度，**UI 展示等同 achieved**
+- `status: "achieved"` = 正式达成
 
-- **在 map 中 = 已解锁，不在 = 未解锁**
-- `achieved_at` 省略表示已达成但不记得具体时间
-- 新达成的成就，UI 应自动填入当天日期（`YYYY-MM-DD`）作为缺省值，用户可清除或修改
+| 字段 | 类型 | 必填 | 适用状态 | 说明 |
+|------|------|------|----------|------|
+| `status` | enum | 是 | 两者 | `"tracked"` 或 `"achieved"` |
+| `achieved_at` | string | 否 | achieved | 达成日期，支持 `YYYY`、`YYYY-MM`、`YYYY-MM-DD` 三种精度 |
+| `tracked_at` | string | 否 | tracked | 开始追踪日期，`YYYY-MM-DD` |
+| `note` | string | 否 | 两者 | 用户/AI 备注 |
+| `progress_detail` | string[] | 否 | tracked | AI 管理的进度条目列表（非量化，自由格式） |
+| `may_be_incomplete` | boolean | 否 | tracked | 标记用户可能有未提供的历史进度，AI 不应假设列表是完整的 |
+
+**设计要点：**
+- **并非所有成就都需要 tracked 状态**。二元成就（如"5km跑进25分钟"）由 AI 根据最新信息直接判断，locked → achieved，不经过 tracked。需要积累型进度的成就（如"学会100道菜"）才使用 tracked。AI agent 自行判断。
+- `tracked` 状态仅供 AI agent 参考，UI 不区分 tracked 和 achieved
+- `tracked` 和 `achieved` 都计入技能积分
+- `progress_detail` 无固定格式，由 AI agent 自由管理（可以是菜名列表、里程碑描述等）
+- `may_be_incomplete` 为 true 时，AI 应知道用户可能有未记录的历史进度，不能仅凭列表长度判断是否达标
+- 新达成的成就，UI 应自动填入当天日期（`YYYY-MM-DD`）作为 `achieved_at` 缺省值
 - 卸载包时数据保留，重新加载时恢复
 
 ### 示例
@@ -100,16 +113,22 @@
 ```json
 {
   "version": 1,
-  "unlocked": {
+  "achievements": {
     "programmer::hello_world": {
+      "status": "achieved",
       "note": "First Python script - fizzbuzz.py"
     },
     "fitness::5k_under_25min": {
+      "status": "achieved",
       "achieved_at": "2023",
       "note": "公园晨跑"
     },
-    "programmer::first_pr_merged": {
-      "achieved_at": "2025-09-22"
+    "cooking::learn_100_dishes": {
+      "status": "tracked",
+      "tracked_at": "2026-03-01",
+      "progress_detail": ["盐焗鸡", "红烧肉", "番茄炒蛋"],
+      "may_be_incomplete": true,
+      "note": "用户表示之前已会做很多菜，未提供完整列表"
     }
   }
 }
@@ -122,4 +141,5 @@
 3. `prerequisites` 关系必须构成 DAG（无环）——加载时通过 DFS 环检测强制执行
 4. 同包内成就 ID 不可重复
 5. `difficulty` 必须是枚举值之一（由 serde 反序列化时强制校验）
-6. `achieved_at` 若存在，格式必须为 `YYYY`、`YYYY-MM` 或 `YYYY-MM-DD` 之一
+6. `status` 必须是 `"tracked"` 或 `"achieved"` 之一
+7. `achieved_at` 若存在，格式必须为 `YYYY`、`YYYY-MM` 或 `YYYY-MM-DD` 之一

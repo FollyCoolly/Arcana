@@ -1,31 +1,31 @@
-# Tasks Schema
+# Missions Schema
 
-Task 模块管理每日任务和长期任务。支持两种粒度：短期（daily）重复性任务和长期（long-term）里程碑式目标。重要长期任务可在主界面右下角显示进度条。
+Mission 模块管理每日任务和长期任务。支持两种粒度：短期（daily）重复性任务和长期（long-term）里程碑式目标。重要长期任务可在主界面右下角显示进度条。
 
 ## 设计要点
 
-- **双粒度**：daily 任务按天重置/循环，long-term 任务跨天持续追踪
+- **双粒度**：daily mission 按天重置/循环，long-term mission 跨天持续追踪
 - **主界面进度条**：标记为 `pinned` 的长期任务在主界面右下角显示，类似 P5 的"信赖度"进度条
 - **AI 联动预留**：任务的创建、推荐、完成验证将来由 AI Agent 驱动，数据结构预留 `ai_metadata` 字段
 - **跨模块联动**：任务完成可触发成就解锁、技能加分等，通过 `linked_achievement_id` 等字段关联
 
 ## 文件路径
 
-- `data/tasks.json`：任务定义与状态（单文件）
+- `data/missions.json`：任务定义与状态（单文件）
 
-## `tasks.json`
+## `missions.json`
 
 ### 顶层结构
 
 ```json
 {
   "version": 1,
-  "daily_tasks": [],
-  "long_term_tasks": []
+  "daily_missions": [],
+  "long_term_missions": []
 }
 ```
 
-### `daily_tasks[]` 字段
+### `daily_missions[]` 字段
 
 每日任务，每天可标记完成，次日自动重置。
 
@@ -42,7 +42,7 @@ Task 模块管理每日任务和长期任务。支持两种粒度：短期（dai
 | `active` | boolean | 否 | 是否启用，缺省 `true` |
 | `ai_metadata` | object | 否 | AI Agent 使用的元数据（预留） |
 
-### `long_term_tasks[]` 字段
+### `long_term_missions[]` 字段
 
 长期目标/里程碑任务，支持进度追踪。
 
@@ -57,7 +57,7 @@ Task 模块管理每日任务和长期任务。支持两种粒度：短期（dai
 | `milestones` | array | 否 | 子里程碑列表 |
 | `pinned` | boolean | 否 | 是否钉在主界面显示进度条，缺省 `false` |
 | `deadline` | string | 否 | 截止日期，`YYYY-MM-DD` |
-| `linked_achievement_id` | string | 否 | 完成后关联解锁的成就 ID |
+| `linked_achievement_id` | string | 否 | 关联的成就 ID，完成后由 AI agent 判断是更新进度还是解锁 |
 | `created_at` | string | 否 | 创建时间，ISO 8601 |
 | `completed_at` | string | 否 | 完成时间，ISO 8601 |
 | `ai_metadata` | object | 否 | AI Agent 使用的元数据（预留） |
@@ -76,7 +76,7 @@ Task 模块管理每日任务和长期任务。支持两种粒度：短期（dai
 ```json
 {
   "version": 1,
-  "daily_tasks": [
+  "daily_missions": [
     {
       "id": "daily_exercise",
       "title": "30 分钟运动",
@@ -92,7 +92,7 @@ Task 模块管理每日任务和长期任务。支持两种粒度：短期（dai
       "active": true
     }
   ],
-  "long_term_tasks": [
+  "long_term_missions": [
     {
       "id": "learn_rust",
       "title": "系统学习 Rust",
@@ -125,10 +125,10 @@ Task 模块管理每日任务和长期任务。支持两种粒度：短期（dai
 
 ## 主界面进度条
 
-`pinned: true` 的 long-term task 在主界面右下角显示：
+`pinned: true` 的 long-term mission 在主界面右下角显示：
 - 显示 `title` 和 `progress` 百分比
 - 进度条样式参照 P5 的对怪盗团信任度条
-- 最多同时显示 3 个 pinned 任务
+- 最多同时显示 3 个 pinned mission
 
 ## 校验规则
 
