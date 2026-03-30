@@ -208,6 +208,8 @@ pub fn run() {
             commands::skills::load_skills,
             commands::items::load_items,
             commands::gallery::load_gallery,
+            commands::missions::load_missions,
+            commands::missions::load_main_menu_missions,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

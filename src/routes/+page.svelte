@@ -8,12 +8,14 @@
   import type { LetterConfig } from "$lib/P5MenuItem.svelte";
   import type { StatusData } from "$lib/types/status";
   import type { AchievementData } from "$lib/types/achievement";
+  import type { MainMenuMissionData } from "$lib/types/mission";
 
   import StatusScreen from "$lib/screens/StatusScreen.svelte";
   import AchievementsScreen from "$lib/screens/AchievementsScreen.svelte";
   import SkillsScreen from "$lib/screens/SkillsScreen.svelte";
   import ItemsScreen from "$lib/screens/ItemsScreen.svelte";
   import GalleryScreen from "$lib/screens/GalleryScreen.svelte";
+  import MissionsScreen from "$lib/screens/MissionsScreen.svelte";
 
   type MenuScreen = "main" | "status" | "achievements" | "skills" | "items" | "gallery" | "missions";
   type MenuItemId = "status" | "skills" | "achievements" | "items" | "gallery" | "missions";
@@ -111,6 +113,7 @@
   // Shared data: preloaded on mount, passed to screen components
   let statusData = $state<StatusData | null>(null);
   let achievementData = $state<AchievementData | null>(null);
+  let missionMenuData = $state<MainMenuMissionData | null>(null);
 
   let commandRef = $state<HTMLElement | undefined>(undefined);
   let menuItemRefs = $state<(HTMLButtonElement | undefined)[]>([]);
@@ -207,11 +210,6 @@
 
     focusedMenuIndex = index;
 
-    if (item.id === "missions") {
-      setMenuFeedback("Missions module coming soon.");
-      return;
-    }
-
     // For skills, also preload achievement data
     if (item.id === "skills" && !achievementData) {
       try {
@@ -263,6 +261,14 @@
     }
   }
 
+  async function preloadMissionMenuData() {
+    try {
+      missionMenuData = await invoke<MainMenuMissionData>("load_main_menu_missions");
+    } catch {
+      // non-critical: main menu works without mission data
+    }
+  }
+
   onMount(() => {
     const appWindow = getCurrentWindow();
 
@@ -271,6 +277,7 @@
     if (!statusData) {
       void preloadStatusData();
     }
+    void preloadMissionMenuData();
 
     appWindow.listen("reality://summoned", () => {
       resetToMainMenu();
@@ -296,10 +303,26 @@
       <div class="rm-calendar-widget">
         <P5Calendar />
       </div>
-      {#if statusData}
+      {#if missionMenuData?.countdown}
+        <div class="rm-countdown" aria-label="Mission countdown">
+          <span class="rm-countdown-line">距离<strong>{missionMenuData.countdown.label}</strong></span>
+          <span class="rm-countdown-line">还有<strong>{missionMenuData.countdown.days_remaining}</strong>天</span>
+        </div>
+      {:else if statusData}
         <div class="rm-player-info" aria-label="Player info">
           <span class="rm-player-name">{statusData.username}</span>
           <span class="rm-player-days">Day {statusData.game_days ?? "—"}</span>
+        </div>
+      {/if}
+      {#if missionMenuData?.progress}
+        <div class="rm-mission-progress" aria-label="Mission progress">
+          <span class="rm-mission-progress-label">{missionMenuData.progress.label}</span>
+          <div class="rm-mission-progress-bar-row">
+            <div class="rm-mission-progress-track">
+              <div class="rm-mission-progress-fill" style:width="{missionMenuData.progress.progress}%"></div>
+            </div>
+            <span class="rm-mission-progress-value" class:is-high={missionMenuData.progress.progress >= 80}>{missionMenuData.progress.progress}%</span>
+          </div>
         </div>
       {/if}
       <div class="rm-star-left" aria-hidden="true">
@@ -386,6 +409,10 @@
     {#if currentScreen === "gallery"}
       <GalleryScreen onBack={goBack} />
     {/if}
+
+    {#if currentScreen === "missions"}
+      <MissionsScreen onBack={goBack} />
+    {/if}
   </section>
 </main>
 
@@ -448,6 +475,91 @@
     -webkit-text-stroke: 0.04em var(--rm-black);
     paint-order: stroke fill;
     font-size: clamp(1.5rem, 2.1vw, 3rem);
+  }
+
+  .rm-countdown {
+    position: absolute;
+    top: 1.5rem;
+    right: 1.5rem;
+    z-index: 3;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.15rem;
+    transform: rotate(-1.5deg);
+  }
+
+  .rm-countdown-line {
+    display: inline-block;
+    background: var(--rm-black);
+    color: var(--rm-white);
+    font-family: "p5hatty", "Orbitron", Arial, sans-serif;
+    font-size: clamp(2.1rem, 3vw, 3rem);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    padding: 0.15em 0.5em;
+    clip-path: polygon(1% 8%, 99% 0%, 100% 92%, 0% 100%);
+  }
+
+  .rm-countdown-line strong {
+    color: var(--rm-red);
+  }
+
+  .rm-mission-progress {
+    position: absolute;
+    bottom: clamp(1.5rem, 3vh, 3.5rem);
+    right: clamp(1.5rem, 3vw, 4rem);
+    z-index: 3;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.4rem;
+    transform: rotate(-1deg);
+  }
+
+  .rm-mission-progress-label {
+    font-family: "p5hatty", "Orbitron", Arial, sans-serif;
+    font-size: clamp(1.95rem, 2.7vw, 2.7rem);
+    font-weight: 800;
+    color: var(--rm-white);
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    -webkit-text-stroke: 0.03em var(--rm-black);
+    paint-order: stroke fill;
+  }
+
+  .rm-mission-progress-bar-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .rm-mission-progress-track {
+    width: clamp(96px, 12vw, 192px);
+    height: 36px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 6px solid var(--rm-white);
+    overflow: hidden;
+  }
+
+  .rm-mission-progress-fill {
+    height: 100%;
+    background: var(--rm-red);
+    transition: width 400ms ease;
+  }
+
+  .rm-mission-progress-value {
+    font-family: "p5hatty", "Orbitron", Arial, sans-serif;
+    font-size: clamp(1.8rem, 2.55vw, 2.55rem);
+    font-weight: 700;
+    color: var(--rm-white);
+    letter-spacing: 0.04em;
+  }
+
+  .rm-mission-progress-value.is-high {
+    color: var(--rm-red);
   }
 
   .rm-star-stack {
