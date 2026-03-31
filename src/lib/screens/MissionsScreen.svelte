@@ -16,11 +16,19 @@
   type SortOption = { key: string; label: string };
   const SORT_OPTIONS: SortOption[] = [
     { key: "newest", label: "NEW" },
-    { key: "oldest", label: "OLD" },
     { key: "status", label: "STATE" },
-    { key: "deadline", label: "DEADLINE" },
-    { key: "progress", label: "PROGRESS" },
+    { key: "progress", label: "DIFFICULTY" },
   ];
+
+  // Carousel: compute visible order so active is always in the center
+  // Returns [leftIndex, centerIndex, rightIndex]
+  let sortCarousel = $derived.by(() => {
+    const len = SORT_OPTIONS.length;
+    const center = sortIndex;
+    const left = (center - 1 + len) % len;
+    const right = (center + 1) % len;
+    return [left, center, right] as const;
+  });
 
   const STATUS_ORDER: Record<string, number> = { active: 0, completed: 1, archived: 2 };
 
@@ -31,12 +39,8 @@
     switch (opt.key) {
       case "newest":
         return list.sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""));
-      case "oldest":
-        return list.sort((a, b) => (a.created_at ?? "").localeCompare(b.created_at ?? ""));
       case "status":
         return list.sort((a, b) => (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9));
-      case "deadline":
-        return list.sort((a, b) => (a.days_remaining ?? 99999) - (b.days_remaining ?? 99999));
       case "progress":
         return list.sort((a, b) => (b.progress ?? 0) - (a.progress ?? 0));
       default:
@@ -137,19 +141,27 @@
 
 <section class="rm-stage">
   <div class="rm-missions-panel">
-    <!-- Sort tabs -->
+    <!-- Sort carousel: Q shifts right-to-left, E shifts left-to-right, center is active -->
     <header class="rm-missions-sort-bar">
-      <span class="rm-sort-key-hint">Q</span>
-      {#each SORT_OPTIONS as opt, i}
+      <button class="rm-sort-key-hint" onclick={() => cycleSort(-1)} aria-label="Previous sort">Q</button>
+      <div class="rm-sort-carousel">
         <button
-          class="rm-sort-tab"
-          class:is-active={sortIndex === i}
-          onclick={() => { sortIndex = i; selectedIndex = 0; }}
+          class="rm-sort-item rm-sort-side"
+          onclick={() => cycleSort(-1)}
         >
-          {opt.label}
+          {SORT_OPTIONS[sortCarousel[0]].label}
         </button>
-      {/each}
-      <span class="rm-sort-key-hint">E</span>
+        <span class="rm-sort-item rm-sort-center">
+          {SORT_OPTIONS[sortCarousel[1]].label}
+        </span>
+        <button
+          class="rm-sort-item rm-sort-side"
+          onclick={() => cycleSort(1)}
+        >
+          {SORT_OPTIONS[sortCarousel[2]].label}
+        </button>
+      </div>
+      <button class="rm-sort-key-hint" onclick={() => cycleSort(1)} aria-label="Next sort">E</button>
     </header>
 
     <!-- Column headers -->
@@ -226,56 +238,80 @@
     border-left: 3px solid rgba(255, 255, 255, 0.12);
   }
 
-  /* ── Sort tabs ── */
+  /* ── Sort carousel ── */
   .rm-missions-sort-bar {
     flex-shrink: 0;
     display: flex;
-    align-items: stretch;
+    align-items: center;
+    justify-content: center;
     background: #000000;
     border-bottom: 2px solid rgba(255, 255, 255, 0.12);
     font-family: "p5hatty", "Orbitron", Arial, sans-serif;
+    padding: clamp(0.4rem, 0.5vw, 0.7rem) 0;
+    gap: 0;
   }
 
-  .rm-sort-tab {
+  .rm-sort-carousel {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(0.8rem, 1.2vw, 2rem);
     flex: 1;
-    border: none;
-    background: rgba(255, 255, 255, 0.04);
-    color: rgba(255, 255, 255, 0.4);
+    overflow: hidden;
+  }
+
+  .rm-sort-item {
     font-family: "p5hatty", "Orbitron", Arial, sans-serif;
-    font-size: clamp(0.7rem, 0.8vw, 1.1rem);
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    padding: clamp(0.5rem, 0.7vw, 1rem) clamp(0.5rem, 0.8vw, 1.2rem);
+    white-space: nowrap;
+    transition: font-size 180ms ease, color 180ms ease, transform 180ms ease, opacity 180ms ease;
+  }
+
+  .rm-sort-center {
+    font-size: clamp(1.1rem, 1.5vw, 2rem);
+    color: #E5191C;
+    transform: scale(1);
+    padding: clamp(0.15rem, 0.2vw, 0.3rem) clamp(0.6rem, 0.8vw, 1.2rem);
+    background: rgba(229, 25, 28, 0.12);
+    clip-path: polygon(3% 0%, 100% 5%, 97% 100%, 0% 95%);
+  }
+
+  .rm-sort-side {
+    font-size: clamp(0.65rem, 0.7vw, 1rem);
+    color: rgba(255, 255, 255, 0.3);
+    border: none;
+    background: none;
     cursor: pointer;
-    transition: background 120ms ease, color 120ms ease;
-    border-right: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 0;
   }
 
-  .rm-sort-tab:last-of-type {
-    border-right: none;
-  }
-
-  .rm-sort-tab:hover {
-    background: rgba(255, 255, 255, 0.08);
-    color: rgba(255, 255, 255, 0.7);
-  }
-
-  .rm-sort-tab.is-active {
-    background: #E5191C;
-    color: #ffffff;
+  .rm-sort-side:hover {
+    color: rgba(255, 255, 255, 0.6);
   }
 
   .rm-sort-key-hint {
     flex-shrink: 0;
     display: flex;
     align-items: center;
-    padding: 0 clamp(0.4rem, 0.5vw, 0.8rem);
+    justify-content: center;
+    width: clamp(1.6rem, 2vw, 2.4rem);
+    height: clamp(1.6rem, 2vw, 2.4rem);
     font-family: "p5hatty", "Orbitron", Arial, sans-serif;
-    font-size: clamp(0.6rem, 0.55vw, 0.85rem);
+    font-size: clamp(0.6rem, 0.6vw, 0.9rem);
     font-weight: 800;
-    color: rgba(255, 255, 255, 0.3);
-    background: rgba(0, 0, 0, 0.6);
+    color: rgba(255, 255, 255, 0.35);
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    cursor: pointer;
+    margin: 0 clamp(0.3rem, 0.4vw, 0.6rem);
+    transition: background 120ms ease, color 120ms ease;
+  }
+
+  .rm-sort-key-hint:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.6);
   }
 
   /* ── Column headers ── */
