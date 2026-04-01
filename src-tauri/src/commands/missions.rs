@@ -1,6 +1,6 @@
 use crate::models::mission::*;
 use crate::storage::date_utils::{days_from_civil, parse_date, today_epoch_days};
-use crate::storage::json_store::{read_json_file, resolve_data_dir};
+use crate::storage::json_store::{read_json_file, resolve_data_dir, write_json_file};
 
 #[tauri::command]
 pub fn load_missions() -> Result<MissionData, String> {
@@ -16,6 +16,7 @@ pub fn load_missions() -> Result<MissionData, String> {
     let missions = file
         .missions
         .into_iter()
+        .filter(|m| m.status != "rejected")
         .map(|m| {
             let days_remaining = m
                 .deadline
@@ -96,6 +97,30 @@ fn resolve_progress(missions: &[Mission], ref_data: MainMenuRef) -> Option<Progr
         label: ref_data.label,
         progress: mission.progress.unwrap_or(0),
     })
+}
+
+#[tauri::command]
+pub fn update_mission_status(id: String, new_status: String) -> Result<(), String> {
+    let valid = ["proposed", "active", "completed", "archived", "rejected"];
+    if !valid.contains(&new_status.as_str()) {
+        return Err(format!("Invalid status '{}'. Must be one of: {:?}", new_status, valid));
+    }
+
+    let data_dir = resolve_data_dir()?;
+    let missions_path = data_dir.join("missions.json");
+
+    let mut file: MissionFile = read_json_file(&missions_path)?;
+
+    let mission = file
+        .missions
+        .iter_mut()
+        .find(|m| m.id == id)
+        .ok_or_else(|| format!("Mission '{}' not found", id))?;
+
+    mission.status = new_status;
+    write_json_file(&missions_path, &file)?;
+
+    Ok(())
 }
 
 fn compute_days_remaining(deadline: &str) -> Result<i64, String> {

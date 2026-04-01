@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 // --- Deserialization structs (from missions.json) ---
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[allow(dead_code)]
 pub struct MissionFile {
     pub version: u32,
@@ -11,7 +11,7 @@ pub struct MissionFile {
     pub main_menu: MainMenuConfig,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[allow(dead_code)]
 pub struct Mission {
     pub id: String,
@@ -33,7 +33,7 @@ pub struct Mission {
     pub ai_metadata: Option<serde_json::Value>,
 }
 
-#[derive(Debug, Default, Deserialize)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 pub struct MainMenuConfig {
     #[serde(default)]
     pub countdown: Option<MainMenuRef>,
@@ -41,7 +41,7 @@ pub struct MainMenuConfig {
     pub progress: Option<MainMenuRef>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct MainMenuRef {
     pub mission_id: String,
     pub label: String,

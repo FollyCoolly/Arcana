@@ -210,6 +210,7 @@ pub fn run() {
             commands::gallery::load_gallery,
             commands::missions::load_missions,
             commands::missions::load_main_menu_missions,
+            commands::missions::update_mission_status,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

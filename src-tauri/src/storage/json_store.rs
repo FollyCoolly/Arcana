@@ -1,4 +1,5 @@
 use serde::de::DeserializeOwned;
+use serde::Serialize;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -8,6 +9,14 @@ pub fn read_json_file<T: DeserializeOwned>(path: &Path) -> Result<T, String> {
 
     serde_json::from_str(&content)
         .map_err(|e| format!("Invalid JSON in {}: {}", path.display(), e))
+}
+
+pub fn write_json_file<T: Serialize>(path: &Path, data: &T) -> Result<(), String> {
+    let content = serde_json::to_string_pretty(data)
+        .map_err(|e| format!("Failed to serialize JSON: {}", e))?;
+
+    fs::write(path, content)
+        .map_err(|e| format!("Failed to write {}: {}", path.display(), e))
 }
 
 pub fn resolve_data_dir() -> Result<PathBuf, String> {
