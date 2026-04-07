@@ -1,38 +1,17 @@
 pub mod bus;
+pub mod config;
 pub mod llm;
 pub mod prompt;
 pub mod runner;
 pub mod session;
 pub mod tools;
 
-use crate::storage::json_store::resolve_data_dir;
 use bus::MessageBus;
+use config::AgentConfig;
 use runner::AgentRunner;
 use session::SessionStore;
-use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-
-pub struct AgentConfig {
-    pub anthropic_api_key: String,
-    pub model: String,
-    pub data_dir: PathBuf,
-}
-
-impl AgentConfig {
-    pub fn from_env() -> Result<Self, String> {
-        let api_key = std::env::var("ANTHROPIC_API_KEY")
-            .map_err(|_| "ANTHROPIC_API_KEY not set".to_string())?;
-        let model = std::env::var("REALITYMOD_MODEL")
-            .unwrap_or_else(|_| "claude-sonnet-4-20250514".to_string());
-        let data_dir = resolve_data_dir()?;
-        Ok(Self {
-            anthropic_api_key: api_key,
-            model,
-            data_dir,
-        })
-    }
-}
 
 /// Shared handle for the running agent service, stored in Tauri managed state.
 pub struct AgentHandle {
@@ -63,11 +42,7 @@ async fn agent_loop(
     mut inbound_rx: bus::InboundRx,
     sessions: Arc<Mutex<SessionStore>>,
 ) {
-    let runner = AgentRunner::new(
-        &config.anthropic_api_key,
-        &config.model,
-        &config.data_dir,
-    );
+    let runner = AgentRunner::new(&config);
 
     while let Some(msg) = inbound_rx.recv().await {
         let session_key = msg.session_key.clone();

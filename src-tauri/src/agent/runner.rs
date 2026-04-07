@@ -1,4 +1,5 @@
-use super::llm::{Content, ContentBlock, LlmClient, Message, ToolDef};
+use super::config::AgentConfig;
+use super::llm::{Content, ContentBlock, LlmClient, Message};
 use super::tools::ToolRegistry;
 
 /// Agent runner: the core LLM ↔ tool-calling loop.
@@ -6,13 +7,15 @@ use super::tools::ToolRegistry;
 pub struct AgentRunner {
     client: LlmClient,
     tools: ToolRegistry,
+    max_iterations: usize,
 }
 
 impl AgentRunner {
-    pub fn new(api_key: &str, model: &str, data_dir: &std::path::Path) -> Self {
+    pub fn new(config: &AgentConfig) -> Self {
         Self {
-            client: LlmClient::new(api_key, model),
-            tools: ToolRegistry::new(data_dir),
+            client: LlmClient::new(config),
+            tools: ToolRegistry::new(&config.data_dir),
+            max_iterations: config.max_iterations,
         }
     }
 
@@ -24,9 +27,8 @@ impl AgentRunner {
         messages: &mut Vec<Message>,
     ) -> Result<String, String> {
         let tool_defs = self.tools.definitions();
-        let max_iterations = 20;
 
-        for iteration in 0..max_iterations {
+        for iteration in 0..self.max_iterations {
             let response = self.client.chat(system, messages, &tool_defs).await?;
 
             if response.stop_reason == "end_turn" || response.tool_calls().is_empty() {
@@ -79,7 +81,10 @@ impl AgentRunner {
             );
         }
 
-        Err("Agent reached maximum iterations (20) without completing.".into())
+        Err(format!(
+            "Agent reached maximum iterations ({}) without completing.",
+            self.max_iterations
+        ))
     }
 }
 

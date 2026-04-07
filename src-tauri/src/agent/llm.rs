@@ -134,18 +134,27 @@ pub struct LlmClient {
     client: reqwest::Client,
     api_key: String,
     model: String,
+    base_url: String,
+    max_tokens: u32,
 }
 
 impl LlmClient {
-    pub fn new(api_key: &str, model: &str) -> Self {
+    pub fn new(config: &super::config::AgentConfig) -> Self {
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(config.timeout_secs))
+            .build()
+            .unwrap_or_else(|_| reqwest::Client::new());
+
         Self {
-            client: reqwest::Client::new(),
-            api_key: api_key.to_string(),
-            model: model.to_string(),
+            client,
+            api_key: config.api_key.clone(),
+            model: config.model.clone(),
+            base_url: config.base_url.clone(),
+            max_tokens: config.max_tokens,
         }
     }
 
-    /// Call the Anthropic Messages API with tool definitions.
+    /// Call the Anthropic-compatible Messages API with tool definitions.
     pub async fn chat(
         &self,
         system: &str,
@@ -156,15 +165,17 @@ impl LlmClient {
 
         let request = ApiRequest {
             model: self.model.clone(),
-            max_tokens: 4096,
+            max_tokens: self.max_tokens,
             system: system.to_string(),
             messages: api_messages,
             tools: tools.to_vec(),
         };
 
+        let url = format!("{}/v1/messages", self.base_url);
+
         let resp = self
             .client
-            .post("https://api.anthropic.com/v1/messages")
+            .post(&url)
             .header("x-api-key", &self.api_key)
             .header("anthropic-version", "2023-06-01")
             .header("content-type", "application/json")

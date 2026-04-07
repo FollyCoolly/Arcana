@@ -1,47 +1,45 @@
 //! Minimal CLI for testing the RealityMod agent without Tauri.
 //!
 //! Usage:
-//!   ANTHROPIC_API_KEY=sk-... cargo run --bin agent-cli
+//!   cargo run --bin agent-cli
+//!
+//! Configuration: data/agent_config.json (see AgentConfig).
+//! Env overrides: ANTHROPIC_BASE_URL, ANTHROPIC_API_KEY, REALITYMOD_MODEL, etc.
 //!
 //! Reads user input from stdin, sends it through the agent loop,
 //! prints the reply. Type "quit" or Ctrl-D to exit.
 
-use reality_mod_lib::agent::{
-    bus, llm, prompt, runner, session,
-};
-use reality_mod_lib::storage::json_store::resolve_data_dir;
+use reality_mod_lib::agent::{config::AgentConfig, llm, prompt, runner, session};
 use std::io::{self, BufRead, Write};
 
 #[tokio::main]
 async fn main() {
-    let api_key = match std::env::var("ANTHROPIC_API_KEY") {
-        Ok(k) => k,
-        Err(_) => {
-            eprintln!("Error: ANTHROPIC_API_KEY environment variable not set.");
-            eprintln!("Usage: ANTHROPIC_API_KEY=sk-... cargo run --bin agent-cli");
-            std::process::exit(1);
-        }
-    };
-
-    let model = std::env::var("REALITYMOD_MODEL")
-        .unwrap_or_else(|_| "claude-sonnet-4-20250514".to_string());
-
-    let data_dir = match resolve_data_dir() {
-        Ok(d) => d,
+    let config = match AgentConfig::load() {
+        Ok(c) => c,
         Err(e) => {
-            eprintln!("Error: {e}");
-            eprintln!("Run from the project root or ensure ./data/ exists.");
+            eprintln!("Configuration error: {e}");
+            eprintln!();
+            eprintln!("Create ~/.realitymod/agent_config.json:");
+            eprintln!(r#"  {{"#);
+            eprintln!(r#"    "base_url": "https://api.anthropic.com","#);
+            eprintln!(r#"    "api_key": "sk-ant-...""#);
+            eprintln!(r#"    "model": "claude-sonnet-4-20250514""#);
+            eprintln!(r#"  }}"#);
+            eprintln!();
+            eprintln!("Or use data/agent_config.json, or env vars (ANTHROPIC_API_KEY, etc.)");
             std::process::exit(1);
         }
     };
 
     eprintln!("RealityMod Agent CLI");
-    eprintln!("  Model: {model}");
-    eprintln!("  Data:  {}", data_dir.display());
+    eprintln!("  Endpoint: {}/v1/messages", config.base_url);
+    eprintln!("  Model:    {}", config.model);
+    eprintln!("  Data:     {}", config.data_dir.display());
+    eprintln!("  Timeout:  {}s", config.timeout_secs);
     eprintln!("  Type your message, then press Enter. Type 'quit' to exit.\n");
 
-    let agent = runner::AgentRunner::new(&api_key, &model, &data_dir);
-    let session_store = session::SessionStore::new(data_dir.join("sessions"));
+    let agent = runner::AgentRunner::new(&config);
+    let session_store = session::SessionStore::new(config.data_dir.join("sessions"));
     let session_key = "cli:local";
 
     let stdin = io::stdin();
@@ -70,7 +68,7 @@ async fn main() {
             content: llm::Content::Text(input.to_string()),
         });
 
-        let system = prompt::build_system_prompt(&data_dir);
+        let system = prompt::build_system_prompt(&config.data_dir);
 
         eprint!("[thinking...] ");
         match agent.run(&system, &mut messages).await {
