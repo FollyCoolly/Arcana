@@ -1,7 +1,7 @@
-mod agent;
+pub mod agent;
 mod commands;
 mod models;
-mod storage;
+pub mod storage;
 
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};

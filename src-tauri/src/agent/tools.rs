@@ -7,6 +7,7 @@ use super::llm::ToolDef;
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
 
 // ---------------------------------------------------------------------------
 // Tool trait
@@ -19,6 +20,10 @@ pub trait Tool: Send + Sync {
 
 pub struct ToolRegistry {
     tools: Vec<Box<dyn Tool>>,
+    /// Global write lock: all data-mutating tools acquire this before writing.
+    /// This prevents concurrent writes from the agent and Tauri commands.
+    /// Shared via Arc so Tauri commands can also use it (see `data_write_lock()`).
+    write_lock: Mutex<()>,
 }
 
 impl ToolRegistry {
@@ -32,7 +37,10 @@ impl ToolRegistry {
             Box::new(WriteChangelogTool(dir.clone())),
             Box::new(ReadFileTool(dir.clone())),
         ];
-        Self { tools }
+        Self {
+            tools,
+            write_lock: Mutex::new(()),
+        }
     }
 
     pub fn definitions(&self) -> Vec<ToolDef> {
@@ -45,7 +53,22 @@ impl ToolRegistry {
             .iter()
             .find(|t| t.definition().name == name)
             .ok_or_else(|| format!("Unknown tool: {name}"))?;
-        tool.execute(input)
+
+        // Write tools acquire the lock; read-only tools skip it.
+        let is_write = matches!(
+            name,
+            "update_mission" | "update_status" | "update_achievement" | "write_changelog"
+        );
+
+        if is_write {
+            let _guard = self
+                .write_lock
+                .lock()
+                .map_err(|e| format!("Write lock poisoned: {e}"))?;
+            tool.execute(input)
+        } else {
+            tool.execute(input)
+        }
     }
 }
 
@@ -174,17 +197,9 @@ impl Tool for ReadFileTool {
     fn execute(&self, input: &Value) -> Result<String, String> {
         let rel_path = input["path"].as_str().ok_or("Missing 'path'")?;
 
-        // Prevent path traversal
-        if rel_path.contains("..") {
-            return Err("Path traversal not allowed".into());
-        }
+        let safe_path = sandbox_path(&self.0, rel_path)?;
 
-        let full_path = self.0.join(rel_path);
-        if !full_path.exists() {
-            return Err(format!("File not found: {rel_path}"));
-        }
-
-        std::fs::read_to_string(&full_path)
+        std::fs::read_to_string(&safe_path)
             .map_err(|e| format!("Failed to read {rel_path}: {e}"))
     }
 }
@@ -558,6 +573,36 @@ impl Tool for WriteChangelogTool {
 // ---------------------------------------------------------------------------
 // Helper
 // ---------------------------------------------------------------------------
+
+/// Validate that a relative path resolves to a location within the sandbox (data_dir).
+/// Prevents path traversal, absolute paths, and symlink escapes.
+fn sandbox_path(data_dir: &Path, rel_path: &str) -> Result<PathBuf, String> {
+    // Reject absolute paths
+    if Path::new(rel_path).is_absolute() {
+        return Err("Absolute paths not allowed".into());
+    }
+
+    // Reject obvious traversal
+    if rel_path.contains("..") {
+        return Err("Path traversal not allowed".into());
+    }
+
+    let joined = data_dir.join(rel_path);
+
+    // Canonicalize both to resolve symlinks, then verify containment
+    let canon_dir = data_dir
+        .canonicalize()
+        .map_err(|e| format!("Cannot resolve data dir: {e}"))?;
+    let canon_path = joined
+        .canonicalize()
+        .map_err(|_| format!("File not found: {rel_path}"))?;
+
+    if !canon_path.starts_with(&canon_dir) {
+        return Err("Access denied: path escapes data directory".into());
+    }
+
+    Ok(canon_path)
+}
 
 fn current_iso8601() -> String {
     // Use system time to produce ISO 8601 with timezone offset.
