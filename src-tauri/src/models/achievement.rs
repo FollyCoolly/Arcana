@@ -39,8 +39,7 @@ pub enum AchievementStatus {
     Achieved,
 }
 
-#[derive(Debug, Deserialize)]
-#[allow(dead_code)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct AchievementProgressFile {
     pub version: u32,
     pub achievements: HashMap<String, AchievementProgress>,

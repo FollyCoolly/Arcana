@@ -23,7 +23,7 @@ pub struct MetricDefinition {
     pub description: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct StatusValueFile {
     pub version: u32,
     pub metrics: HashMap<String, f64>,
