@@ -1,4 +1,5 @@
 pub mod bus;
+pub mod channels;
 pub mod config;
 pub mod llm;
 pub mod prompt;

@@ -35,9 +35,25 @@ pub struct AgentConfig {
     #[serde(default = "default_timeout_secs")]
     pub timeout_secs: u64,
 
+    /// Telegram channel configuration.
+    #[serde(default)]
+    pub telegram: TelegramConfig,
+
     /// Resolved data directory (not serialized in config file).
     #[serde(skip)]
     pub data_dir: PathBuf,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct TelegramConfig {
+    /// Bot token from @BotFather.
+    #[serde(default)]
+    pub token: String,
+
+    /// Allowed sender IDs. Empty = deny all, ["*"] = allow all.
+    /// Use Telegram user ID (numeric string) or "user_id|username" format.
+    #[serde(default)]
+    pub allow_from: Vec<String>,
 }
 
 fn default_base_url() -> String {
@@ -65,6 +81,7 @@ impl Default for AgentConfig {
             max_tokens: default_max_tokens(),
             max_iterations: default_max_iterations(),
             timeout_secs: default_timeout_secs(),
+            telegram: TelegramConfig::default(),
             data_dir: PathBuf::new(),
         }
     }
@@ -80,6 +97,7 @@ struct PartialConfig {
     max_tokens: Option<u32>,
     max_iterations: Option<usize>,
     timeout_secs: Option<u64>,
+    telegram: Option<TelegramConfig>,
 }
 
 impl AgentConfig {
@@ -149,6 +167,14 @@ impl AgentConfig {
         if let Some(v) = partial.timeout_secs {
             self.timeout_secs = v;
         }
+        if let Some(v) = &partial.telegram {
+            if !v.token.is_empty() {
+                self.telegram.token = v.token.clone();
+            }
+            if !v.allow_from.is_empty() {
+                self.telegram.allow_from = v.allow_from.clone();
+            }
+        }
     }
 
     /// Apply environment variable overrides.
@@ -182,6 +208,17 @@ impl AgentConfig {
         if let Ok(v) = std::env::var("REALITYMOD_TIMEOUT_SECS") {
             if let Ok(n) = v.parse() {
                 self.timeout_secs = n;
+            }
+        }
+        // Telegram token: TELOXIDE_TOKEN (teloxide convention) or REALITYMOD_TELEGRAM_TOKEN
+        if let Ok(v) = std::env::var("TELOXIDE_TOKEN") {
+            if !v.is_empty() {
+                self.telegram.token = v;
+            }
+        }
+        if let Ok(v) = std::env::var("REALITYMOD_TELEGRAM_TOKEN") {
+            if !v.is_empty() {
+                self.telegram.token = v;
             }
         }
     }
