@@ -3,7 +3,12 @@
     "PostToolUse": [
       {
         "matcher": "Write|Edit",
-        "command": "uv run scripts/validate_data.py \"$TOOL_INPUT_FILE_PATH\""
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run scripts/validate_data.py \"$TOOL_INPUT_FILE_PATH\""
+          }
+        ]
       }
     ]
   }
