@@ -19,7 +19,7 @@ DATA_DIR = (Path(__file__).parent / ".." / "data").resolve()
 MISSION_STATUSES = {"proposed", "active", "completed", "archived", "rejected"}
 ACHIEVEMENT_STATUSES = {"tracked", "achieved"}
 DIFFICULTY_LEVELS = {"beginner", "intermediate", "advanced", "expert", "legendary"}
-CHANGELOG_SKILLS = {"velvet-room", "phan-site"}
+CHANGELOG_SKILLS = {"velvet-room", "phan-site", "agent"}
 CHANGELOG_CHANGE_TYPES = {"add", "update", "delete"}
 PRIORITY_LEVELS = {"high", "medium", "low"}
 

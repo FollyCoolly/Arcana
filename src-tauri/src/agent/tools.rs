@@ -2,8 +2,10 @@ use crate::models::achievement::{AchievementFile, AchievementProgressFile, Loade
 use crate::models::mission::MissionFile;
 use crate::models::status::{MetricDefinitionFile, StatusValueFile};
 use crate::storage::json_store::{read_json_file, write_json_file};
+use crate::storage::validate::validate_data_file;
 
 use super::llm::ToolDef;
+use serde::Serialize;
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -258,7 +260,12 @@ impl Tool for UpdateMissionTool {
                     match key.as_str() {
                         "progress" => {
                             let old = mission.progress;
-                            mission.progress = val.as_u64().map(|v| v as u32);
+                            if let Some(p) = val.as_u64() {
+                                if p > 100 {
+                                    return Err(format!("progress must be 0-100, got {p}"));
+                                }
+                                mission.progress = Some(p as u32);
+                            }
                             changes.push(format!("{id}.progress: {old:?} → {:?}", mission.progress));
                         }
                         "status" => {
@@ -310,7 +317,7 @@ impl Tool for UpdateMissionTool {
             return Ok("No changes made.".into());
         }
 
-        write_json_file(&missions_path, &file)?;
+        write_and_validate(&missions_path, &file, "missions.json")?;
         Ok(format!("Updated missions.json:\n- {}", changes.join("\n- ")))
     }
 }
@@ -365,7 +372,7 @@ impl Tool for UpdateStatusTool {
             changes.push(format!("{id}: {old_val:?} → {new_val}"));
         }
 
-        write_json_file(&status_path, &file)?;
+        write_and_validate(&status_path, &file, "status.json")?;
         Ok(format!("Updated status.json:\n- {}", changes.join("\n- ")))
     }
 }
@@ -495,7 +502,7 @@ impl Tool for UpdateAchievementTool {
             entry.may_be_incomplete = Some(inc);
         }
 
-        write_json_file(&progress_path, &file)?;
+        write_and_validate(&progress_path, &file, "achievement_progress.json")?;
         Ok(format!(
             "Updated achievement '{id}': {old_status} → {new_status}"
         ))
@@ -546,7 +553,18 @@ impl Tool for WriteChangelogTool {
         let changelog_path = self.0.join("ai_changelog.json");
 
         let mut entries: Vec<Value> = if changelog_path.exists() {
-            read_json_file(&changelog_path)?
+            let raw: Value = read_json_file(&changelog_path)?;
+            if let Some(arr) = raw.as_array() {
+                // Migration: legacy bare array format → wrapped format
+                arr.clone()
+            } else if let Some(obj) = raw.as_object() {
+                obj.get("entries")
+                    .and_then(|v| v.as_array())
+                    .cloned()
+                    .unwrap_or_default()
+            } else {
+                Vec::new()
+            }
         } else {
             Vec::new()
         };
@@ -565,7 +583,12 @@ impl Tool for WriteChangelogTool {
             entries.remove(0);
         }
 
-        write_json_file(&changelog_path, &entries)?;
+        let file = json!({
+            "version": 1,
+            "entries": entries,
+        });
+
+        write_and_validate(&changelog_path, &file, "ai_changelog.json")?;
         Ok("Changelog entry written.".into())
     }
 }
@@ -573,6 +596,26 @@ impl Tool for WriteChangelogTool {
 // ---------------------------------------------------------------------------
 // Helper
 // ---------------------------------------------------------------------------
+
+/// Write a typed value to a JSON file, then validate the result.
+/// On validation failure, restore the original file content and return Err.
+fn write_and_validate<T: Serialize>(path: &Path, data: &T, file_name: &str) -> Result<(), String> {
+    let backup = std::fs::read(path).ok();
+    write_json_file(path, data)?;
+
+    let written: Value =
+        read_json_file(path).map_err(|e| format!("Failed to re-read after write: {e}"))?;
+    if let Err(e) = validate_data_file(file_name, &written) {
+        // Rollback
+        if let Some(b) = backup {
+            let _ = std::fs::write(path, b);
+        } else {
+            let _ = std::fs::remove_file(path);
+        }
+        return Err(format!("Validation failed: {e}"));
+    }
+    Ok(())
+}
 
 /// Validate that a relative path resolves to a location within the sandbox (data_dir).
 /// Prevents path traversal, absolute paths, and symlink escapes.

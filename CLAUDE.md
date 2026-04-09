@@ -99,7 +99,7 @@ PR 前必须通过：`npm run check` + `cargo test` + `cargo fmt --check`。
 
 ### AI Changelog (`data/ai_changelog.json`)
 
-- 结构：`{"version": 1, "entries": [...]}`
+- 结构：`{"version": 1, "entries": [...]}`（Rust agent 已从旧的裸数组格式迁移）
 - **每次数据变更后必须写 changelog**，包含 `old_value`
 - `skill` 字段：`velvet-room` / `phan-site`（Claude Code Skill）或 `agent`（Rust agent）
 - 最多 200 条，FIFO 淘汰
@@ -153,13 +153,22 @@ PR 前必须通过：`npm run check` + `cargo test` + `cargo fmt --check`。
 
 ## 数据校验
 
-`scripts/validate_data.py` 作为 PostToolUse hook 在 Claude Code 每次写 `data/*.json` 后自动运行。校验覆盖：
+校验分两层，共享同一套规则：
 
-- missions.json: ID 唯一性、status 枚举、progress 范围、main_menu 引用
-- achievement_progress.json: status 有效性
-- ai_changelog.json: 结构完整性、entries 上限
-- mission_memory.json: FIFO 上限
-- status.json: 值必须为数字
+### Rust 共享校验层 (`storage/validate.rs`)
+
+位于 `storage/` 下，被 agent tools、Tauri commands、未来 MCP Server 共用。写入后自动校验，失败则回滚文件并返回错误。覆盖 agent 写的 4 类文件：
+
+- missions.json: version、ID 唯一性、status 枚举、progress 0-100、main_menu 引用
+- achievement_progress.json: version、status ∈ {tracked, achieved}
+- ai_changelog.json: version、entries 上限 200、skill ∈ {velvet-room, phan-site, agent}、change type、update 必须有 old_value
+- status.json: version、metrics 值必须为数字
+- mission_memory.json: version、conversation_context ≤ 20、completed_mission_log ≤ 50
+
+### Python PostToolUse Hook (`scripts/validate_data.py`)
+
+Claude Code 每次写 `data/*.json` 后自动运行。覆盖 Rust 校验的全部规则，额外包含：
+
 - 成就包: ID 前缀、DAG、技能树单调性
 - Changelog 新鲜度检查（非阻塞警告）
 

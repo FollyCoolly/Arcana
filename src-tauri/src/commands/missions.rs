@@ -1,6 +1,7 @@
 use crate::models::mission::*;
 use crate::storage::date_utils::{days_from_civil, parse_date, today_epoch_days};
 use crate::storage::json_store::{read_json_file, resolve_data_dir, write_json_file};
+use crate::storage::validate::validate_data_file;
 
 #[tauri::command]
 pub fn load_missions() -> Result<MissionData, String> {
@@ -119,6 +120,13 @@ pub fn update_mission_status(id: String, new_status: String) -> Result<(), Strin
 
     mission.status = new_status;
     write_json_file(&missions_path, &file)?;
+
+    // Post-write validation (shared rules with agent)
+    let written: serde_json::Value = read_json_file(&missions_path)?;
+    if let Err(e) = validate_data_file("missions.json", &written) {
+        // This should not happen since status was pre-checked, but guard against drift
+        return Err(format!("Post-write validation failed: {e}"));
+    }
 
     Ok(())
 }
