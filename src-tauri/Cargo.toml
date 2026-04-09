@@ -22,6 +22,10 @@ path = "src/bin/agent_cli.rs"
 name = "agent-telegram"
 path = "src/bin/agent_telegram.rs"
 
+[[bin]]
+name = "mcp-server"
+path = "src/bin/mcp_server.rs"
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
@@ -39,4 +43,5 @@ env_logger = "0.11"
 serde_yaml = "0.9"
 regex = "1"
 percent-encoding = "2"
+rmcp = { version = "1.3", features = ["server", "transport-io"] }
 

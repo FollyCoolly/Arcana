@@ -89,6 +89,6 @@ fn current_datetime_string() -> String {
     let hours = day_secs / 3600;
     let minutes = (day_secs % 3600) / 60;
 
-    let (y, m, d) = super::tools::epoch_days_to_civil(days as i64);
+    let (y, m, d) = crate::storage::date_utils::epoch_days_to_civil(days as i64);
     format!("{:04}-{:02}-{:02} {:02}:{:02} UTC", y, m, d, hours, minutes)
 }

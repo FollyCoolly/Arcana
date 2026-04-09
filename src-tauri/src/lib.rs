@@ -1,6 +1,7 @@
 pub mod agent;
 mod commands;
-mod models;
+pub mod models;
+pub mod services;
 pub mod storage;
 
 use std::collections::hash_map::DefaultHasher;

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "realitymod": {
+      "type": "stdio",
+      "command": "/Users/zhs/Projects/RealityMod/src-tauri/target/release/mcp-server"
+    }
+  }
+}
