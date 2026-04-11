@@ -2,7 +2,14 @@
   "mcpServers": {
     "realitymod": {
       "type": "stdio",
-      "command": "/Users/zhs/Projects/RealityMod/src-tauri/target/release/mcp-server"
+      "command": "cargo",
+      "args": [
+        "run",
+        "--manifest-path",
+        "src-tauri/Cargo.toml",
+        "--bin",
+        "mcp-server"
+      ]
     }
   }
 }
