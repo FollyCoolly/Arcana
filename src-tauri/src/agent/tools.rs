@@ -106,7 +106,8 @@ impl Tool for UpdateMissionTool {
     fn definition(&self) -> ToolDef {
         ToolDef {
             name: "update_mission".into(),
-            description: "Update a mission's fields or the main_menu config in missions.json.".into(),
+            description: "Update a mission's fields or the main_menu config in missions.json."
+                .into(),
             input_schema: json!({
                 "type": "object",
                 "properties": {
@@ -170,7 +171,9 @@ impl Tool for WriteChangelogTool {
     fn definition(&self) -> ToolDef {
         ToolDef {
             name: "write_changelog".into(),
-            description: "Append an entry to ai_changelog.json. MANDATORY after every data modification.".into(),
+            description:
+                "Append an entry to ai_changelog.json. MANDATORY after every data modification."
+                    .into(),
             input_schema: json!({
                 "type": "object",
                 "properties": {

@@ -13,11 +13,7 @@ use teloxide::types::ChatAction;
 /// Architecture (borrowed from Nanobot's telegram.py):
 ///   Telegram → teloxide handler → InboundMessage → agent loop
 ///   agent loop → OutboundMessage → outbound consumer → bot.send_message
-pub async fn run(
-    tg_config: TelegramConfig,
-    inbound_tx: InboundTx,
-    mut outbound_rx: OutboundRx,
-) {
+pub async fn run(tg_config: TelegramConfig, inbound_tx: InboundTx, mut outbound_rx: OutboundRx) {
     let bot = Bot::new(&tg_config.token);
 
     info!("[telegram] Bot starting...");
@@ -25,11 +21,7 @@ pub async fn run(
     // Verify bot identity
     match bot.get_me().await {
         Ok(me) => {
-            info!(
-                "[telegram] Connected as @{} (id: {})",
-                me.username(),
-                me.id
-            );
+            info!("[telegram] Connected as @{} (id: {})", me.username(), me.id);
         }
         Err(e) => {
             warn!("[telegram] Failed to get bot info: {e}");
@@ -61,15 +53,11 @@ pub async fn run(
     });
 
     // Inbound: long-poll for messages and forward to agent
-    let handler = Update::filter_message().endpoint(
-        move |bot: Bot, msg: Message| {
-            let inbound_tx = inbound_tx.clone();
-            let allow_from = allow_from.clone();
-            async move {
-                handle_message(bot, msg, inbound_tx, &allow_from).await
-            }
-        },
-    );
+    let handler = Update::filter_message().endpoint(move |bot: Bot, msg: Message| {
+        let inbound_tx = inbound_tx.clone();
+        let allow_from = allow_from.clone();
+        async move { handle_message(bot, msg, inbound_tx, &allow_from).await }
+    });
 
     Dispatcher::builder(bot, handler)
         .enable_ctrlc_handler()
@@ -181,9 +169,7 @@ fn split_message(text: &str, max_len: usize) -> Vec<String> {
         }
 
         // Try to split at last newline within limit
-        let split_at = remaining[..max_len]
-            .rfind('\n')
-            .unwrap_or(max_len);
+        let split_at = remaining[..max_len].rfind('\n').unwrap_or(max_len);
 
         chunks.push(remaining[..split_at].to_string());
         remaining = &remaining[split_at..].trim_start_matches('\n');

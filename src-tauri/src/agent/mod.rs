@@ -71,19 +71,25 @@ async fn agent_loop(
                     store.save(&session_key, &messages);
                 }
                 // Send reply back
-                let _ = bus.outbound_tx.send(bus::OutboundMessage {
-                    channel: msg.channel.clone(),
-                    chat_id: msg.chat_id.clone(),
-                    content: reply,
-                }).await;
+                let _ = bus
+                    .outbound_tx
+                    .send(bus::OutboundMessage {
+                        channel: msg.channel.clone(),
+                        chat_id: msg.chat_id.clone(),
+                        content: reply,
+                    })
+                    .await;
             }
             Err(e) => {
                 eprintln!("[agent] Error processing message: {e}");
-                let _ = bus.outbound_tx.send(bus::OutboundMessage {
-                    channel: msg.channel.clone(),
-                    chat_id: msg.chat_id.clone(),
-                    content: format!("Agent error: {e}"),
-                }).await;
+                let _ = bus
+                    .outbound_tx
+                    .send(bus::OutboundMessage {
+                        channel: msg.channel.clone(),
+                        chat_id: msg.chat_id.clone(),
+                        content: format!("Agent error: {e}"),
+                    })
+                    .await;
             }
         }
     }

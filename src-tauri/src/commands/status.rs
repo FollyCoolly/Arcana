@@ -29,13 +29,9 @@ pub fn load_status_data() -> Result<StatusData, String> {
     let mut metric_ids = HashSet::new();
     for metric in &definitions.metrics {
         if !metric_ids.insert(metric.id.clone()) {
-            return Err(format!("Duplicate metric id found in definitions: {}", metric.id));
-        }
-
-        if metric.value_type != "number" {
             return Err(format!(
-                "Unsupported value_type '{}' for metric '{}'. Only 'number' is supported in MVP.",
-                metric.value_type, metric.id
+                "Duplicate metric id found in definitions: {}",
+                metric.id
             ));
         }
     }
@@ -52,6 +48,7 @@ pub fn load_status_data() -> Result<StatusData, String> {
     let merged_metrics = definitions
         .metrics
         .into_iter()
+        .filter(|metric| metric.value_type == "number")
         .map(|metric| StatusMetric {
             value: values.metrics.get(&metric.id).copied(),
             id: metric.id,

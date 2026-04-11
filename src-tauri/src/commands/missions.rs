@@ -104,7 +104,10 @@ fn resolve_progress(missions: &[Mission], ref_data: MainMenuRef) -> Option<Progr
 pub fn update_mission_status(id: String, new_status: String) -> Result<(), String> {
     let valid = ["proposed", "active", "completed", "archived", "rejected"];
     if !valid.contains(&new_status.as_str()) {
-        return Err(format!("Invalid status '{}'. Must be one of: {:?}", new_status, valid));
+        return Err(format!(
+            "Invalid status '{}'. Must be one of: {:?}",
+            new_status, valid
+        ));
     }
 
     let data_dir = resolve_data_dir()?;

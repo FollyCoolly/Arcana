@@ -21,11 +21,7 @@ impl AgentRunner {
 
     /// Run the agent loop: send messages to LLM, execute tool calls, repeat.
     /// Returns the final text response.
-    pub async fn run(
-        &self,
-        system: &str,
-        messages: &mut Vec<Message>,
-    ) -> Result<String, String> {
+    pub async fn run(&self, system: &str, messages: &mut Vec<Message>) -> Result<String, String> {
         let tool_defs = self.tools.definitions();
         let run_start = Instant::now();
 
@@ -120,10 +116,7 @@ impl AgentRunner {
 fn summarize_tool_call(name: &str, input: &serde_json::Value) -> String {
     match name {
         "get_context" => String::new(),
-        "read_file" => input["path"]
-            .as_str()
-            .unwrap_or("?")
-            .to_string(),
+        "read_file" => input["path"].as_str().unwrap_or("?").to_string(),
         "update_mission" => {
             let id = input["mission_id"].as_str().unwrap_or("?");
             let fields: Vec<&str> = input["updates"]
@@ -136,17 +129,15 @@ fn summarize_tool_call(name: &str, input: &serde_json::Value) -> String {
                 format!("{id}: {}", fields.join(", "))
             }
         }
-        "update_status" => {
-            input["metrics"]
-                .as_object()
-                .map(|o| {
-                    o.iter()
-                        .map(|(k, v)| format!("{k}={v}"))
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                })
-                .unwrap_or_else(|| "?".into())
-        }
+        "update_status" => input["metrics"]
+            .as_object()
+            .map(|o| {
+                o.iter()
+                    .map(|(k, v)| format!("{k}={v}"))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            })
+            .unwrap_or_else(|| "?".into()),
         "update_achievement" => {
             let id = input["achievement_id"].as_str().unwrap_or("?");
             let status = input["status"].as_str().unwrap_or("?");

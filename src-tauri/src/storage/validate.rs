@@ -100,12 +100,9 @@ fn validate_achievement_progress(data: &Value) -> Result<(), String> {
         .ok_or("achievement_progress.json: 'achievements' must be an object")?;
 
     for (aid, entry) in achievements {
-        let status = entry
-            .get("status")
-            .and_then(|v| v.as_str())
-            .ok_or(format!(
-                "achievement_progress.json: achievements['{aid}'].status must be a string"
-            ))?;
+        let status = entry.get("status").and_then(|v| v.as_str()).ok_or(format!(
+            "achievement_progress.json: achievements['{aid}'].status must be a string"
+        ))?;
         if !ACHIEVEMENT_STATUSES.contains(&status) {
             return Err(format!(
                 "achievement_progress.json: achievements['{aid}'].status '{status}' must be one of {ACHIEVEMENT_STATUSES:?}"
@@ -221,10 +218,7 @@ fn validate_mission_memory(data: &Value) -> Result<(), String> {
         }
     }
 
-    if let Some(log) = data
-        .get("completed_mission_log")
-        .and_then(|v| v.as_array())
-    {
+    if let Some(log) = data.get("completed_mission_log").and_then(|v| v.as_array()) {
         if log.len() > 50 {
             return Err(format!(
                 "mission_memory.json: completed_mission_log has {} entries, max 50",
@@ -408,7 +402,9 @@ mod tests {
 
     #[test]
     fn mission_memory_context_overflow() {
-        let ctx: Vec<Value> = (0..21).map(|i| json!({"date": "2026-01-01", "summary": format!("s{i}")})).collect();
+        let ctx: Vec<Value> = (0..21)
+            .map(|i| json!({"date": "2026-01-01", "summary": format!("s{i}")}))
+            .collect();
         let data = json!({"version": 1, "conversation_context": ctx});
         assert!(validate_data_file("mission_memory.json", &data).is_err());
     }

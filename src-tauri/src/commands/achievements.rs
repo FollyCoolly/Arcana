@@ -137,10 +137,7 @@ fn detect_cycle(achievements: &[AchievementDef]) -> Option<String> {
                         stack.push((next, 0));
                     }
                     1 => {
-                        return Some(format!(
-                            "prerequisite cycle detected involving '{}'",
-                            next
-                        ));
+                        return Some(format!("prerequisite cycle detected involving '{}'", next));
                     }
                     _ => {} // already fully visited
                 }

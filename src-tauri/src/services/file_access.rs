@@ -27,6 +27,5 @@ pub fn sandbox_path(data_dir: &Path, rel_path: &str) -> Result<PathBuf, String> 
 
 pub fn read_sandboxed_file(data_dir: &Path, rel_path: &str) -> Result<String, String> {
     let safe_path = sandbox_path(data_dir, rel_path)?;
-    std::fs::read_to_string(&safe_path)
-        .map_err(|e| format!("Failed to read {rel_path}: {e}"))
+    std::fs::read_to_string(&safe_path).map_err(|e| format!("Failed to read {rel_path}: {e}"))
 }

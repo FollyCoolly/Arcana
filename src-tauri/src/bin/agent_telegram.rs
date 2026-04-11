@@ -20,11 +20,7 @@
 //!   cargo run --bin agent-telegram
 
 use reality_mod_lib::agent::{
-    bus::MessageBus,
-    channels::telegram,
-    config::AgentConfig,
-    llm, prompt,
-    runner::AgentRunner,
+    bus::MessageBus, channels::telegram, config::AgentConfig, llm, prompt, runner::AgentRunner,
     session::SessionStore,
 };
 use std::sync::Arc;
@@ -55,10 +51,7 @@ async fn main() {
     log::info!("  Endpoint: {}/v1/messages", config.base_url);
     log::info!("  Model:    {}", config.model);
     log::info!("  Data:     {}", config.data_dir.display());
-    log::info!(
-        "  ACL:      {:?}",
-        config.telegram.allow_from
-    );
+    log::info!("  ACL:      {:?}", config.telegram.allow_from);
 
     let (bus, mut inbound_rx) = MessageBus::new(64);
     let inbound_tx = bus.inbound_tx.clone();
@@ -72,9 +65,9 @@ async fn main() {
 
     // Agent loop: consume inbound messages, run LLM, push replies to outbound
     let runner = AgentRunner::new(&config);
-    let sessions = Arc::new(Mutex::new(
-        SessionStore::new(config.data_dir.join("sessions")),
-    ));
+    let sessions = Arc::new(Mutex::new(SessionStore::new(
+        config.data_dir.join("sessions"),
+    )));
 
     let agent_handle = tokio::spawn(async move {
         while let Some(msg) = inbound_rx.recv().await {

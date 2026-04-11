@@ -10,7 +10,14 @@ use crate::storage::json_store::{read_json_file, resolve_data_dir};
 
 /// Known frontmatter keys that map to public fields (Chinese keys).
 const KNOWN_KEYS: &[&str] = &[
-    "名称", "品牌", "价格", "购入日期", "购入方式", "主类", "品类", "颜色",
+    "名称",
+    "品牌",
+    "价格",
+    "购入日期",
+    "购入方式",
+    "主类",
+    "品类",
+    "颜色",
 ];
 
 fn yaml_value_to_json(val: &serde_yaml::Value) -> serde_json::Value {
@@ -86,15 +93,11 @@ fn extract_image(content: &str, md_dir: &Path) -> Option<String> {
     Some(abs_path.to_string_lossy().replace('\\', "/"))
 }
 
-fn parse_md_file(
-    path: &Path,
-    source_id: &str,
-) -> Option<ItemWithComputed> {
+fn parse_md_file(path: &Path, source_id: &str) -> Option<ItemWithComputed> {
     let content = fs::read_to_string(path).ok()?;
     let fm_str = extract_frontmatter(&content)?;
 
-    let frontmatter: HashMap<String, serde_yaml::Value> =
-        serde_yaml::from_str(fm_str).ok()?;
+    let frontmatter: HashMap<String, serde_yaml::Value> = serde_yaml::from_str(fm_str).ok()?;
 
     let file_stem = path.file_stem()?.to_string_lossy().to_string();
     let md_dir = path.parent()?;
@@ -176,9 +179,8 @@ pub fn load_items() -> Result<ItemData, String> {
             continue;
         }
 
-        let entries = fs::read_dir(source_path).map_err(|e| {
-            format!("Failed to read directory '{}': {}", source.path, e)
-        })?;
+        let entries = fs::read_dir(source_path)
+            .map_err(|e| format!("Failed to read directory '{}': {}", source.path, e))?;
 
         let mut source_items: Vec<ItemWithComputed> = Vec::new();
 
@@ -191,10 +193,7 @@ pub fn load_items() -> Result<ItemData, String> {
             match parse_md_file(&path, &source.id) {
                 Some(item) => source_items.push(item),
                 None => {
-                    eprintln!(
-                        "[items] Warning: failed to parse {}",
-                        path.display()
-                    );
+                    eprintln!("[items] Warning: failed to parse {}", path.display());
                 }
             }
         }

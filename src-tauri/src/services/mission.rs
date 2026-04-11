@@ -31,9 +31,7 @@ pub fn update_mission(data_dir: &Path, input: &Value) -> Result<String, String> 
                     "status" => {
                         let old = mission.status.clone();
                         if let Some(s) = val.as_str() {
-                            let valid = [
-                                "proposed", "active", "completed", "archived", "rejected",
-                            ];
+                            let valid = ["proposed", "active", "completed", "archived", "rejected"];
                             if !valid.contains(&s) {
                                 return Err(format!("Invalid status '{s}'"));
                             }
@@ -60,8 +58,7 @@ pub fn update_mission(data_dir: &Path, input: &Value) -> Result<String, String> 
                 file.main_menu.countdown = None;
                 changes.push("main_menu.countdown: cleared".into());
             } else {
-                file.main_menu.countdown =
-                    serde_json::from_value(menu["countdown"].clone()).ok();
+                file.main_menu.countdown = serde_json::from_value(menu["countdown"].clone()).ok();
                 changes.push("main_menu.countdown: updated".into());
             }
         }
@@ -70,8 +67,7 @@ pub fn update_mission(data_dir: &Path, input: &Value) -> Result<String, String> 
                 file.main_menu.progress = None;
                 changes.push("main_menu.progress: cleared".into());
             } else {
-                file.main_menu.progress =
-                    serde_json::from_value(menu["progress"].clone()).ok();
+                file.main_menu.progress = serde_json::from_value(menu["progress"].clone()).ok();
                 changes.push("main_menu.progress: updated".into());
             }
         }
@@ -82,7 +78,10 @@ pub fn update_mission(data_dir: &Path, input: &Value) -> Result<String, String> 
     }
 
     write_and_validate(&missions_path, &file, "missions.json")?;
-    Ok(format!("Updated missions.json:\n- {}", changes.join("\n- ")))
+    Ok(format!(
+        "Updated missions.json:\n- {}",
+        changes.join("\n- ")
+    ))
 }
 
 pub fn create_mission(data_dir: &Path, input: &Value) -> Result<String, String> {
@@ -97,9 +96,7 @@ pub fn create_mission(data_dir: &Path, input: &Value) -> Result<String, String> 
         }
     };
 
-    let id = input["id"]
-        .as_str()
-        .ok_or("Missing required field 'id'")?;
+    let id = input["id"].as_str().ok_or("Missing required field 'id'")?;
     let title = input["title"]
         .as_str()
         .ok_or("Missing required field 'title'")?;

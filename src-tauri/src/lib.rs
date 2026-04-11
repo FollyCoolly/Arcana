@@ -7,7 +7,10 @@ pub mod storage;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
-use std::sync::{Arc, atomic::{AtomicUsize, Ordering}};
+use std::sync::{
+    atomic::{AtomicUsize, Ordering},
+    Arc,
+};
 use tauri::{Emitter, Manager};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
@@ -27,7 +30,10 @@ fn url_to_cache_path(cache_dir: &std::path::Path, url: &str) -> PathBuf {
     cache_dir.join(format!("{:016x}.{}", hash, ext))
 }
 
-fn do_fetch(client: &reqwest::blocking::Client, url: &str) -> Result<(u16, String, Vec<u8>), String> {
+fn do_fetch(
+    client: &reqwest::blocking::Client,
+    url: &str,
+) -> Result<(u16, String, Vec<u8>), String> {
     let mut req = client.get(url);
     if let Some(referer) = infer_referer(url) {
         req = req.header("Referer", referer);
@@ -102,7 +108,10 @@ pub fn run() {
                 // Serve from disk cache if available
                 if cache_path.exists() {
                     if let Ok(bytes) = std::fs::read(&cache_path) {
-                        let ext = cache_path.extension().and_then(|e| e.to_str()).unwrap_or("jpg");
+                        let ext = cache_path
+                            .extension()
+                            .and_then(|e| e.to_str())
+                            .unwrap_or("jpg");
                         let ct = match ext {
                             "png" => "image/png",
                             "webp" => "image/webp",
@@ -124,7 +133,15 @@ pub fn run() {
                 loop {
                     let current = counter.load(Ordering::Relaxed);
                     if current < MAX_CONCURRENT {
-                        if counter.compare_exchange(current, current + 1, Ordering::AcqRel, Ordering::Relaxed).is_ok() {
+                        if counter
+                            .compare_exchange(
+                                current,
+                                current + 1,
+                                Ordering::AcqRel,
+                                Ordering::Relaxed,
+                            )
+                            .is_ok()
+                        {
                             break;
                         }
                     }
@@ -132,11 +149,10 @@ pub fn run() {
                 }
 
                 // Try up to 2 times
-                let result = do_fetch(&client, &original_url)
-                    .or_else(|_| {
-                        std::thread::sleep(std::time::Duration::from_secs(1));
-                        do_fetch(&client, &original_url)
-                    });
+                let result = do_fetch(&client, &original_url).or_else(|_| {
+                    std::thread::sleep(std::time::Duration::from_secs(1));
+                    do_fetch(&client, &original_url)
+                });
 
                 counter.fetch_sub(1, Ordering::AcqRel);
 
@@ -179,27 +195,30 @@ pub fn run() {
             #[cfg(not(target_os = "macos"))]
             let shortcut = "Ctrl+Shift+R";
 
-            app.global_shortcut().on_shortcut(shortcut, move |_app, _shortcut, event| {
-                // 只在按键按下时触发，避免释放时也触发
-                if event.state == ShortcutState::Pressed {
-                    if window.is_visible().unwrap_or(false) {
-                        let _ = window.set_always_on_top(false);
-                        let _ = window.hide();
-                    } else {
-                        // 展开到主显示器全屏
-                        if let Ok(Some(monitor)) = window.primary_monitor() {
-                            let size = monitor.size();
-                            let pos = monitor.position();
-                            let _ = window.set_position(tauri::PhysicalPosition::new(pos.x, pos.y));
-                            let _ = window.set_size(tauri::PhysicalSize::new(size.width, size.height));
+            app.global_shortcut()
+                .on_shortcut(shortcut, move |_app, _shortcut, event| {
+                    // 只在按键按下时触发，避免释放时也触发
+                    if event.state == ShortcutState::Pressed {
+                        if window.is_visible().unwrap_or(false) {
+                            let _ = window.set_always_on_top(false);
+                            let _ = window.hide();
+                        } else {
+                            // 展开到主显示器全屏
+                            if let Ok(Some(monitor)) = window.primary_monitor() {
+                                let size = monitor.size();
+                                let pos = monitor.position();
+                                let _ =
+                                    window.set_position(tauri::PhysicalPosition::new(pos.x, pos.y));
+                                let _ = window
+                                    .set_size(tauri::PhysicalSize::new(size.width, size.height));
+                            }
+                            let _ = window.set_always_on_top(true);
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                            let _ = window.emit("reality://summoned", ());
                         }
-                        let _ = window.set_always_on_top(true);
-                        let _ = window.show();
-                        let _ = window.set_focus();
-                        let _ = window.emit("reality://summoned", ());
                     }
-                }
-            })?;
+                })?;
 
             Ok(())
         })

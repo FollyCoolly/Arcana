@@ -152,7 +152,5 @@ pub fn load_skills() -> Result<SkillData, String> {
         }
     }
 
-    Ok(SkillData {
-        skills: all_skills,
-    })
+    Ok(SkillData { skills: all_skills })
 }

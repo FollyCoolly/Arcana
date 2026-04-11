@@ -128,12 +128,16 @@ impl RealityModServer {
         }
     }
 
-    #[tool(description = "Read RealityMod context: active missions, status metrics, achievement progress, and mission memory. Call this first to understand the user's current state.")]
+    #[tool(
+        description = "Read RealityMod context: active missions, status metrics, achievement progress, and mission memory. Call this first to understand the user's current state."
+    )]
     fn get_context(&self) -> Result<CallToolResult, ErrorData> {
         ok(services::context::get_context(&self.data_dir).map_err(err)?)
     }
 
-    #[tool(description = "Read a file relative to the data/ directory. Sandboxed: rejects absolute paths, path traversal, and symlink escapes. Use for reading pack files, definitions, etc.")]
+    #[tool(
+        description = "Read a file relative to the data/ directory. Sandboxed: rejects absolute paths, path traversal, and symlink escapes. Use for reading pack files, definitions, etc."
+    )]
     fn read_file(
         &self,
         Parameters(input): Parameters<ReadFileInput>,
@@ -141,7 +145,9 @@ impl RealityModServer {
         ok(services::file_access::read_sandboxed_file(&self.data_dir, &input.path).map_err(err)?)
     }
 
-    #[tool(description = "Update a mission's fields or the main_menu config in missions.json. Can update progress (0-100), status (proposed/active/completed/archived/rejected), completed_at, or main_menu display.")]
+    #[tool(
+        description = "Update a mission's fields or the main_menu config in missions.json. Can update progress (0-100), status (proposed/active/completed/archived/rejected), completed_at, or main_menu display."
+    )]
     fn update_mission(
         &self,
         Parameters(input): Parameters<UpdateMissionInput>,
@@ -151,7 +157,9 @@ impl RealityModServer {
         ok(services::mission::update_mission(&self.data_dir, &val).map_err(err)?)
     }
 
-    #[tool(description = "Insert a new mission into missions.json. Used to create mission proposals. The id must be unique. Status is typically 'proposed'. Validates via missions.json schema rules.")]
+    #[tool(
+        description = "Insert a new mission into missions.json. Used to create mission proposals. The id must be unique. Status is typically 'proposed'. Validates via missions.json schema rules."
+    )]
     fn create_mission(
         &self,
         Parameters(input): Parameters<CreateMissionInput>,
@@ -161,7 +169,9 @@ impl RealityModServer {
         ok(services::mission::create_mission(&self.data_dir, &val).map_err(err)?)
     }
 
-    #[tool(description = "Update one or more status metric values in status.json. Validates metric IDs against status_metric_definitions.json. All values must be numeric.")]
+    #[tool(
+        description = "Update one or more status metric values in status.json. Validates metric IDs against status_metric_definitions.json. All values must be numeric."
+    )]
     fn update_status(
         &self,
         Parameters(input): Parameters<UpdateStatusInput>,
@@ -171,7 +181,9 @@ impl RealityModServer {
         ok(services::status::update_status(&self.data_dir, &val).map_err(err)?)
     }
 
-    #[tool(description = "Update achievement progress. Set status to 'tracked' (partial) or 'achieved' (complete). Appends to progress_detail; never replaces. Validates against loaded packs.")]
+    #[tool(
+        description = "Update achievement progress. Set status to 'tracked' (partial) or 'achieved' (complete). Appends to progress_detail; never replaces. Validates against loaded packs."
+    )]
     fn update_achievement(
         &self,
         Parameters(input): Parameters<UpdateAchievementInput>,
@@ -181,17 +193,24 @@ impl RealityModServer {
         ok(services::achievement::update_achievement(&self.data_dir, &val).map_err(err)?)
     }
 
-    #[tool(description = "Append an entry to ai_changelog.json. MANDATORY after every data modification. Include old_value in change entries for rollback support. skill must be 'velvet-room', 'phan-site', or 'agent'.")]
+    #[tool(
+        description = "Append an entry to ai_changelog.json. MANDATORY after every data modification. Include old_value in change entries for rollback support. skill must be 'velvet-room', 'phan-site', or 'agent'."
+    )]
     fn write_changelog(
         &self,
         Parameters(input): Parameters<WriteChangelogInput>,
     ) -> Result<CallToolResult, ErrorData> {
         let _guard = self.write_lock.lock().map_err(|e| err(e.to_string()))?;
         let val = json!({"summary": input.summary, "changes": input.changes});
-        ok(services::changelog::write_changelog(&self.data_dir, &input.skill, &val).map_err(err)?)
+        ok(
+            services::changelog::write_changelog(&self.data_dir, &input.skill, &val)
+                .map_err(err)?,
+        )
     }
 
-    #[tool(description = "Update mission_memory.json — the AI's persistent cross-session memory. Supports: replacing focus_areas/patterns/last_generation, appending to conversation_context (max 20, FIFO) and completed_mission_log (max 50, FIFO). Changes do NOT require a changelog entry. If called with no update fields, returns current memory state.")]
+    #[tool(
+        description = "Update mission_memory.json — the AI's persistent cross-session memory. Supports: replacing focus_areas/patterns/last_generation, appending to conversation_context (max 20, FIFO) and completed_mission_log (max 50, FIFO). Changes do NOT require a changelog entry. If called with no update fields, returns current memory state."
+    )]
     fn update_mission_memory(
         &self,
         Parameters(input): Parameters<UpdateMissionMemoryInput>,
@@ -228,10 +247,7 @@ async fn main() {
         }
     };
 
-    eprintln!(
-        "[mcp-server] Starting. data_dir = {}",
-        data_dir.display()
-    );
+    eprintln!("[mcp-server] Starting. data_dir = {}", data_dir.display());
 
     let server = RealityModServer::new(data_dir);
     let service = match server.serve(rmcp::transport::stdio()).await {

@@ -145,6 +145,7 @@
       return metric.value / metric.target_max;
     }
     if (metric.target_min !== undefined && metric.target_min !== null) {
+      if (metric.value <= 0) return 0;
       return metric.target_min / metric.value;
     }
     return null;
@@ -204,10 +205,8 @@
       const hasBodyPartMatch = dim.parts.some((part) => metric.body_parts[part] !== undefined);
       if (!hasBodyPartMatch) continue;
 
-      // Primary: sub_group matches dimension key, or group=endurance and dimension=cardio
-      const isPrimary =
-        metric.sub_group === dimKey ||
-        (metric.group === "endurance" && dimKey === "cardio");
+      // Primary: sub_group matches dimension key
+      const isPrimary = metric.sub_group === dimKey;
 
       if (isPrimary) {
         primary.push(metric);

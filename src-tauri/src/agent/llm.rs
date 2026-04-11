@@ -215,8 +215,9 @@ impl LlmClient {
             .map(|msg| {
                 let content = match &msg.content {
                     Content::Text(s) => Value::String(s.clone()),
-                    Content::Blocks(blocks) => serde_json::to_value(blocks)
-                        .map_err(|e| format!("Serialize error: {e}"))?,
+                    Content::Blocks(blocks) => {
+                        serde_json::to_value(blocks).map_err(|e| format!("Serialize error: {e}"))?
+                    }
                 };
                 Ok(ApiMessage {
                     role: msg.role.clone(),

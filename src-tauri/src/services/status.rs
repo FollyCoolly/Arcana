@@ -19,7 +19,9 @@ pub fn update_status(data_dir: &Path, input: &Value) -> Result<String, String> {
     let mut changes = Vec::new();
     for (id, val) in updates {
         if !valid_ids.contains(id.as_str()) {
-            return Err(format!("Unknown metric ID: '{id}'. Valid IDs: {valid_ids:?}"));
+            return Err(format!(
+                "Unknown metric ID: '{id}'. Valid IDs: {valid_ids:?}"
+            ));
         }
         let new_val = val
             .as_f64()

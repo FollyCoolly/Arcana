@@ -12,7 +12,11 @@ pub fn get_context(data_dir: &Path) -> Result<String, String> {
     let missions_path = data_dir.join("missions.json");
     if missions_path.exists() {
         let file: MissionFile = read_json_file(&missions_path)?;
-        let active: Vec<_> = file.missions.iter().filter(|m| m.status == "active").collect();
+        let active: Vec<_> = file
+            .missions
+            .iter()
+            .filter(|m| m.status == "active")
+            .collect();
         let proposed: Vec<_> = file
             .missions
             .iter()
@@ -54,7 +58,16 @@ pub fn get_context(data_dir: &Path) -> Result<String, String> {
         let summary: Vec<Value> = defs
             .metrics
             .iter()
-            .map(|m| json!({"id": m.id, "name": m.name, "unit": m.unit, "description": m.description}))
+            .map(|m| {
+                let mut obj = json!({"id": m.id, "name": m.name, "unit": m.unit, "description": m.description});
+                if let Some(max) = m.target_max {
+                    obj["target_max"] = json!(max);
+                }
+                if let Some(min) = m.target_min {
+                    obj["target_min"] = json!(min);
+                }
+                obj
+            })
             .collect();
         sections.push(format!(
             "## Metric Definitions\n{}",
