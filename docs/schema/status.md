@@ -58,6 +58,7 @@ Metric 是纯数据字典，不包含评分逻辑。
 | `id` | `string` | 是 | 全局唯一，`snake_case` |
 | `name` | `string` | 是 | 显示名称 |
 | `level_titles` | `string[5]` | 是 | 5 个等级称号，从 Lv.1 到 Lv.5 |
+| `level_thresholds` | `number[4]` | 是 | 升级阈值，严格递增。score >= 阈值时升级（详见计算规则） |
 | `enabled` | `boolean` | 否 | 是否在雷达图上显示，默认 `true` |
 | `metrics` | `object` | 是 | 评分配置，key 为 metric ID（用户或系统指标） |
 
@@ -68,11 +69,11 @@ Metric 是纯数据字典，不包含评分逻辑。
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | `weight` | `number` | 是 | 权重，> 0 |
-| `target_max` | `number` | 条件 | 目标上限（越高越好），> 0 |
-| `target_min` | `number` | 条件 | 目标下限（越低越好），> 0 |
-| `scoring_brackets` | `array` | 条件 | 分段评分（区间最优型） |
+| `target_max` | `number` | 否 | 目标上限（越高越好），> 0 |
+| `target_min` | `number` | 否 | 目标下限（越低越好），> 0 |
+| `scoring_brackets` | `array` | 否 | 分段评分（区间最优型） |
 
-`target_max`、`target_min`、`scoring_brackets` 三者互斥，每个指标必须且只能使用一种。
+`target_max`、`target_min`、`scoring_brackets` 三者互斥，最多使用一种。全部省略时直接使用指标原始值。
 
 ### `scoring_brackets[]` 结构
 
@@ -88,29 +89,36 @@ Metric 是纯数据字典，不包含评分逻辑。
 
 ## 维度分数计算
 
-### 单指标 ratio
+### 单指标 contribution
 
-- **`target_max`**：`ratio = min(value / target_max, 1.0)`
-- **`target_min`**：`ratio = min(target_min / value, 1.0)`
+每个指标根据评分方式计算 contribution（贡献值）：
+
+- **`target_max`**：`contribution = min(value / target_max, 1.0)`
+- **`target_min`**：`contribution = min(target_min / value, 1.0)`
 - **`scoring_brackets`**：查找 value 所在区间，取该区间的 `score`
+- **无评分方式**：`contribution = value`（直接使用原始值）
 
 ### 维度聚合
 
 ```
-dimension_score = Σ(ratio_i × weight_i) / Σ(weight_i)
+dimension_score = Σ(contribution_i × weight_i)
 ```
 
 仅对有数据的指标求和。全部无数据时 score 为 null，显示 "--"。
 
 ### 等级映射
 
-| 分数区间 | 等级 | 显示 |
-|----------|------|------|
-| [0, 0.2) | Lv.1 | `level_titles[0]` |
-| [0.2, 0.4) | Lv.2 | `level_titles[1]` |
-| [0.4, 0.6) | Lv.3 | `level_titles[2]` |
-| [0.6, 0.8) | Lv.4 | `level_titles[3]` |
-| [0.8, 1.0] | Lv.5 | `level_titles[4]` |
+`level_thresholds` 是一个 4 元素数组 `[t1, t2, t3, t4]`，严格递增：
+
+| 条件 | 等级 | 显示 |
+|------|------|------|
+| score < t1 | Lv.1 | `level_titles[0]` |
+| t1 ≤ score < t2 | Lv.2 | `level_titles[1]` |
+| t2 ≤ score < t3 | Lv.3 | `level_titles[2]` |
+| t3 ≤ score < t4 | Lv.4 | `level_titles[3]` |
+| score ≥ t4 | Lv.5 | `level_titles[4]` |
+
+阈值由维度自行定义，不同维度的 score 量纲可以完全不同。
 
 ---
 
@@ -118,15 +126,32 @@ dimension_score = Σ(ratio_i × weight_i) / Σ(weight_i)
 
 以 `sys_` 为前缀，由后端注册和计算，用户不可定义，但可在维度中引用。
 
-| ID | 来源 | 说明 |
-|----|------|------|
-| `sys_anime_watched` | Gallery | 看过的动画数 |
-| `sys_movies_watched` | Gallery | 看过的电影数 |
-| `sys_books_read` | Gallery | 读过的书数 |
-| `sys_games_played` | Gallery | 玩过的游戏数 |
-| `sys_game_days` | System | 使用天数 |
+### Gallery 统计
 
-系统指标的值不存储在 `status.json`，由后端加载时实时计算。后续可按需扩展新的系统指标。
+| ID | 说明 |
+|----|------|
+| `sys_anime_watched` | 看过的动画数 |
+| `sys_movies_watched` | 看过的电影数 |
+| `sys_books_read` | 读过的书数 |
+| `sys_games_played` | 玩过的游戏数 |
+
+### Skill 统计
+
+| ID | 说明 |
+|----|------|
+| `sys_skills_lv1` | level ≥ 1 的 skill 数量 |
+| `sys_skills_lv2` | level ≥ 2 的 skill 数量 |
+| `sys_skills_lv3` | level ≥ 3 的 skill 数量 |
+| `sys_skills_lv4` | level ≥ 4 的 skill 数量 |
+| `sys_skills_lv5` | level ≥ 5 的 skill 数量 |
+
+### 其他
+
+| ID | 说明 |
+|----|------|
+| `sys_game_days` | 出生至今天数 |
+
+系统指标的值不存储在 `status.json`，由后端加载时实时计算。后续可按需扩展。
 
 ---
 
@@ -152,7 +177,7 @@ dimension_score = Σ(ratio_i × weight_i) / Σ(weight_i)
 
 ## 完整示例
 
-### 指标定义（混合健身 + 文化维度）
+### 指标定义
 
 ```json
 {
@@ -163,8 +188,7 @@ dimension_score = Σ(ratio_i × weight_i) / Σ(weight_i)
       "name": "Weight",
       "group": "body",
       "unit": "kg",
-      "value_type": "number",
-      "description": "Current body weight"
+      "value_type": "number"
     },
     {
       "id": "bench_press_5rm_kg",
@@ -198,18 +222,20 @@ dimension_score = Σ(ratio_i × weight_i) / Σ(weight_i)
   ],
   "dimensions": [
     {
-      "id": "chest",
-      "name": "Chest",
-      "level_titles": ["初学者", "入门", "中级", "高级", "精英"],
+      "id": "strength",
+      "name": "Strength",
+      "level_titles": ["手无缚鸡", "初具力量", "小有所成", "力大无穷", "人形兵器"],
+      "level_thresholds": [0.36, 0.72, 1.08, 1.44],
       "metrics": {
         "bench_press_5rm_kg": { "weight": 1.0, "target_max": 95 },
         "pec_fly_5rm_kg":     { "weight": 0.8, "target_max": 65 }
       }
     },
     {
-      "id": "cardio",
-      "name": "Cardio",
-      "level_titles": ["气喘吁吁", "能跑能跳", "持久耐力", "铁肺", "马拉松级"],
+      "id": "endurance",
+      "name": "Endurance",
+      "level_titles": ["气喘吁吁", "能跑能跳", "持久作战", "铁打的肺", "永动机"],
+      "level_thresholds": [0.2, 0.4, 0.6, 0.8],
       "metrics": {
         "run_5k_pace_sec_per_km": { "weight": 1.0, "target_min": 280 }
       }
@@ -217,7 +243,8 @@ dimension_score = Σ(ratio_i × weight_i) / Σ(weight_i)
     {
       "id": "health",
       "name": "Health",
-      "level_titles": ["亚健康", "及格线", "良好", "健康", "巅峰"],
+      "level_titles": ["亚健康", "马马虎虎", "身体不错", "健康达人", "生命巅峰"],
+      "level_thresholds": [0.2, 0.4, 0.6, 0.8],
       "metrics": {
         "bmi": {
           "weight": 1.0,
@@ -233,7 +260,8 @@ dimension_score = Σ(ratio_i × weight_i) / Σ(weight_i)
     {
       "id": "culture",
       "name": "Culture",
-      "level_titles": ["路人", "爱好者", "鉴赏家", "文化人", "博物学者"],
+      "level_titles": ["孤陋寡闻", "略有涉猎", "鉴赏有道", "博闻强识", "行走百科"],
+      "level_thresholds": [0.6, 1.2, 1.8, 2.4],
       "metrics": {
         "sys_anime_watched": { "weight": 1.0, "target_max": 200 },
         "sys_movies_watched": { "weight": 1.0, "target_max": 100 },
@@ -241,13 +269,34 @@ dimension_score = Σ(ratio_i × weight_i) / Σ(weight_i)
       }
     },
     {
-      "id": "endurance",
-      "name": "Endurance",
-      "enabled": false,
-      "level_titles": ["沙发土豆", "周末战士", "健身达人", "铁人", "超级赛亚人"],
-      "metrics": {}
+      "id": "mastery",
+      "name": "Mastery",
+      "level_titles": ["初出茅庐", "学有所成", "融会贯通", "出类拔萃", "一代宗师"],
+      "level_thresholds": [3, 15, 40, 80],
+      "metrics": {
+        "sys_skills_lv1": { "weight": 1 },
+        "sys_skills_lv2": { "weight": 2 },
+        "sys_skills_lv3": { "weight": 4 },
+        "sys_skills_lv4": { "weight": 8 },
+        "sys_skills_lv5": { "weight": 16 }
+      }
     }
   ]
+}
+```
+
+### 指标数值
+
+```json
+{
+  "version": 1,
+  "metrics": {
+    "weight_kg": 72.5,
+    "bench_press_5rm_kg": 85,
+    "pec_fly_5rm_kg": 55,
+    "run_5k_pace_sec_per_km": 310,
+    "bmi": 22.3
+  }
 }
 ```
 
@@ -260,7 +309,7 @@ dimension_score = Σ(ratio_i × weight_i) / Σ(weight_i)
 - 模板存放在 `data/templates/status/`，每个模板一个 JSON 文件
 - 模板格式与 `status_metric_definitions.json` 完全一致
 - 用户导入模板时可选择全量替换或增量合并
-- 默认提供 `fitness.json`（当前健身指标 + 对应维度配置）
+- 默认提供 `fitness.json`（健身指标 + 对应维度配置）
 
 ---
 
@@ -276,12 +325,13 @@ dimension_score = Σ(ratio_i × weight_i) / Σ(weight_i)
 ### 维度
 
 - `dimensions` 为数组（可为空）
-- 每项必须有 `id`, `name`, `level_titles`, `metrics`
+- 每项必须有 `id`, `name`, `level_titles`, `level_thresholds`, `metrics`
 - `id` 全局唯一
 - `level_titles` 长度必须为 5
+- `level_thresholds` 长度必须为 4，且严格递增
 - `metrics` 中每个 key 必须引用已定义的用户指标或已注册的系统指标
 - 每个 metric entry 必须有 `weight`（> 0）
-- 每个 metric entry 必须有且仅有一种评分方式：`target_max`、`target_min`、`scoring_brackets`
+- `target_max`、`target_min`、`scoring_brackets` 最多使用一种
 - `target_max` > 0，`target_min` > 0
 - `scoring_brackets` 每项有 `min`, `max`, `score`，`score` 范围 [0, 1]
 - 启用的维度数量建议 3-8（校验警告，非错误）
