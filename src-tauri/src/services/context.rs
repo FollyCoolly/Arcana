@@ -59,20 +59,35 @@ pub fn get_context(data_dir: &Path) -> Result<String, String> {
             .metrics
             .iter()
             .map(|m| {
-                let mut obj = json!({"id": m.id, "name": m.name, "unit": m.unit, "description": m.description});
-                if let Some(max) = m.target_max {
-                    obj["target_max"] = json!(max);
-                }
-                if let Some(min) = m.target_min {
-                    obj["target_min"] = json!(min);
-                }
-                obj
+                json!({"id": m.id, "name": m.name, "unit": m.unit, "group": m.group, "description": m.description})
             })
             .collect();
         sections.push(format!(
             "## Metric Definitions\n{}",
             serde_json::to_string_pretty(&summary).unwrap_or_default()
         ));
+
+        // Dimensions summary
+        if !defs.dimensions.is_empty() {
+            let dim_summary: Vec<Value> = defs
+                .dimensions
+                .iter()
+                .filter(|d| d.enabled)
+                .map(|d| {
+                    json!({
+                        "id": d.id,
+                        "name": d.name,
+                        "level_titles": d.level_titles,
+                        "level_thresholds": d.level_thresholds,
+                        "metric_count": d.metrics.len(),
+                    })
+                })
+                .collect();
+            sections.push(format!(
+                "## Dimensions\n{}",
+                serde_json::to_string_pretty(&dim_summary).unwrap_or_default()
+            ));
+        }
     }
 
     // Achievement progress

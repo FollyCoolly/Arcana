@@ -111,10 +111,15 @@ PR 前必须通过：`npm run check` + `cargo test` + `cargo fmt --check`。
 - `completed_mission_log` 最多 50 条（FIFO）
 - 此文件是 AI 内部状态，变更不写 changelog
 
-### Status (`data/status.json`)
+### Status (`data/status.json` + `data/status_metric_definitions.json`)
 
-- 双文件模型：`status_metric_definitions.json` 定义指标，`status.json` 存当前值
-- 写入前必须校验 metric ID 存在于 definitions 中
+- 三层模型：`metrics[]` 定义指标，`dimensions[]` 定义雷达维度，`status.json` 存当前值
+- 指标 (Metric) 是纯数据字典（id, name, group, unit, value_type），不含评分逻辑
+- 维度 (Dimension) 拥有评分配置（weight + target_max/target_min/scoring_brackets）和 P5 风格等级称号
+- 系统指标以 `sys_` 为前缀，由后端实时计算，不存储在 `status.json`，不可通过 agent 写入
+- 维度分数公式：`score = Σ(contribution × weight)`，等级由 `level_thresholds` 决定
+- 写入 `status.json` 前必须校验 metric ID 存在于 definitions 中
+- 详细 schema 见 `docs/schema/status.md`
 
 ## AI Agent 架构
 
