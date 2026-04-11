@@ -1,81 +1,134 @@
 # Status Schema
 
-`Status` 采用两层模型：
+`Status` 是一套通用的指标展示系统，用户可自定义追踪任意领域的数值指标，并通过雷达图展示多维度的综合评价。
 
-- 指标定义层：描述每个项目是什么、单位、目标值、相关部位等。
-- 指标数值层：只存用户当前有数据的项目值。
+## 核心概念
 
-这样可以直接支持“可插拔指标”和“项目自解释”。
+- **指标 (Metric)**：一个可量化的数值，纯数据描述。分为用户指标和系统指标。
+- **维度 (Dimension)**：雷达图上的一个轴，关联若干指标并定义评分规则，拥有 Persona 5 风格的等级称号。
+- **用户指标**：用户自定义，值由用户输入，存储在 `status.json`。
+- **系统指标**：应用自带，值由后端实时计算（如 Gallery 统计量），不存储在 `status.json`。
 
 ## 文件路径
 
-- `data/status_metric_definitions.json`：指标定义
-- `data/status.json`：指标数值
+| 文件 | 用途 |
+|------|------|
+| `data/status_metric_definitions.json` | 用户指标定义 + 维度配置 |
+| `data/status.json` | 用户指标的当前值 |
 
 ## 缺省值约定
 
-- 指标定义中的扩展字段可缺省（例如 `target_max`、`body_parts`）。
-- 指标数值中没有的 key 视为“暂无数据”。
-- 推荐省略字段，不写 `null`。
+- 可选字段省略，**不写 `null`**。
+- `status.json` 中没有的 key 视为"暂无数据"。
+- 维度中无数据的指标不参与聚合，全部无数据时显示 "--"。
+
+---
 
 ## 指标定义文件
 
-### 结构
+### 顶层结构
 
 ```json
 {
   "version": 1,
-  "metrics": []
+  "metrics": [],
+  "dimensions": []
 }
 ```
 
-### `metrics[]` 字段
+### `metrics[]` — 用户指标定义
 
-- `id` (`string`, 必填)：全局唯一指标 ID
-- `name` (`string`, 必填)：显示名称
-- `category` (`string`, 必填)：`health` 或 `performance`
-- `group` (`string`, 必填)：分组名称，如 `body`, `strength`, `endurance`
-- `unit` (`string`, 必填)：单位，如 `kg`, `cm`, `bpm`, `sec`
-- `value_type` (`string`, 必填)：当前建议 `number`
-- `target_max` (`number`, 可选)：目标上限，仅建议用于 `performance` 指标
-- `target_min` (`number`, 可选)：目标下限，仅建议用于 `performance` 指标
-- `body_parts` (`Record<string, number>`, 可选)：相关部位及权重映射，key 为部位标签，value 为权重 0~1
-- `description` (`string`, 可选)：简短说明
+Metric 是纯数据字典，不包含评分逻辑。
 
-约定：
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `id` | `string` | 是 | 全局唯一，`snake_case`，不得以 `sys_` 开头（保留给系统指标） |
+| `name` | `string` | 是 | 显示名称 |
+| `group` | `string` | 是 | UI 分组名称，自由文本（如 `body`, `strength`, `endurance`） |
+| `unit` | `string` | 是 | 单位（如 `kg`, `cm`, `bpm`, `sec`, `count`, `percent`） |
+| `value_type` | `string` | 是 | 值类型，当前仅 `number` |
+| `description` | `string` | 否 | 简短说明 |
 
-- `health` 指标不设置 `target_min` / `target_max`。
-- `performance` 指标可按需要设置目标区间。
+### `dimensions[]` — 雷达图维度
 
-### 示例
+维度拥有评分逻辑和等级称号。数组顺序 = 雷达图显示顺序。
 
-```json
-{
-  "version": 1,
-  "metrics": [
-    {
-      "id": "weight_kg",
-      "name": "Weight",
-      "category": "health",
-      "group": "body",
-      "unit": "kg",
-      "value_type": "number",
-      "description": "Current body weight"
-    },
-    {
-      "id": "lat_pulldown_5rm_kg",
-      "name": "Lat Pulldown 5RM",
-      "category": "performance",
-      "group": "strength",
-      "unit": "kg",
-      "value_type": "number",
-      "target_max": 90,
-      "body_parts": { "lats": 1.0, "biceps": 0.5 },
-      "description": "Best 5-rep max on lat pulldown"
-    }
-  ]
-}
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `id` | `string` | 是 | 全局唯一，`snake_case` |
+| `name` | `string` | 是 | 显示名称 |
+| `level_titles` | `string[5]` | 是 | 5 个等级称号，从 Lv.1 到 Lv.5 |
+| `enabled` | `boolean` | 否 | 是否在雷达图上显示，默认 `true` |
+| `metrics` | `object` | 是 | 评分配置，key 为 metric ID（用户或系统指标） |
+
+### `dimensions[].metrics` — 维度内的指标评分
+
+每个 entry 的 key 是 metric ID，value 是评分配置：
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `weight` | `number` | 是 | 权重，> 0 |
+| `target_max` | `number` | 条件 | 目标上限（越高越好），> 0 |
+| `target_min` | `number` | 条件 | 目标下限（越低越好），> 0 |
+| `scoring_brackets` | `array` | 条件 | 分段评分（区间最优型） |
+
+`target_max`、`target_min`、`scoring_brackets` 三者互斥，每个指标必须且只能使用一种。
+
+### `scoring_brackets[]` 结构
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `min` | `number` | 区间下界（含） |
+| `max` | `number` | 区间上界（不含） |
+| `score` | `number` | 该区间的分数，0 ~ 1 |
+
+值不在任何区间内时，score 为 0。
+
+---
+
+## 维度分数计算
+
+### 单指标 ratio
+
+- **`target_max`**：`ratio = min(value / target_max, 1.0)`
+- **`target_min`**：`ratio = min(target_min / value, 1.0)`
+- **`scoring_brackets`**：查找 value 所在区间，取该区间的 `score`
+
+### 维度聚合
+
 ```
+dimension_score = Σ(ratio_i × weight_i) / Σ(weight_i)
+```
+
+仅对有数据的指标求和。全部无数据时 score 为 null，显示 "--"。
+
+### 等级映射
+
+| 分数区间 | 等级 | 显示 |
+|----------|------|------|
+| [0, 0.2) | Lv.1 | `level_titles[0]` |
+| [0.2, 0.4) | Lv.2 | `level_titles[1]` |
+| [0.4, 0.6) | Lv.3 | `level_titles[2]` |
+| [0.6, 0.8) | Lv.4 | `level_titles[3]` |
+| [0.8, 1.0] | Lv.5 | `level_titles[4]` |
+
+---
+
+## 系统指标
+
+以 `sys_` 为前缀，由后端注册和计算，用户不可定义，但可在维度中引用。
+
+| ID | 来源 | 说明 |
+|----|------|------|
+| `sys_anime_watched` | Gallery | 看过的动画数 |
+| `sys_movies_watched` | Gallery | 看过的电影数 |
+| `sys_books_read` | Gallery | 读过的书数 |
+| `sys_games_played` | Gallery | 玩过的游戏数 |
+| `sys_game_days` | System | 使用天数 |
+
+系统指标的值不存储在 `status.json`，由后端加载时实时计算。后续可按需扩展新的系统指标。
+
+---
 
 ## 指标数值文件
 
@@ -88,59 +141,152 @@
 }
 ```
 
-### `metrics` 规则
+### 规则
 
-- key 必须对应 `status_metric_definitions.json` 中的 `id`
+- key 必须对应 `status_metric_definitions.json` 中用户指标的 `id`
 - value 类型由对应指标的 `value_type` 决定
-- 不存在的 key 视为缺省数据
+- 不存在的 key 视为暂无数据
+- 系统指标不存储在此文件中
 
-### 示例
+---
+
+## 完整示例
+
+### 指标定义（混合健身 + 文化维度）
 
 ```json
 {
   "version": 1,
-  "metrics": {
-    "height_cm": 175,
-    "weight_kg": 72.5,
-    "body_fat_pct": 16.8,
-    "resting_heart_rate_bpm": 58,
-    "blood_pressure_sys": 118,
-    "blood_pressure_dia": 76,
-    "waist_cm": 78,
-    "hip_cm": 94,
-    "chest_cm": 98,
-    "upper_arm_cm": 32,
-    "forearm_cm": 28,
-    "thigh_cm": 54,
-    "calf_cm": 37,
-    "neck_cm": 37,
-    "squat_5rm_kg": 110,
-    "bench_press_5rm_kg": 85,
-    "deadlift_5rm_kg": 130,
-    "pull_up_max_reps": 10,
-    "push_up_max_reps": 35,
-    "lat_pulldown_5rm_kg": 70,
-    "seated_row_5rm_kg": 65,
-    "pec_fly_5rm_kg": 55,
-    "hip_adduction_5rm_kg": 60,
-    "hip_abduction_5rm_kg": 58,
-    "leg_press_5rm_kg": 220,
-    "machine_chest_press_5rm_kg": 62,
-    "machine_shoulder_press_5rm_kg": 40,
-    "seated_crunch_5rm_kg": 45,
-    "leg_extension_5rm_kg": 58,
-    "leg_curl_5rm_kg": 52,
-    "dumbbell_bench_press_8rm_kg_each": 28,
-    "dumbbell_shoulder_press_8rm_kg_each": 20,
-    "dumbbell_fly_12rm_kg_each": 12,
-    "run_1k_time_sec": 255,
-    "run_5k_pace_sec_per_km": 310
-  }
+  "metrics": [
+    {
+      "id": "weight_kg",
+      "name": "Weight",
+      "group": "body",
+      "unit": "kg",
+      "value_type": "number",
+      "description": "Current body weight"
+    },
+    {
+      "id": "bench_press_5rm_kg",
+      "name": "Bench Press 5RM",
+      "group": "strength",
+      "unit": "kg",
+      "value_type": "number"
+    },
+    {
+      "id": "pec_fly_5rm_kg",
+      "name": "Pec Fly 5RM",
+      "group": "strength",
+      "unit": "kg",
+      "value_type": "number"
+    },
+    {
+      "id": "run_5k_pace_sec_per_km",
+      "name": "Run 5K Pace",
+      "group": "endurance",
+      "unit": "sec_per_km",
+      "value_type": "number"
+    },
+    {
+      "id": "bmi",
+      "name": "BMI",
+      "group": "body",
+      "unit": "",
+      "value_type": "number",
+      "description": "Body Mass Index (derived from height and weight)"
+    }
+  ],
+  "dimensions": [
+    {
+      "id": "chest",
+      "name": "Chest",
+      "level_titles": ["初学者", "入门", "中级", "高级", "精英"],
+      "metrics": {
+        "bench_press_5rm_kg": { "weight": 1.0, "target_max": 95 },
+        "pec_fly_5rm_kg":     { "weight": 0.8, "target_max": 65 }
+      }
+    },
+    {
+      "id": "cardio",
+      "name": "Cardio",
+      "level_titles": ["气喘吁吁", "能跑能跳", "持久耐力", "铁肺", "马拉松级"],
+      "metrics": {
+        "run_5k_pace_sec_per_km": { "weight": 1.0, "target_min": 280 }
+      }
+    },
+    {
+      "id": "health",
+      "name": "Health",
+      "level_titles": ["亚健康", "及格线", "良好", "健康", "巅峰"],
+      "metrics": {
+        "bmi": {
+          "weight": 1.0,
+          "scoring_brackets": [
+            { "min": 0,    "max": 18.5, "score": 0.4 },
+            { "min": 18.5, "max": 25,   "score": 1.0 },
+            { "min": 25,   "max": 30,   "score": 0.6 },
+            { "min": 30,   "max": 999,  "score": 0.2 }
+          ]
+        }
+      }
+    },
+    {
+      "id": "culture",
+      "name": "Culture",
+      "level_titles": ["路人", "爱好者", "鉴赏家", "文化人", "博物学者"],
+      "metrics": {
+        "sys_anime_watched": { "weight": 1.0, "target_max": 200 },
+        "sys_movies_watched": { "weight": 1.0, "target_max": 100 },
+        "sys_books_read":     { "weight": 1.0, "target_max": 50 }
+      }
+    },
+    {
+      "id": "endurance",
+      "name": "Endurance",
+      "enabled": false,
+      "level_titles": ["沙发土豆", "周末战士", "健身达人", "铁人", "超级赛亚人"],
+      "metrics": {}
+    }
+  ]
 }
 ```
 
-## 可插拔约定
+---
 
-- 每个模块或内容包可提供一份指标定义文件。
-- 应用启动时合并所有定义，并检查 `id` 冲突。
-- 用户只需在 `status.json` 填写已启用且有数据的指标值。
+## 模板系统
+
+项目提供预设的指标定义模板：
+
+- 模板存放在 `data/templates/status/`，每个模板一个 JSON 文件
+- 模板格式与 `status_metric_definitions.json` 完全一致
+- 用户导入模板时可选择全量替换或增量合并
+- 默认提供 `fitness.json`（当前健身指标 + 对应维度配置）
+
+---
+
+## 校验规则
+
+### 用户指标
+
+- `metrics` 为数组
+- 每项必须有 `id`, `name`, `group`, `unit`, `value_type`
+- `id` 全局唯一，不得以 `sys_` 开头
+- `value_type` 当前仅允许 `number`
+
+### 维度
+
+- `dimensions` 为数组（可为空）
+- 每项必须有 `id`, `name`, `level_titles`, `metrics`
+- `id` 全局唯一
+- `level_titles` 长度必须为 5
+- `metrics` 中每个 key 必须引用已定义的用户指标或已注册的系统指标
+- 每个 metric entry 必须有 `weight`（> 0）
+- 每个 metric entry 必须有且仅有一种评分方式：`target_max`、`target_min`、`scoring_brackets`
+- `target_max` > 0，`target_min` > 0
+- `scoring_brackets` 每项有 `min`, `max`, `score`，`score` 范围 [0, 1]
+- 启用的维度数量建议 3-8（校验警告，非错误）
+
+### 指标数值
+
+- key 必须对应用户指标的 `id`（不可写入系统指标）
+- value 必须为数字
