@@ -23,9 +23,10 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        background: #000000;
-        color: #ffffff;
-        border: 2px solid #ffffff;
+        background: #ffffff;
+        color: #000000;
+        border: 4px solid #000000;
+        outline: 2px solid #ffffff;
         font-weight: 700;
         line-height: 1;
         width: 1.5em;
