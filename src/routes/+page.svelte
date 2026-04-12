@@ -5,6 +5,8 @@
     import { getCurrentWindow } from "@tauri-apps/api/window";
     import P5Calendar from "$lib/P5Calendar.svelte";
     import P5MenuItem from "$lib/P5MenuItem.svelte";
+    import P5PromptWord from "$lib/P5PromptWord.svelte";
+    import P5KeyHint from "$lib/P5KeyHint.svelte";
     import type { LetterConfig } from "$lib/P5MenuItem.svelte";
     import type { StatusData } from "$lib/types/status";
     import type { AchievementData } from "$lib/types/achievement";
@@ -555,6 +557,17 @@
                 </div>
             </div>
             <div class="rm-diagonal-line" aria-hidden="true"></div>
+
+            <div class="rm-prompt-hints" aria-hidden="true">
+                <div class="rm-prompt-hint">
+                    <P5KeyHint key="Esc" fontSize={36} />
+                    <P5PromptWord text="Hide" fontSize={72} />
+                </div>
+                <div class="rm-prompt-hint">
+                    <P5KeyHint key="↵" fontSize={36} />
+                    <P5PromptWord text="Confirm" fontSize={72} />
+                </div>
+            </div>
         {/if}
 
         {#if currentScreen === "main"}
@@ -1044,24 +1057,46 @@
     :global(.rm-back-btn) {
         position: fixed;
         bottom: clamp(1.5rem, 3vh, 3.5rem);
-        right: clamp(1.5rem, 3vw, 4rem);
+        left: clamp(1.5rem, 3vw, 4rem);
         z-index: 10;
+        display: flex;
+        align-items: center;
+        gap: 0;
         background: none;
         border: none;
         cursor: pointer;
         padding: 0;
-        transform: rotate(-2deg);
+        transform: rotate(2deg);
         transition: transform 120ms ease;
     }
 
     :global(.rm-back-btn:hover) {
-        transform: rotate(-2deg) scale(1.06);
+        transform: rotate(2deg) scale(1.06);
     }
 
-    :global(.rm-back-img) {
-        display: block;
-        height: clamp(4rem, 7.2vh, 8rem);
-        width: auto;
+    :global(.rm-back-btn .p5-prompt-word) {
+        margin-left: -1rem;
+    }
+
+    .rm-prompt-hints {
+        position: fixed;
+        bottom: clamp(1.5rem, 3vh, 3.5rem);
+        left: clamp(1.5rem, 3vw, 4rem);
+        z-index: 10;
+        display: flex;
+        flex-direction: row;
+        gap: 0.5rem;
+        pointer-events: none;
+    }
+
+    .rm-prompt-hint {
+        display: flex;
+        align-items: center;
+        gap: 0;
+    }
+
+    .rm-prompt-hint :global(.p5-prompt-word) {
+        margin-left: -1rem;
     }
 
     :global(.state-text) {

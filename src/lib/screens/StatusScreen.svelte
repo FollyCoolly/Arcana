@@ -4,8 +4,13 @@
   import RadarChart from "$lib/components/RadarChart.svelte";
   import StatusDetailView from "$lib/screens/StatusDetailView.svelte";
   import type { StatusData } from "$lib/types/status";
+  import P5KeyHint from "$lib/P5KeyHint.svelte";
+  import P5PromptWord from "$lib/P5PromptWord.svelte";
 
-  let { onBack, statusData: initialStatusData }: { onBack: () => void; statusData: StatusData | null } = $props();
+  let {
+    onBack,
+    statusData: initialStatusData,
+  }: { onBack: () => void; statusData: StatusData | null } = $props();
 
   let loading = $state(false);
   let errorMessage = $state<string | null>(null);
@@ -66,14 +71,19 @@
 <section class="rm-stage">
   <img src="/ui/Status.png" alt="Status" class="rm-status-title-img" />
 
-  <button type="button" class="rm-back-btn" onclick={() => {
-    if (view === "detail") {
-      handleDetailBack();
-    } else {
-      onBack();
-    }
-  }}>
-    <img src="/ui/back.png" alt="Back" class="rm-back-img" />
+  <button
+    type="button"
+    class="rm-back-btn"
+    onclick={() => {
+      if (view === "detail") {
+        handleDetailBack();
+      } else {
+        onBack();
+      }
+    }}
+  >
+    <P5KeyHint key="Esc" fontSize={36} />
+    <P5PromptWord text="Back" fontSize={72} />
   </button>
 
   {#if loading}
@@ -88,7 +98,7 @@
     {#if view === "radar"}
       <div class="rm-radar-stage">
         <RadarChart
-          dimensions={statusData.dimensions.filter(d => d.enabled)}
+          dimensions={statusData.dimensions.filter((d) => d.enabled)}
           onSelect={handleDimensionSelect}
         />
       </div>
