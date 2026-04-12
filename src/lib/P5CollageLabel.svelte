@@ -120,7 +120,7 @@
         display: inline-flex;
         flex-direction: column;
         align-items: center;
-        gap: 0.12em;
+        gap: 0.35em;
     }
 
     /* ── Fragment row ── */
