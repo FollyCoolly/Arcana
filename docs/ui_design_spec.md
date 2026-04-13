@@ -1,11 +1,11 @@
-# Reality Mod - UI Design Spec (v0.3.0)
+# Arcana - UI Design Spec (v0.3.0)
 
 > 状态: Draft
 > 最后更新: 2026-03-08
 
 ## 1. 信息架构
 
-Reality Mod 的呼出界面采用三层结构:
+Arcana 的呼出界面采用三层结构:
 
 - `Hidden`: 界面隐藏（回到现实）。
 - `MainMenu`: 主菜单层（每次呼出默认进入这里）。

@@ -1,5 +1,5 @@
 """
-Asset preprocessing script for RealityMod UI images.
+Asset preprocessing script for Arcana UI images.
 
 Usage:
     python scripts/process_assets.py
@@ -24,6 +24,7 @@ ASSETS dict format:
 """
 
 from pathlib import Path
+
 from PIL import Image, ImageDraw
 from remove_bg import remove_black_bg, remove_color_bg
 
@@ -35,7 +36,7 @@ from remove_bg import remove_black_bg, remove_color_bg
 #   bg_color: (R, G, B)      – remove a non-black outer background instead
 #   bg_tolerance: int        – tolerance when using bg_color (default 30)
 ASSETS: dict[str, str | tuple[str, dict]] = {
-    "D:/Pictures/RealityMod/back.png": "back.png",
+    "D:/Pictures/Arcana/back.png": "back.png",
     "D:/Downloads/Status.png": ("Status.png", {"remove_bg": True}),
 }
 
@@ -52,7 +53,9 @@ ALPHA_CLEAN_THRESHOLD = 64
 SCARLET = (128, 0, 26, 255)
 
 
-def clean_alpha(img: Image.Image, threshold: int = ALPHA_CLEAN_THRESHOLD) -> Image.Image:
+def clean_alpha(
+    img: Image.Image, threshold: int = ALPHA_CLEAN_THRESHOLD
+) -> Image.Image:
     """Force pixels below alpha threshold to fully transparent.
 
     AI-generated PNGs often leave semi-transparent noise in background areas
@@ -99,7 +102,9 @@ def process(src: str, dest_name: str, options: dict | None = None) -> None:
     # 0. Remove outer background (flood-fill) if requested
     if opts.get("remove_bg"):
         if "bg_color" in opts:
-            img = remove_color_bg(img, tuple(opts["bg_color"]), opts.get("bg_tolerance", 30))
+            img = remove_color_bg(
+                img, tuple(opts["bg_color"]), opts.get("bg_tolerance", 30)
+            )
         else:
             img = remove_black_bg(img, opts.get("bg_threshold", 30))
 
