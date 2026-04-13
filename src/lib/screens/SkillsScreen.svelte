@@ -1,7 +1,7 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { invoke } from "@tauri-apps/api/core";
-    import P5Text from "$lib/P5Text.svelte";
+    import CallingCardText from "$lib/CallingCardText.svelte";
     import SkillNebula from "$lib/components/SkillNebula.svelte";
     import type {
         SkillData,
@@ -10,8 +10,8 @@
     } from "$lib/types/skill";
     import type { AchievementData } from "$lib/types/achievement";
     import { formatGroupName } from "$lib/utils/format";
-    import P5KeyHint from "$lib/P5KeyHint.svelte";
-    import P5PromptWord from "$lib/P5PromptWord.svelte";
+    import KeyHint from "$lib/KeyHint.svelte";
+    import PromptWord from "$lib/PromptWord.svelte";
 
     let {
         onBack,
@@ -119,7 +119,7 @@
 
 <section class="rm-stage">
     <div class="rm-skills-title">
-        <P5Text text="Skills" fontSize={82} />
+        <CallingCardText text="Skills" fontSize={82} />
     </div>
 
     <button
@@ -133,8 +133,8 @@
             }
         }}
     >
-        <P5KeyHint key="Esc" fontSize={36} />
-        <P5PromptWord text="Back" fontSize={72} />
+        <KeyHint key="Esc" fontSize={36} />
+        <PromptWord text="Back" fontSize={72} />
     </button>
 
     {#if skillLoading}
@@ -233,7 +233,7 @@
 
             <div class="rm-skill-detail-right">
                 <div class="rm-skill-detail-header">
-                    <P5Text text={selectedSkill.skill.name} fontSize={52} />
+                    <CallingCardText text={selectedSkill.skill.name} fontSize={52} />
                 </div>
 
                 <div class="rm-skill-node-grid" style="--cols: 8">

@@ -1,9 +1,9 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { invoke } from "@tauri-apps/api/core";
-    import P5Text from "$lib/P5Text.svelte";
-    import P5MenuItem from "$lib/P5MenuItem.svelte";
-    import type { LetterConfig } from "$lib/P5MenuItem.svelte";
+    import CallingCardText from "$lib/CallingCardText.svelte";
+    import MenuItem from "$lib/MenuItem.svelte";
+    import type { LetterConfig } from "$lib/MenuItem.svelte";
     import type {
         GalleryData,
         MediaItem,
@@ -11,8 +11,8 @@
         GallerySortOrder,
         GalleryCategory,
     } from "$lib/types/gallery";
-    import P5KeyHint from "$lib/P5KeyHint.svelte";
-    import P5PromptWord from "$lib/P5PromptWord.svelte";
+    import KeyHint from "$lib/KeyHint.svelte";
+    import PromptWord from "$lib/PromptWord.svelte";
 
     let { onBack }: { onBack: () => void } = $props();
 
@@ -352,7 +352,7 @@
 
 <section class="rm-stage">
     <div class="rm-items-title">
-        <P5Text text="Gallery" fontSize={82} />
+        <CallingCardText text="Gallery" fontSize={82} />
     </div>
 
     <button
@@ -366,8 +366,8 @@
             }
         }}
     >
-        <P5KeyHint key="Esc" fontSize={36} />
-        <P5PromptWord text="Back" fontSize={72} />
+        <KeyHint key="Esc" fontSize={36} />
+        <PromptWord text="Back" fontSize={72} />
     </button>
 
     {#if galleryLoading}
@@ -387,7 +387,7 @@
                             onclick={() => selectGalleryCategory(cat.id)}
                         >
                             <span class="rm-gallery-nav-icon">{cat.icon}</span>
-                            <P5MenuItem
+                            <MenuItem
                                 letters={GALLERY_CATEGORY_LETTERS[cat.id]}
                             />
                         </button>

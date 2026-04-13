@@ -1,3 +1,4 @@
+<!-- Persona 5 style calendar widget, based on https://github.com/Mive82/Persona-5-Calendar -->
 <script lang="ts">
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";

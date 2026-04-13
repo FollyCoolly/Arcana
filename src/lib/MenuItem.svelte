@@ -1,3 +1,4 @@
+<!-- Persona 5 style menu item with per-letter geometric styling -->
 <script lang="ts">
   export type LetterConfig = {
     char: string;

@@ -1,3 +1,4 @@
+<!-- Persona 5 style key hint badge -->
 <script lang="ts">
     let {
         key = "",

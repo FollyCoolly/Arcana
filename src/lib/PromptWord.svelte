@@ -1,3 +1,4 @@
+<!-- Persona 5 style prompt word label -->
 <script lang="ts">
     let {
         text = "",

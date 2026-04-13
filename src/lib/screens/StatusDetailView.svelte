@@ -1,5 +1,5 @@
 <script lang="ts">
-  import P5Text from "$lib/P5Text.svelte";
+  import CallingCardText from "$lib/CallingCardText.svelte";
   import type { StatusData, StatusMetric, DimensionData, MetricGroup } from "$lib/types/status";
   import { formatGroupName, formatMetricValue } from "$lib/utils/format";
 
@@ -127,7 +127,7 @@
     {:else}
       {#each metricGroups as group}
         <div class="detail-group">
-          <P5Text text={formatGroupName(group.name)} fontSize={52} />
+          <CallingCardText text={formatGroupName(group.name)} fontSize={52} />
           <div class="detail-metric-grid">
             {#each group.metrics as metric}
               {@const contribution = getContribution(metric.id)}

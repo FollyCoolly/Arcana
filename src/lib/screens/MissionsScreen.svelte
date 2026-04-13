@@ -1,9 +1,9 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { invoke } from "@tauri-apps/api/core";
-    import P5Text from "$lib/P5Text.svelte";
-    import P5KeyHint from "$lib/P5KeyHint.svelte";
-    import P5PromptWord from "$lib/P5PromptWord.svelte";
+    import CallingCardText from "$lib/CallingCardText.svelte";
+    import KeyHint from "$lib/KeyHint.svelte";
+    import PromptWord from "$lib/PromptWord.svelte";
     import type { MissionData, MissionResponse } from "$lib/types/mission";
 
     let { onBack }: { onBack: () => void } = $props();
@@ -398,7 +398,7 @@
             </div>
         </div>
         <div class="rm-phansite-label">
-            <P5Text text="PHAN SiTE" fontSize={28} />
+            <CallingCardText text="PHAN SiTE" fontSize={28} />
         </div>
     </button>
 
@@ -518,12 +518,12 @@
     {/if}
 
     <div class="rm-missions-title">
-        <P5Text text="MiSSiONS" />
+        <CallingCardText text="MiSSiONS" />
     </div>
 
     <button type="button" class="rm-back-btn" onclick={() => onBack()}>
-        <P5KeyHint key="Esc" fontSize={36} />
-        <P5PromptWord text="Back" fontSize={72} />
+        <KeyHint key="Esc" fontSize={36} />
+        <PromptWord text="Back" fontSize={72} />
     </button>
 </section>
 

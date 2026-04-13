@@ -1,9 +1,9 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { invoke, convertFileSrc } from "@tauri-apps/api/core";
-    import P5Text from "$lib/P5Text.svelte";
-    import P5KeyHint from "$lib/P5KeyHint.svelte";
-    import P5PromptWord from "$lib/P5PromptWord.svelte";
+    import CallingCardText from "$lib/CallingCardText.svelte";
+    import KeyHint from "$lib/KeyHint.svelte";
+    import PromptWord from "$lib/PromptWord.svelte";
     import type {
         ItemData,
         ItemWithComputed,
@@ -180,7 +180,7 @@
 
 <section class="rm-stage">
     <div class="rm-items-title">
-        <P5Text text="Items" fontSize={82} />
+        <CallingCardText text="Items" fontSize={82} />
     </div>
 
     {#if itemLoading}
@@ -251,8 +251,8 @@
                 </div>
 
                 <button type="button" class="rm-back-btn" onclick={onBack}>
-                    <P5KeyHint key="Esc" fontSize={36} />
-                    <P5PromptWord text="Back" fontSize={72} />
+                    <KeyHint key="Esc" fontSize={36} />
+                    <PromptWord text="Back" fontSize={72} />
                 </button>
             </div>
 
@@ -346,8 +346,8 @@
                     itemDetailMode = false;
                 }}
             >
-                <P5KeyHint key="Esc" fontSize={36} />
-                <P5PromptWord text="Back" fontSize={72} />
+                <KeyHint key="Esc" fontSize={36} />
+                <PromptWord text="Back" fontSize={72} />
             </button>
 
             <div class="rm-gallery-detail-inner">

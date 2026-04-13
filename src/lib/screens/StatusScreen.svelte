@@ -4,8 +4,8 @@
     import RadarChart from "$lib/components/RadarChart.svelte";
     import StatusDetailView from "$lib/screens/StatusDetailView.svelte";
     import type { StatusData } from "$lib/types/status";
-    import P5KeyHint from "$lib/P5KeyHint.svelte";
-    import P5PromptWord from "$lib/P5PromptWord.svelte";
+    import KeyHint from "$lib/KeyHint.svelte";
+    import PromptWord from "$lib/PromptWord.svelte";
 
     let {
         onBack,
@@ -135,8 +135,8 @@
             }
         }}
     >
-        <P5KeyHint key="Esc" fontSize={36} />
-        <P5PromptWord text="Back" fontSize={72} />
+        <KeyHint key="Esc" fontSize={36} />
+        <PromptWord text="Back" fontSize={72} />
     </button>
 
     {#if loading}

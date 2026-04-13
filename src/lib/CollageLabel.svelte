@@ -1,3 +1,4 @@
+<!-- Persona 5 style collage label for radar chart dimensions -->
 <script lang="ts">
     let {
         text,

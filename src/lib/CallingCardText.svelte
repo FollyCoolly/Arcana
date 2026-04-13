@@ -1,3 +1,4 @@
+<!-- Persona 5 calling card style: tilted letters with random rotation, black bases, red accents, white glow -->
 <script lang="ts">
     let { text = '', fontSize = 60, fontFamily = 'p5hatty' }: {
         text?: string;

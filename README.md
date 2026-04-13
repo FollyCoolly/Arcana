@@ -256,6 +256,12 @@ npm run tauri dev
 
 详见 [AI Agent 集成方案](docs/ai_agent_integration.md)
 
+---
+
+## 🙏 致谢
+
+- [Mive82/Persona-5-Calendar](https://github.com/Mive82/Persona-5-Calendar) — 日历组件的参考实现
+
 ### 阶段八：优化与完善
 
 - [ ] 数据导出/备份功能

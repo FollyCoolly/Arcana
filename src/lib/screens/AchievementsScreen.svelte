@@ -1,17 +1,17 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { invoke } from "@tauri-apps/api/core";
-    import P5Text from "$lib/P5Text.svelte";
-    import P5MenuItem from "$lib/P5MenuItem.svelte";
-    import type { LetterConfig } from "$lib/P5MenuItem.svelte";
+    import CallingCardText from "$lib/CallingCardText.svelte";
+    import MenuItem from "$lib/MenuItem.svelte";
+    import type { LetterConfig } from "$lib/MenuItem.svelte";
     import type {
         AchievementData,
         Achievement,
         Difficulty,
         PackAchievements,
     } from "$lib/types/achievement";
-    import P5KeyHint from "$lib/P5KeyHint.svelte";
-    import P5PromptWord from "$lib/P5PromptWord.svelte";
+    import KeyHint from "$lib/KeyHint.svelte";
+    import PromptWord from "$lib/PromptWord.svelte";
 
     type SortKey = "default" | "name" | "difficulty" | "unlocked";
     type SortDir = "asc" | "desc";
@@ -316,12 +316,12 @@
 
 <section class="rm-stage">
     <div class="rm-achievement-title">
-        <P5Text text="Achievements" fontSize={82} />
+        <CallingCardText text="Achievements" fontSize={82} />
     </div>
 
     <button type="button" class="rm-back-btn" onclick={onBack}>
-        <P5KeyHint key="Esc" fontSize={36} />
-        <P5PromptWord text="Back" fontSize={72} />
+        <KeyHint key="Esc" fontSize={36} />
+        <PromptWord text="Back" fontSize={72} />
     </button>
 
     <div class="rm-ach-layout">
@@ -349,7 +349,7 @@
                                 }}
                                 bind:this={packBtnRefs[pi]}
                             >
-                                <P5MenuItem
+                                <MenuItem
                                     letters={getPackLetterConfigs(
                                         pack.pack_name,
                                         pi,
@@ -387,7 +387,7 @@
                     {@const stats = getPackStats(pack)}
 
                     <div class="rm-ach-content-header">
-                        <P5Text text={pack.pack_name} fontSize={52} />
+                        <CallingCardText text={pack.pack_name} fontSize={52} />
                         <span class="rm-ach-stats"
                             >{stats.unlocked} / {stats.total}</span
                         >

@@ -3,11 +3,11 @@
     import { invoke } from "@tauri-apps/api/core";
     import type { UnlistenFn } from "@tauri-apps/api/event";
     import { getCurrentWindow } from "@tauri-apps/api/window";
-    import P5Calendar from "$lib/P5Calendar.svelte";
-    import P5MenuItem from "$lib/P5MenuItem.svelte";
-    import P5PromptWord from "$lib/P5PromptWord.svelte";
-    import P5KeyHint from "$lib/P5KeyHint.svelte";
-    import type { LetterConfig } from "$lib/P5MenuItem.svelte";
+    import Calendar from "$lib/Calendar.svelte";
+    import MenuItem from "$lib/MenuItem.svelte";
+    import PromptWord from "$lib/PromptWord.svelte";
+    import KeyHint from "$lib/KeyHint.svelte";
+    import type { LetterConfig } from "$lib/MenuItem.svelte";
     import type { StatusData } from "$lib/types/status";
     import type { AchievementData } from "$lib/types/achievement";
     import type { MainMenuMissionData } from "$lib/types/mission";
@@ -485,7 +485,7 @@
     <section class="rm-scene">
         {#if currentScreen === "main"}
             <div class="rm-calendar-widget">
-                <P5Calendar />
+                <Calendar />
             </div>
             {#if missionMenuData?.countdown}
                 <div class="rm-countdown" aria-label="Mission countdown">
@@ -560,12 +560,12 @@
 
             <div class="rm-prompt-hints" aria-hidden="true">
                 <div class="rm-prompt-hint">
-                    <P5KeyHint key="Esc" fontSize={36} />
-                    <P5PromptWord text="Hide" fontSize={72} />
+                    <KeyHint key="Esc" fontSize={36} />
+                    <PromptWord text="Hide" fontSize={72} />
                 </div>
                 <div class="rm-prompt-hint">
-                    <P5KeyHint key="↵" fontSize={36} />
-                    <P5PromptWord text="Confirm" fontSize={72} />
+                    <KeyHint key="↵" fontSize={36} />
+                    <PromptWord text="Confirm" fontSize={72} />
                 </div>
             </div>
         {/if}
@@ -589,7 +589,7 @@
                                 onmouseenter={() => setFocusedMenuIndex(index)}
                                 bind:this={menuItemRefs[index]}
                             >
-                                <P5MenuItem
+                                <MenuItem
                                     letters={MENU_LETTER_DATA[item.id]}
                                     active={focusedMenuIndex === index}
                                 />

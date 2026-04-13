@@ -1,6 +1,6 @@
 <script lang="ts">
     import type { DimensionData } from "$lib/types/status";
-    import P5CollageLabel from "$lib/P5CollageLabel.svelte";
+    import CollageLabel from "$lib/CollageLabel.svelte";
 
     let {
         dimensions,
@@ -205,7 +205,7 @@
             style:top="{(ly / size) * 100}%"
             onclick={() => handleClick(dim.id)}
         >
-            <P5CollageLabel
+            <CollageLabel
                 text={dim.name}
                 level={dim.level}
                 title={dim.level_title ?? "--"}
