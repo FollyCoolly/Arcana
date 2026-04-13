@@ -1,6 +1,6 @@
 # Content Packs Schema
 
-内容包（Content Pack）是 Reality Mod 的可插拔数据单元，每个包包含成就定义、技能树定义和包元数据。
+内容包（Content Pack）是 Arcana 的可插拔数据单元，每个包包含成就定义、技能树定义和包元数据。
 
 ## 文件路径
 
@@ -83,7 +83,7 @@
   "name": "Programmer",
   "description": "Achievements and skills for software developers.",
   "version": "1.0.0",
-  "author": "RealityMod",
+  "author": "Arcana",
   "tags": ["career", "tech"]
 }
 ```

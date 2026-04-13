@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-RealityMod — 一个 Persona 5 风格的游戏化人生管理桌面应用，"adding a user interface to Earth Online"。
+Arcana — 一个 Persona 5 风格的游戏化人生管理桌面应用，"adding a user interface to Earth Online"。
 
 ## 技术栈
 

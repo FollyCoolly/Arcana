@@ -1,5 +1,5 @@
 """
-Generate RealityMod content packs from decoded MakerSkillTree data.
+Generate Arcana content packs from decoded MakerSkillTree data.
 
 Reads decoded tree JSON files from docs/tmp/decoded_trees/ and generates
 complete content packs (manifest.json, achievements.json, skills.json)
@@ -365,7 +365,7 @@ def _pick_key_achievements(achs: list[dict], max_level: int) -> dict[int, list[s
 # ─────────────────────────────────────────────────────────────────────────────
 
 def main():
-    parser = argparse.ArgumentParser(description="Generate RealityMod content packs")
+    parser = argparse.ArgumentParser(description="Generate Arcana content packs")
     parser.add_argument("--input", default=str(DEFAULT_INPUT), help="Decoded trees directory")
     parser.add_argument("--output", default=str(DEFAULT_OUTPUT), help="Output packs directory")
     parser.add_argument("--dry-run", action="store_true", help="Print plan without writing files")

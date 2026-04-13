@@ -6,7 +6,7 @@ use std::path::PathBuf;
 ///
 /// Loaded by merging multiple sources (later overrides earlier):
 ///   1. Defaults
-///   2. ~/.realitymod/agent_config.json   (user-level: API keys, base_url)
+///   2. ~/.arcana/agent_config.json   (user-level: API keys, base_url)
 ///   3. data/agent_config.json            (project-level: model, iterations)
 ///   4. Environment variables             (temporary overrides)
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -101,13 +101,13 @@ struct PartialConfig {
 }
 
 impl AgentConfig {
-    /// Load config by merging: defaults → ~/.realitymod/ → data/ → env vars.
+    /// Load config by merging: defaults → ~/.arcana/ → data/ → env vars.
     pub fn load() -> Result<Self, String> {
         let data_dir = resolve_data_dir()?;
         let mut config = AgentConfig::default();
         config.data_dir = data_dir.clone();
 
-        // Layer 1: ~/.realitymod/agent_config.json (user-level)
+        // Layer 1: ~/.arcana/agent_config.json (user-level)
         if let Some(user_path) = user_config_path() {
             if user_path.exists() {
                 let partial: PartialConfig = read_json_file(&user_path)?;
@@ -129,7 +129,7 @@ impl AgentConfig {
         if config.api_key.is_empty() {
             return Err(format!(
                 "API key not configured. Set it in:\n\
-                 \x20 1. ~/.realitymod/agent_config.json  (recommended)\n\
+                 \x20 1. ~/.arcana/agent_config.json  (recommended)\n\
                  \x20 2. data/agent_config.json\n\
                  \x20 3. ANTHROPIC_API_KEY or ANTHROPIC_AUTH_TOKEN env var"
             ));
@@ -195,28 +195,28 @@ impl AgentConfig {
                 self.api_key = v;
             }
         }
-        if let Ok(v) = std::env::var("REALITYMOD_MODEL") {
+        if let Ok(v) = std::env::var("ARCANA_MODEL") {
             if !v.is_empty() {
                 self.model = v;
             }
         }
-        if let Ok(v) = std::env::var("REALITYMOD_MAX_TOKENS") {
+        if let Ok(v) = std::env::var("ARCANA_MAX_TOKENS") {
             if let Ok(n) = v.parse() {
                 self.max_tokens = n;
             }
         }
-        if let Ok(v) = std::env::var("REALITYMOD_TIMEOUT_SECS") {
+        if let Ok(v) = std::env::var("ARCANA_TIMEOUT_SECS") {
             if let Ok(n) = v.parse() {
                 self.timeout_secs = n;
             }
         }
-        // Telegram token: TELOXIDE_TOKEN (teloxide convention) or REALITYMOD_TELEGRAM_TOKEN
+        // Telegram token: TELOXIDE_TOKEN (teloxide convention) or ARCANA_TELEGRAM_TOKEN
         if let Ok(v) = std::env::var("TELOXIDE_TOKEN") {
             if !v.is_empty() {
                 self.telegram.token = v;
             }
         }
-        if let Ok(v) = std::env::var("REALITYMOD_TELEGRAM_TOKEN") {
+        if let Ok(v) = std::env::var("ARCANA_TELEGRAM_TOKEN") {
             if !v.is_empty() {
                 self.telegram.token = v;
             }
@@ -224,9 +224,9 @@ impl AgentConfig {
     }
 }
 
-/// Resolve ~/.realitymod/agent_config.json path.
+/// Resolve ~/.arcana/agent_config.json path.
 fn user_config_path() -> Option<PathBuf> {
-    home_dir().map(|h| h.join(".realitymod").join("agent_config.json"))
+    home_dir().map(|h| h.join(".arcana").join("agent_config.json"))
 }
 
 /// Get user home directory without external crates.

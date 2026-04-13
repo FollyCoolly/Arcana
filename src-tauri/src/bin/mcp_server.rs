@@ -1,7 +1,7 @@
 use rmcp::schemars;
 
-use reality_mod_lib::services;
-use reality_mod_lib::storage::json_store::resolve_data_dir;
+use arcana_lib::services;
+use arcana_lib::storage::json_store::resolve_data_dir;
 use rmcp::handler::server::router::tool::ToolRouter;
 use rmcp::handler::server::wrapper::Parameters;
 use rmcp::model::*;
@@ -104,7 +104,7 @@ struct UpdateMissionMemoryInput {
 // ---------------------------------------------------------------------------
 
 #[derive(Clone)]
-struct RealityModServer {
+struct ArcanaServer {
     data_dir: PathBuf,
     write_lock: Arc<Mutex<()>>,
     tool_router: ToolRouter<Self>,
@@ -119,7 +119,7 @@ fn err(e: String) -> ErrorData {
 }
 
 #[tool_router]
-impl RealityModServer {
+impl ArcanaServer {
     fn new(data_dir: PathBuf) -> Self {
         Self {
             data_dir,
@@ -129,7 +129,7 @@ impl RealityModServer {
     }
 
     #[tool(
-        description = "Read RealityMod context: active missions, status metrics, achievement progress, and mission memory. Call this first to understand the user's current state."
+        description = "Read Arcana context: active missions, status metrics, achievement progress, and mission memory. Call this first to understand the user's current state."
     )]
     fn get_context(&self) -> Result<CallToolResult, ErrorData> {
         ok(services::context::get_context(&self.data_dir).map_err(err)?)
@@ -221,10 +221,10 @@ impl RealityModServer {
 }
 
 #[tool_handler]
-impl ServerHandler for RealityModServer {
+impl ServerHandler for ArcanaServer {
     fn get_info(&self) -> ServerInfo {
         ServerInfo::new(ServerCapabilities::builder().enable_tools().build())
-            .with_server_info(Implementation::new("realitymod", env!("CARGO_PKG_VERSION")))
+            .with_server_info(Implementation::new("arcana", env!("CARGO_PKG_VERSION")))
     }
 }
 
@@ -249,7 +249,7 @@ async fn main() {
 
     eprintln!("[mcp-server] Starting. data_dir = {}", data_dir.display());
 
-    let server = RealityModServer::new(data_dir);
+    let server = ArcanaServer::new(data_dir);
     let service = match server.serve(rmcp::transport::stdio()).await {
         Ok(s) => s,
         Err(e) => {

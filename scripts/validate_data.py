@@ -1,5 +1,5 @@
 """
-Validate RealityMod data JSON files after AI writes.
+Validate Arcana data JSON files after AI writes.
 
 Used as a PostToolUse hook — receives a file path, validates schema
 rules for known data files, and exits non-zero on errors so Claude

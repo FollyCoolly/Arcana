@@ -1,15 +1,15 @@
-# Reality Mod - 目录结构演变
+# Arcana - 目录结构演变
 
 > **版本**: v0.1.0  
 > **最后更新**: 2026-01-22
 
-本文档记录 Reality Mod 项目在不同开发阶段的目录结构变化，帮助理解项目的渐进式演进过程。
+本文档记录 Arcana 项目在不同开发阶段的目录结构变化，帮助理解项目的渐进式演进过程。
 
 ---
 
 ## 📋 目录
 
-- [Reality Mod - 目录结构演变](#reality-mod---目录结构演变)
+- [Arcana - 目录结构演变](#arcana---目录结构演变)
   - [📋 目录](#-目录)
   - [阶段二：MVP - Status 模块](#阶段二mvp---status-模块)
     - [目录结构](#目录结构)
@@ -39,7 +39,7 @@
 ### 目录结构
 
 ```
-RealityMod/
+Arcana/
 │
 ├── src-tauri/                    # Rust 后端
 │   ├── src/
@@ -147,7 +147,7 @@ RealityMod/
 ### 新增文件
 
 ```diff
-RealityMod/
+Arcana/
 ├── src-tauri/
 │   ├── src/
 │   │   ├── models/
@@ -233,7 +233,7 @@ RealityMod/
 ### 新增文件
 
 ```diff
-RealityMod/
+Arcana/
 ├── src-tauri/
 │   ├── src/
 │   │   ├── models/
@@ -273,7 +273,7 @@ RealityMod/
 ### 新增文件
 
 ```diff
-RealityMod/
+Arcana/
 ├── src-tauri/
 │   ├── src/
 │   │   ├── models/
@@ -321,7 +321,7 @@ RealityMod/
 ### 完整目录树
 
 ```
-RealityMod/
+Arcana/
 │
 ├── src-tauri/                    # Rust 后端
 │   ├── src/
@@ -506,5 +506,5 @@ RealityMod/
 
 ---
 
-**文档维护者**: RealityMod Team  
+**文档维护者**: Arcana Team  
 **相关文档**: [架构设计](./architecture.md) | [数据结构设计](./data_schema.md)

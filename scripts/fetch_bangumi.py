@@ -31,7 +31,7 @@ RETRY_WAIT = 5
 # ─────────────────────────────────────────────────────────────────────────────
 
 _session = None
-_user_agent = "RealityMod/gallery-fetcher"
+_user_agent = "Arcana/gallery-fetcher"
 
 try:
     import requests as _requests_lib
@@ -202,7 +202,7 @@ def main():
     config = load_config()
     uid = config["bangumi_uid"]
     top_tags_count = config.get("top_tags_count", 5)
-    user_agent = config.get("user_agent", "RealityMod/gallery-fetcher")
+    user_agent = config.get("user_agent", "Arcana/gallery-fetcher")
 
     _init_session(user_agent)
 

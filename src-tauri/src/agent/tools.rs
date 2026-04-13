@@ -73,7 +73,7 @@ impl Tool for GetContextTool {
     fn definition(&self) -> ToolDef {
         ToolDef {
             name: "get_context".into(),
-            description: "Read RealityMod context: active missions, status metrics, achievement progress, and mission memory. Call this first to understand the user's current state.".into(),
+            description: "Read Arcana context: active missions, status metrics, achievement progress, and mission memory. Call this first to understand the user's current state.".into(),
             input_schema: json!({"type": "object", "properties": {}, "required": []}),
         }
     }

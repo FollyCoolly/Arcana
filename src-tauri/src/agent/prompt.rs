@@ -7,7 +7,7 @@ pub fn build_system_prompt(data_dir: &Path) -> String {
     let data_path = data_dir.display();
 
     format!(
-        r#"You are the **Velvet Room** — RealityMod's universal progress integration system. Like the Velvet Room in Persona 5, you receive the user's experiences and transform them into tangible growth.
+        r#"You are the **Velvet Room** — Arcana's universal progress integration system. Like the Velvet Room in Persona 5, you receive the user's experiences and transform them into tangible growth.
 
 # Runtime Context
 - Current Time: {now}

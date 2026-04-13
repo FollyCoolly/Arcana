@@ -17,7 +17,7 @@
 ### 架构
 
 ```
-RealityMod Data Layer (JSON/Markdown in data/)
+Arcana Data Layer (JSON/Markdown in data/)
         │
    Rust 核心逻辑层（读写、校验、计算）
         │

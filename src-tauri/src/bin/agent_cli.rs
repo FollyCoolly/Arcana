@@ -1,15 +1,15 @@
-//! Minimal CLI for testing the RealityMod agent without Tauri.
+//! Minimal CLI for testing the Arcana agent without Tauri.
 //!
 //! Usage:
 //!   cargo run --bin agent-cli
 //!
 //! Configuration: data/agent_config.json (see AgentConfig).
-//! Env overrides: ANTHROPIC_BASE_URL, ANTHROPIC_API_KEY, REALITYMOD_MODEL, etc.
+//! Env overrides: ANTHROPIC_BASE_URL, ANTHROPIC_API_KEY, ARCANA_MODEL, etc.
 //!
 //! Reads user input from stdin, sends it through the agent loop,
 //! prints the reply. Type "quit" or Ctrl-D to exit.
 
-use reality_mod_lib::agent::{config::AgentConfig, llm, prompt, runner, session};
+use arcana_lib::agent::{config::AgentConfig, llm, prompt, runner, session};
 use std::io::{self, BufRead, Write};
 
 #[tokio::main]
@@ -19,7 +19,7 @@ async fn main() {
         Err(e) => {
             eprintln!("Configuration error: {e}");
             eprintln!();
-            eprintln!("Create ~/.realitymod/agent_config.json:");
+            eprintln!("Create ~/.arcana/agent_config.json:");
             eprintln!(r#"  {{"#);
             eprintln!(r#"    "base_url": "https://api.anthropic.com","#);
             eprintln!(r#"    "api_key": "sk-ant-...""#);
@@ -31,7 +31,7 @@ async fn main() {
         }
     };
 
-    eprintln!("RealityMod Agent CLI");
+    eprintln!("Arcana Agent CLI");
     eprintln!("  Endpoint: {}/v1/messages", config.base_url);
     eprintln!("  Model:    {}", config.model);
     eprintln!("  Data:     {}", config.data_dir.display());

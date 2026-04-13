@@ -1,10 +1,10 @@
-//! RealityMod Telegram Bot.
+//! Arcana Telegram Bot.
 //!
 //! Starts the agent service with a Telegram channel adapter.
 //! Messages from allowed Telegram users are processed by the agent
 //! and replies are sent back to the same chat.
 //!
-//! Configuration: ~/.realitymod/agent_config.json
+//! Configuration: ~/.arcana/agent_config.json
 //!
 //!   {
 //!     "base_url": "https://zenmux.ai/api/anthropic",
@@ -19,7 +19,7 @@
 //! Run:
 //!   cargo run --bin agent-telegram
 
-use reality_mod_lib::agent::{
+use arcana_lib::agent::{
     bus::MessageBus, channels::telegram, config::AgentConfig, llm, prompt, runner::AgentRunner,
     session::SessionStore,
 };
@@ -42,12 +42,12 @@ async fn main() {
 
     if config.telegram.token.is_empty() {
         eprintln!("Telegram token not configured.");
-        eprintln!("Add to ~/.realitymod/agent_config.json:");
+        eprintln!("Add to ~/.arcana/agent_config.json:");
         eprintln!(r#"  "telegram": {{ "token": "123456:ABC-DEF...", "allow_from": ["*"] }}"#);
         std::process::exit(1);
     }
 
-    log::info!("RealityMod Telegram Agent");
+    log::info!("Arcana Telegram Agent");
     log::info!("  Endpoint: {}/v1/messages", config.base_url);
     log::info!("  Model:    {}", config.model);
     log::info!("  Data:     {}", config.data_dir.display());
@@ -93,7 +93,7 @@ async fn main() {
                     }
                     let _ = bus
                         .outbound_tx
-                        .send(reality_mod_lib::agent::bus::OutboundMessage {
+                        .send(arcana_lib::agent::bus::OutboundMessage {
                             channel: msg.channel.clone(),
                             chat_id: msg.chat_id.clone(),
                             content: reply,
@@ -104,7 +104,7 @@ async fn main() {
                     log::error!("[agent] Error: {e}");
                     let _ = bus
                         .outbound_tx
-                        .send(reality_mod_lib::agent::bus::OutboundMessage {
+                        .send(arcana_lib::agent::bus::OutboundMessage {
                             channel: msg.channel.clone(),
                             chat_id: msg.chat_id.clone(),
                             content: format!("Agent error: {e}"),

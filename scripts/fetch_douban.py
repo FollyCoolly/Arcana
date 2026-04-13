@@ -38,7 +38,7 @@ RETRY_WAIT = 5
 # ─────────────────────────────────────────────────────────────────────────────
 
 _session = None
-_user_agent = "RealityMod/gallery-fetcher"
+_user_agent = "Arcana/gallery-fetcher"
 _cookie = ""
 
 try:
@@ -322,7 +322,7 @@ def write_gallery_json(path: Path, items: list[dict]):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Fetch Douban movies, TV shows, and books for RealityMod gallery."
+        description="Fetch Douban movies, TV shows, and books for Arcana gallery."
     )
     parser.add_argument(
         "--status", default="done",
@@ -341,7 +341,7 @@ def main():
     uid = config["douban_id"]
     cookie = config.get("douban_cookie", "")
     top_tags_count = config.get("top_tags_count", 5)
-    user_agent = config.get("user_agent", "RealityMod/gallery-fetcher")
+    user_agent = config.get("user_agent", "Arcana/gallery-fetcher")
 
     _init_session(user_agent, cookie)
 

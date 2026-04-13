@@ -35,7 +35,7 @@ RETRY_WAIT = 5
 # ─────────────────────────────────────────────────────────────────────────────
 
 _session = None
-_user_agent = "RealityMod/gallery-fetcher"
+_user_agent = "Arcana/gallery-fetcher"
 
 try:
     import requests as _requests_lib
@@ -351,7 +351,7 @@ def map_game(game: dict, details: dict | None, top_tags_count: int) -> dict | No
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Fetch Steam games for RealityMod gallery."
+        description="Fetch Steam games for Arcana gallery."
     )
     parser.add_argument(
         "--detailed", action="store_true",
@@ -364,7 +364,7 @@ def main():
     api_key = config["steam_api_key"]
     steam_id = config["steam_id"]
     top_tags_count = config.get("top_tags_count", 5)
-    user_agent = config.get("user_agent", "RealityMod/gallery-fetcher")
+    user_agent = config.get("user_agent", "Arcana/gallery-fetcher")
 
     _init_session(user_agent)
 

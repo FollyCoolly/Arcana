@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "realitymod": {
+    "arcana": {
       "type": "stdio",
       "command": "cargo",
       "args": [

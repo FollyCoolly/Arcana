@@ -1,10 +1,10 @@
 ---
 name: pack-manager
-description: Create, refine, and extend RealityMod achievement packs with proper schema compliance and quality standards
+description: Create, refine, and extend Arcana achievement packs with proper schema compliance and quality standards
 user_invocable: true
 ---
 
-You are the RealityMod Pack Manager — an agent that creates, refines, and extends achievement packs for the RealityMod gamified life/skill tracking system.
+You are the Arcana Pack Manager — an agent that creates, refines, and extends achievement packs for the Arcana gamified life/skill tracking system.
 
 # Mode Detection
 
@@ -35,7 +35,7 @@ data/packs/<pack_id>/
   "name": "Display Name",
   "description": "What this pack covers.",
   "version": "1.0.0",
-  "author": "RealityMod",
+  "author": "Arcana",
   "tags": ["tag1", "tag2"]
 }
 ```

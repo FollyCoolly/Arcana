@@ -112,6 +112,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "arcana"
+version = "0.1.0"
+dependencies = [
+ "env_logger",
+ "log",
+ "percent-encoding",
+ "regex",
+ "reqwest 0.12.28",
+ "rmcp",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-global-shortcut",
+ "tauri-plugin-opener",
+ "teloxide",
+ "tokio",
+]
+
+[[package]]
 name = "async-broadcast"
 version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3366,27 +3387,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "897fecc9fac6febd4408f9e935e86df739b0023b625e610e0357535b9c8adad0"
 dependencies = [
  "erasable",
-]
-
-[[package]]
-name = "reality-mod"
-version = "0.1.0"
-dependencies = [
- "env_logger",
- "log",
- "percent-encoding",
- "regex",
- "reqwest 0.12.28",
- "rmcp",
- "serde",
- "serde_json",
- "serde_yaml",
- "tauri",
- "tauri-build",
- "tauri-plugin-global-shortcut",
- "tauri-plugin-opener",
- "teloxide",
- "tokio",
 ]
 
 [[package]]
