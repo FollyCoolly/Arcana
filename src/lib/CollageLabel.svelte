@@ -6,7 +6,7 @@
         title = null,
     }: {
         text: string;
-        level?: number | null;
+        level?: number | string | null;
         title?: string | null;
     } = $props();
 
@@ -107,7 +107,19 @@
             </span>
         {/each}
         {#if level !== null && level !== undefined}
-            <span class="p5cl-badge">{level}</span>
+            {#if typeof level === "string"}
+                <span
+                    class="p5cl-frag p5cl-inv"
+                    style:transform="rotate(-4deg) translateY(0.25em)"
+                    style:margin-left="0.06em"
+                    style:padding-left="0.06em"
+                    style:padding-right="0.06em"
+                    style:font-size="0.7em"
+                    style:align-self="flex-end">{level.toUpperCase()}</span
+                >
+            {:else}
+                <span class="p5cl-badge">{level}</span>
+            {/if}
         {/if}
     </span>
     {#if title}

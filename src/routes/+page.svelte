@@ -558,15 +558,23 @@
             </div>
             <div class="rm-diagonal-line" aria-hidden="true"></div>
 
-            <div class="rm-prompt-hints" aria-hidden="true">
-                <div class="rm-prompt-hint">
+            <div class="rm-prompt-hints">
+                <button
+                    type="button"
+                    class="rm-prompt-hint"
+                    onclick={() => void hideInterface()}
+                >
                     <KeyHint key="Esc" fontSize={36} />
                     <PromptWord text="Hide" fontSize={72} />
-                </div>
-                <div class="rm-prompt-hint">
+                </button>
+                <button
+                    type="button"
+                    class="rm-prompt-hint"
+                    onclick={() => void activateMenuItem(focusedMenuIndex)}
+                >
                     <KeyHint key="↵" fontSize={36} />
                     <PromptWord text="Confirm" fontSize={72} />
-                </div>
+                </button>
             </div>
         {/if}
 
@@ -1086,13 +1094,21 @@
         display: flex;
         flex-direction: row;
         gap: 0.5rem;
-        pointer-events: none;
     }
 
     .rm-prompt-hint {
         display: flex;
         align-items: center;
         gap: 0;
+        background: none;
+        border: none;
+        padding: 0;
+        cursor: pointer;
+        transition: transform 120ms ease;
+    }
+
+    .rm-prompt-hint:hover {
+        transform: scale(1.06);
     }
 
     .rm-prompt-hint :global(.p5-prompt-word) {

@@ -110,6 +110,20 @@ fn compute_skill_sys_metrics(data_dir: &Path) -> HashMap<String, f64> {
 }
 
 fn compute_contribution(value: f64, config: &DimensionMetricConfig) -> f64 {
+    // Range mode: both target_min and target_max define a healthy range
+    if let (Some(t_min), Some(t_max)) = (config.target_min, config.target_max) {
+        if t_min <= 0.0 || t_max <= 0.0 || t_max <= t_min {
+            return 0.0;
+        }
+        if value >= t_min && value <= t_max {
+            return 1.0;
+        }
+        if value < t_min {
+            return (value / t_min).max(0.0);
+        }
+        // value > t_max
+        return (t_max / value).max(0.0);
+    }
     if let Some(target_max) = config.target_max {
         if target_max <= 0.0 {
             return 0.0;
@@ -261,7 +275,11 @@ pub fn load_status_data() -> Result<StatusData, String> {
         .into_iter()
         .filter(|metric| metric.value_type == "number")
         .map(|metric| StatusMetric {
-            value: values.metrics.get(&metric.id).copied(),
+            value: values
+                .metrics
+                .get(&metric.id)
+                .copied()
+                .or_else(|| sys_metrics.get(&metric.id).copied()),
             id: metric.id,
             name: metric.name,
             group: metric.group,

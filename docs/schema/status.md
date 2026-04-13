@@ -69,11 +69,11 @@ Metric 是纯数据字典，不包含评分逻辑。
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | `weight` | `number` | 是 | 权重，> 0 |
-| `target_max` | `number` | 否 | 目标上限（越高越好），> 0 |
-| `target_min` | `number` | 否 | 目标下限（越低越好），> 0 |
+| `target_max` | `number` | 否 | 目标上限，> 0 |
+| `target_min` | `number` | 否 | 目标下限，> 0 |
 | `scoring_brackets` | `array` | 否 | 分段评分（区间最优型） |
 
-`target_max`、`target_min`、`scoring_brackets` 三者互斥，最多使用一种。全部省略时直接使用指标原始值。
+**评分方式优先级**：`target_min` + `target_max` 同时存在时为健康范围模式；仅 `target_max` 为越高越好模式；仅 `target_min` 为越低越好模式；`scoring_brackets` 为分段评分。`scoring_brackets` 与 `target_*` 互斥。全部省略时直接使用指标原始值。
 
 ### `scoring_brackets[]` 结构
 
@@ -93,8 +93,9 @@ Metric 是纯数据字典，不包含评分逻辑。
 
 每个指标根据评分方式计算 contribution（贡献值）：
 
-- **`target_max`**：`contribution = min(value / target_max, 1.0)`
-- **`target_min`**：`contribution = min(target_min / value, 1.0)`
+- **`target_min` + `target_max`（健康范围）**：值在 `[target_min, target_max]` 范围内时 `contribution = 1.0`；低于范围 `contribution = value / target_min`；高于范围 `contribution = target_max / value`
+- **仅 `target_max`**：`contribution = min(value / target_max, 1.0)`
+- **仅 `target_min`**：`contribution = min(target_min / value, 1.0)`
 - **`scoring_brackets`**：查找 value 所在区间，取该区间的 `score`
 - **无评分方式**：`contribution = value`（直接使用原始值）
 
@@ -248,12 +249,8 @@ dimension_score = Σ(contribution_i × weight_i)
       "metrics": {
         "bmi": {
           "weight": 1.0,
-          "scoring_brackets": [
-            { "min": 0,    "max": 18.5, "score": 0.4 },
-            { "min": 18.5, "max": 25,   "score": 1.0 },
-            { "min": 25,   "max": 30,   "score": 0.6 },
-            { "min": 30,   "max": 999,  "score": 0.2 }
-          ]
+          "target_min": 18.5,
+          "target_max": 24.9
         }
       }
     },
@@ -331,8 +328,9 @@ dimension_score = Σ(contribution_i × weight_i)
 - `level_thresholds` 长度必须为 4，且严格递增
 - `metrics` 中每个 key 必须引用已定义的用户指标或已注册的系统指标
 - 每个 metric entry 必须有 `weight`（> 0）
-- `target_max`、`target_min`、`scoring_brackets` 最多使用一种
+- `scoring_brackets` 与 `target_max`/`target_min` 互斥
 - `target_max` > 0，`target_min` > 0
+- 同时设置 `target_min` + `target_max` 时，`target_max` > `target_min`
 - `scoring_brackets` 每项有 `min`, `max`, `score`，`score` 范围 [0, 1]
 - 启用的维度数量建议 3-8（校验警告，非错误）
 

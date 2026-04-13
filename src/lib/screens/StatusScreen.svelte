@@ -69,59 +69,61 @@
 </script>
 
 <section class="rm-stage">
-    <div class="rm-status-stars-br" aria-hidden="true">
-        <div class="rm-star-group rm-sg-1">
-            <div class="rm-sstar rm-sstar-1"></div>
-            <div class="rm-sstar rm-sstar-2"></div>
-            <div class="rm-sstar rm-sstar-3"></div>
-            <div class="rm-sstar rm-sstar-4"></div>
-            <div class="rm-sstar rm-sstar-5"></div>
-            <div class="rm-sstar rm-sstar-6"></div>
-            <div class="rm-sstar rm-sstar-7"></div>
-            <div class="rm-sstar rm-sstar-8"></div>
+    {#if view === "radar"}
+        <div class="rm-status-stars-br" aria-hidden="true">
+            <div class="rm-star-group rm-sg-1">
+                <div class="rm-sstar rm-sstar-1"></div>
+                <div class="rm-sstar rm-sstar-2"></div>
+                <div class="rm-sstar rm-sstar-3"></div>
+                <div class="rm-sstar rm-sstar-4"></div>
+                <div class="rm-sstar rm-sstar-5"></div>
+                <div class="rm-sstar rm-sstar-6"></div>
+                <div class="rm-sstar rm-sstar-7"></div>
+                <div class="rm-sstar rm-sstar-8"></div>
+            </div>
+            <div class="rm-star-group rm-sg-2">
+                <div class="rm-sstar rm-sstar-1"></div>
+                <div class="rm-sstar rm-sstar-2"></div>
+                <div class="rm-sstar rm-sstar-3"></div>
+                <div class="rm-sstar rm-sstar-4"></div>
+                <div class="rm-sstar rm-sstar-5"></div>
+                <div class="rm-sstar rm-sstar-6"></div>
+                <div class="rm-sstar rm-sstar-7"></div>
+                <div class="rm-sstar rm-sstar-8"></div>
+            </div>
+            <div class="rm-star-group rm-sg-3">
+                <div class="rm-sstar rm-sstar-1"></div>
+                <div class="rm-sstar rm-sstar-2"></div>
+                <div class="rm-sstar rm-sstar-3"></div>
+                <div class="rm-sstar rm-sstar-4"></div>
+                <div class="rm-sstar rm-sstar-5"></div>
+                <div class="rm-sstar rm-sstar-6"></div>
+                <div class="rm-sstar rm-sstar-7"></div>
+                <div class="rm-sstar rm-sstar-8"></div>
+            </div>
+            <div class="rm-star-group rm-sg-4">
+                <div class="rm-sstar rm-sstar-1"></div>
+                <div class="rm-sstar rm-sstar-2"></div>
+                <div class="rm-sstar rm-sstar-3"></div>
+                <div class="rm-sstar rm-sstar-4"></div>
+                <div class="rm-sstar rm-sstar-5"></div>
+                <div class="rm-sstar rm-sstar-6"></div>
+                <div class="rm-sstar rm-sstar-7"></div>
+                <div class="rm-sstar rm-sstar-8"></div>
+            </div>
+            <div class="rm-star-group rm-sg-5">
+                <div class="rm-sstar rm-sstar-1"></div>
+                <div class="rm-sstar rm-sstar-2"></div>
+                <div class="rm-sstar rm-sstar-3"></div>
+                <div class="rm-sstar rm-sstar-4"></div>
+                <div class="rm-sstar rm-sstar-5"></div>
+                <div class="rm-sstar rm-sstar-6"></div>
+                <div class="rm-sstar rm-sstar-7"></div>
+                <div class="rm-sstar rm-sstar-8"></div>
+            </div>
         </div>
-        <div class="rm-star-group rm-sg-2">
-            <div class="rm-sstar rm-sstar-1"></div>
-            <div class="rm-sstar rm-sstar-2"></div>
-            <div class="rm-sstar rm-sstar-3"></div>
-            <div class="rm-sstar rm-sstar-4"></div>
-            <div class="rm-sstar rm-sstar-5"></div>
-            <div class="rm-sstar rm-sstar-6"></div>
-            <div class="rm-sstar rm-sstar-7"></div>
-            <div class="rm-sstar rm-sstar-8"></div>
-        </div>
-        <div class="rm-star-group rm-sg-3">
-            <div class="rm-sstar rm-sstar-1"></div>
-            <div class="rm-sstar rm-sstar-2"></div>
-            <div class="rm-sstar rm-sstar-3"></div>
-            <div class="rm-sstar rm-sstar-4"></div>
-            <div class="rm-sstar rm-sstar-5"></div>
-            <div class="rm-sstar rm-sstar-6"></div>
-            <div class="rm-sstar rm-sstar-7"></div>
-            <div class="rm-sstar rm-sstar-8"></div>
-        </div>
-        <div class="rm-star-group rm-sg-4">
-            <div class="rm-sstar rm-sstar-1"></div>
-            <div class="rm-sstar rm-sstar-2"></div>
-            <div class="rm-sstar rm-sstar-3"></div>
-            <div class="rm-sstar rm-sstar-4"></div>
-            <div class="rm-sstar rm-sstar-5"></div>
-            <div class="rm-sstar rm-sstar-6"></div>
-            <div class="rm-sstar rm-sstar-7"></div>
-            <div class="rm-sstar rm-sstar-8"></div>
-        </div>
-        <div class="rm-star-group rm-sg-5">
-            <div class="rm-sstar rm-sstar-1"></div>
-            <div class="rm-sstar rm-sstar-2"></div>
-            <div class="rm-sstar rm-sstar-3"></div>
-            <div class="rm-sstar rm-sstar-4"></div>
-            <div class="rm-sstar rm-sstar-5"></div>
-            <div class="rm-sstar rm-sstar-6"></div>
-            <div class="rm-sstar rm-sstar-7"></div>
-            <div class="rm-sstar rm-sstar-8"></div>
-        </div>
-    </div>
-    <div class="rm-status-bg" aria-hidden="true"></div>
+        <div class="rm-status-bg" aria-hidden="true"></div>
+    {/if}
     <img src="/ui/Status.png" alt="Status" class="rm-status-title-img" />
 
     <button

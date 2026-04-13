@@ -15,3 +15,5 @@ vite.config.ts.timestamp-*
 /docs/tmp
 scripts/config.json
 scripts/.steam_cache.json
+.agents/
+AGENTS.md
