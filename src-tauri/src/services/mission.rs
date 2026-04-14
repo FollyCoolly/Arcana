@@ -16,6 +16,7 @@ pub fn update_mission(data_dir: &Path, input: &Value) -> Result<String, String> 
             .ok_or_else(|| format!("Mission '{id}' not found"))?;
 
         if let Some(updates) = input["updates"].as_object() {
+            let mut warnings = Vec::new();
             for (key, val) in updates {
                 match key.as_str() {
                     "progress" => {
@@ -45,8 +46,46 @@ pub fn update_mission(data_dir: &Path, input: &Value) -> Result<String, String> 
                             changes.push(format!("{id}.completed_at: set to {s}"));
                         }
                     }
-                    _ => {}
+                    "deadline" => {
+                        let old = mission.deadline.clone();
+                        if let Some(s) = val.as_str() {
+                            mission.deadline = Some(s.to_string());
+                            changes.push(format!("{id}.deadline: {old:?} → {s}"));
+                        }
+                    }
+                    "title" => {
+                        if let Some(s) = val.as_str() {
+                            let old = mission.title.clone();
+                            mission.title = s.to_string();
+                            changes.push(format!("{id}.title: {old} → {s}"));
+                        }
+                    }
+                    "description" => {
+                        if let Some(s) = val.as_str() {
+                            mission.description = Some(s.to_string());
+                            changes.push(format!("{id}.description: updated"));
+                        }
+                    }
+                    "linked_achievement_id" => {
+                        if val.is_null() {
+                            mission.linked_achievement_id = None;
+                            changes.push(format!("{id}.linked_achievement_id: cleared"));
+                        } else if let Some(s) = val.as_str() {
+                            mission.linked_achievement_id = Some(s.to_string());
+                            changes.push(format!("{id}.linked_achievement_id: set to {s}"));
+                        }
+                    }
+                    "ai_metadata" => {
+                        mission.ai_metadata = Some(val.clone());
+                        changes.push(format!("{id}.ai_metadata: updated"));
+                    }
+                    other => {
+                        warnings.push(format!("unknown field '{other}' ignored"));
+                    }
                 }
+            }
+            if !warnings.is_empty() {
+                changes.push(format!("⚠ warnings: {}", warnings.join(", ")));
             }
         }
     }

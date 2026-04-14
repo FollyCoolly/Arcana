@@ -110,7 +110,7 @@ AI 通过 `ai_metadata` 字段存储生成元数据：
 ```json
 "ai_metadata": {
   "generation_id": "2026-03-31",
-  "difficulty_tier": "easy|medium|hard",
+  "difficulty_tier": "D|C|B|A|S",
   "generation_reason": "拆解活跃任务: learn_rust"
 }
 ```

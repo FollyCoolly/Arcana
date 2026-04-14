@@ -70,7 +70,7 @@ For each new mission, call `create_mission` with:
   "created_at": "<ISO 8601>",
   "ai_metadata": {
     "generation_id": "<today YYYY-MM-DD>",
-    "difficulty_tier": "easy|medium|hard",
+    "difficulty_tier": "D|C|B|A|S",
     "generation_reason": "Why this was generated"
   }
 }

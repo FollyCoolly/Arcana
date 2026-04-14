@@ -9,6 +9,7 @@ export type MissionResponse = {
     created_at?: string;
     completed_at?: string;
     days_remaining?: number;
+    difficulty?: string;
 };
 
 export type MissionData = {

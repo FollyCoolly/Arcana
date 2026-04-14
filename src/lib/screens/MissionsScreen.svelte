@@ -106,13 +106,8 @@
         detailMission = null;
     }
 
-    function progressGrade(progress?: number): string {
-        if (progress == null) return "--";
-        if (progress >= 80) return "A";
-        if (progress >= 60) return "B";
-        if (progress >= 40) return "C";
-        if (progress >= 20) return "D";
-        return "E";
+    function difficultyGrade(difficulty?: string): string {
+        return difficulty ?? "--";
     }
 
     function statusLabel(status: string): string {
@@ -312,9 +307,9 @@
 
                             <span
                                 class="rm-mission-grade"
-                                data-grade={progressGrade(mission.progress)}
+                                data-grade={difficultyGrade(mission.difficulty)}
                             >
-                                {progressGrade(mission.progress)}
+                                {difficultyGrade(mission.difficulty)}
                             </span>
                         </li>
                     {/each}
@@ -339,9 +334,9 @@
                 </span>
                 <span
                     class="rm-detail-grade"
-                    data-grade={progressGrade(detailMission.progress)}
+                    data-grade={difficultyGrade(detailMission.difficulty)}
                 >
-                    {progressGrade(detailMission.progress)}
+                    {difficultyGrade(detailMission.difficulty)}
                 </span>
             </div>
             <h2 class="rm-detail-title">{detailMission.title}</h2>
@@ -443,7 +438,7 @@
                                 <span
                                     class="rm-phan-item-tier"
                                     data-tier={mission.progress != null
-                                        ? progressGrade(mission.progress)
+                                        ? difficultyGrade(mission.difficulty)
                                         : "--"}
                                 >
                                     {#if mission.deadline && mission.days_remaining != null}
@@ -770,11 +765,11 @@
         line-height: 1.2;
     }
 
-    .rm-mission-grade[data-grade="A"] {
+    .rm-mission-grade[data-grade="S"] {
         color: #e5191c;
     }
 
-    .rm-mission-grade[data-grade="E"] {
+    .rm-mission-grade[data-grade="D"] {
         opacity: 0.5;
     }
 
@@ -851,7 +846,7 @@
         clip-path: polygon(6% 0%, 100% 5%, 94% 100%, 0% 95%);
     }
 
-    .rm-detail-grade[data-grade="A"] {
+    .rm-detail-grade[data-grade="S"] {
         color: #e5191c;
     }
 

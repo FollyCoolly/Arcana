@@ -61,6 +61,7 @@ pub struct MissionResponse {
     pub created_at: Option<String>,
     pub completed_at: Option<String>,
     pub days_remaining: Option<i64>,
+    pub difficulty: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
