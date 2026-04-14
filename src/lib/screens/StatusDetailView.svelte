@@ -263,21 +263,16 @@
     }
 
     .detail-tab:hover {
+        transform: scale(1.06);
+    }
+
+    .detail-tab.active {
         background: var(--rm-white);
         color: var(--rm-black);
     }
 
-    .detail-tab:hover::before {
-        background: var(--rm-white);
-    }
-
-    .detail-tab.active {
-        background: var(--rm-red);
-        color: var(--rm-white);
-    }
-
     .detail-tab.active::before {
-        background: var(--rm-red);
+        background: var(--rm-white);
     }
 
     .dimension-summary {
