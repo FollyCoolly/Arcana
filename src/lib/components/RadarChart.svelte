@@ -208,7 +208,7 @@
             <CollageLabel
                 text={dim.name}
                 level={dim.level !== null &&
-                dim.level >= dim.level_thresholds.length
+                dim.level > dim.level_thresholds.length
                     ? "Max"
                     : dim.level}
                 title={dim.level_title ?? "--"}
