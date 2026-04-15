@@ -1,5 +1,7 @@
 <script lang="ts">
+    import { onMount } from "svelte";
     import CollageLabel from "$lib/CollageLabel.svelte";
+    import KeyHint from "$lib/KeyHint.svelte";
     import PromptWord from "$lib/PromptWord.svelte";
     import type {
         StatusData,
@@ -112,6 +114,46 @@
         }
         return max;
     }
+
+    /** Ordered list of navigable tab IDs */
+    let tabIds = $derived<string[]>([
+        "all",
+        ...statusData.dimensions.filter((d) => d.enabled).map((d) => d.id),
+    ]);
+
+    /** Current index in the tab list */
+    let activeTabIndex = $derived(
+        Math.max(0, tabIds.indexOf(activeDimensionId)),
+    );
+
+    function navigatePrev() {
+        if (tabIds.length <= 1) return;
+        const idx = (activeTabIndex - 1 + tabIds.length) % tabIds.length;
+        activeDimensionId = tabIds[idx];
+    }
+
+    function navigateNext() {
+        if (tabIds.length <= 1) return;
+        const idx = (activeTabIndex + 1) % tabIds.length;
+        activeDimensionId = tabIds[idx];
+    }
+
+    function handleDetailKeydown(event: KeyboardEvent) {
+        if (event.key === "q" || event.key === "Q") {
+            event.preventDefault();
+            navigatePrev();
+        } else if (event.key === "e" || event.key === "E") {
+            event.preventDefault();
+            navigateNext();
+        }
+    }
+
+    onMount(() => {
+        window.addEventListener("keydown", handleDetailKeydown);
+        return () => {
+            window.removeEventListener("keydown", handleDetailKeydown);
+        };
+    });
 </script>
 
 <div class="detail-stage">
@@ -210,6 +252,28 @@
             {/each}
         {/if}
     </div>
+
+    <!-- Prev / Next dimension nav -->
+    {#if tabIds.length > 1}
+        <div class="rm-detail-nav-hints">
+            <button
+                type="button"
+                class="rm-detail-nav-btn"
+                onclick={() => navigatePrev()}
+            >
+                <KeyHint key="Q" fontSize={36} />
+                <PromptWord text="Prev" fontSize={72} />
+            </button>
+            <button
+                type="button"
+                class="rm-detail-nav-btn"
+                onclick={() => navigateNext()}
+            >
+                <KeyHint key="E" fontSize={36} />
+                <PromptWord text="Next" fontSize={72} />
+            </button>
+        </div>
+    {/if}
 </div>
 
 <style>
@@ -229,6 +293,7 @@
         padding: 0 clamp(1rem, 2vw, 3rem);
         flex-shrink: 0;
         overflow-x: auto;
+        overflow-y: hidden;
     }
 
     .detail-tab {
@@ -418,5 +483,36 @@
         height: 100%;
         background: #f5a623;
         transition: width 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+
+    /* ── Prev / Next navigation ── */
+    .rm-detail-nav-hints {
+        position: fixed;
+        bottom: clamp(1.5rem, 3vh, 3.5rem);
+        left: clamp(13rem, 16vw, 22rem);
+        z-index: 10;
+        display: flex;
+        align-items: center;
+        gap: clamp(0.6rem, 1vw, 1.5rem);
+    }
+
+    .rm-detail-nav-btn {
+        display: flex;
+        align-items: center;
+        gap: 0;
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 0;
+        transform: rotate(-1deg);
+        transition: transform 120ms ease;
+    }
+
+    .rm-detail-nav-btn:hover {
+        transform: rotate(-1deg) scale(1.06);
+    }
+
+    .rm-detail-nav-btn :global(.p5-prompt-word) {
+        margin-left: -1rem;
     }
 </style>
