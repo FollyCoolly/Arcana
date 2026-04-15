@@ -2,6 +2,7 @@
     import { onMount } from "svelte";
     import { invoke } from "@tauri-apps/api/core";
     import CallingCardText from "$lib/CallingCardText.svelte";
+
     import MenuItem from "$lib/MenuItem.svelte";
     import type { LetterConfig } from "$lib/MenuItem.svelte";
     import type {
@@ -36,8 +37,6 @@
     let packBtnRefs = $state<(HTMLButtonElement | undefined)[]>([]);
 
     // Filter & sort state
-    let searchQuery = $state("");
-    let selectedTags = $state<Set<string>>(new Set());
     let selectedDifficulties = $state<Set<string>>(new Set());
     let showUnlockedOnly = $state(false);
     let sortKey = $state<SortKey>("default");
@@ -103,17 +102,6 @@
         return letters;
     }
 
-    // Derived: available tags in selected pack
-    let availableTags = $derived.by(() => {
-        const pack = achievementData?.packs[selectedPackIndex];
-        if (!pack) return [];
-        const tagSet = new Set<string>();
-        for (const a of pack.achievements) {
-            for (const t of a.tags) tagSet.add(t);
-        }
-        return [...tagSet].sort();
-    });
-
     const DIFFICULTY_ORDER: Record<string, number> = {
         beginner: 0,
         intermediate: 1,
@@ -126,19 +114,7 @@
     let filteredAchievements = $derived.by((): Achievement[] => {
         const pack = achievementData?.packs[selectedPackIndex];
         if (!pack) return [];
-        const q = searchQuery.trim().toLowerCase();
         const filtered = pack.achievements.filter((a) => {
-            if (
-                q &&
-                !a.name.toLowerCase().includes(q) &&
-                !a.description.toLowerCase().includes(q)
-            )
-                return false;
-            if (
-                selectedTags.size > 0 &&
-                !a.tags.some((t) => selectedTags.has(t))
-            )
-                return false;
             if (
                 selectedDifficulties.size > 0 &&
                 !selectedDifficulties.has(a.difficulty)
@@ -169,32 +145,11 @@
         });
     });
 
-    let hasActiveFilters = $derived(
-        searchQuery !== "" ||
-            selectedTags.size > 0 ||
-            selectedDifficulties.size > 0 ||
-            showUnlockedOnly ||
-            sortKey !== "default",
-    );
-
     function getDifficultyLabel(difficulty: string): string {
         return difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
     }
 
-    function getPackStats(pack: PackAchievements): {
-        total: number;
-        unlocked: number;
-    } {
-        const total = pack.achievements.length;
-        const unlocked = pack.achievements.filter(
-            (a) => achievementData?.progress[a.id],
-        ).length;
-        return { total, unlocked };
-    }
-
     function resetFilters() {
-        searchQuery = "";
-        selectedTags = new Set();
         selectedDifficulties = new Set();
         showUnlockedOnly = false;
         sortKey = "default";
@@ -223,13 +178,6 @@
     function selectPack(index: number) {
         selectedPackIndex = index;
         resetFilters();
-    }
-
-    function toggleTag(tag: string) {
-        const next = new Set(selectedTags);
-        if (next.has(tag)) next.delete(tag);
-        else next.add(tag);
-        selectedTags = next;
     }
 
     function toggleDifficulty(d: string) {
@@ -315,10 +263,6 @@
 </script>
 
 <section class="rm-stage">
-    <div class="rm-achievement-title">
-        <CallingCardText text="Achievements" fontSize={82} />
-    </div>
-
     <button type="button" class="rm-back-btn" onclick={onBack}>
         <KeyHint key="Esc" fontSize={36} />
         <PromptWord text="Back" fontSize={72} />
@@ -357,23 +301,6 @@
                                     active={pi === selectedPackIndex}
                                 />
                             </button>
-                            <!-- Tag chips expand under selected pack -->
-                            {#if pi === selectedPackIndex && availableTags.length > 0}
-                                <div class="rm-ach-sidebar-tags">
-                                    {#each availableTags as tag}
-                                        <button
-                                            type="button"
-                                            class="rm-ach-chip rm-ach-chip--tag"
-                                            class:is-active={selectedTags.has(
-                                                tag,
-                                            )}
-                                            onclick={() => toggleTag(tag)}
-                                        >
-                                            {tag}
-                                        </button>
-                                    {/each}
-                                </div>
-                            {/if}
                         </li>
                     {/each}
                 </ul>
@@ -384,78 +311,49 @@
             <div class="rm-ach-content">
                 {#if getSelectedPack()}
                     {@const pack = getSelectedPack()!}
-                    {@const stats = getPackStats(pack)}
 
                     <div class="rm-ach-content-header">
-                        <CallingCardText text={pack.pack_name} fontSize={52} />
-                        <span class="rm-ach-stats"
-                            >{stats.unlocked} / {stats.total}</span
-                        >
+                        <CallingCardText text={pack.pack_name} fontSize={104} />
+                        <CallingCardText text="Achievements" fontSize={104} />
                     </div>
 
                     <!-- FILTER BAR -->
                     <div class="rm-ach-filters">
-                        <!-- Row 1: Search + Sort buttons -->
                         <div class="rm-ach-filter-row">
-                            <div class="rm-ach-search-wrap">
-                                <span
-                                    class="rm-ach-search-icon"
-                                    aria-hidden="true">&#x25C8;</span
-                                >
-                                <input
-                                    type="search"
-                                    class="rm-ach-search"
-                                    placeholder="SEARCH..."
-                                    bind:value={searchQuery}
-                                    autocomplete="off"
-                                    spellcheck="false"
-                                />
-                                {#if searchQuery}
-                                    <button
-                                        type="button"
-                                        class="rm-ach-search-clear"
-                                        onclick={() => {
-                                            searchQuery = "";
-                                        }}>&#x2715;</button
-                                    >
-                                {/if}
-                            </div>
-
-                            <span class="rm-ach-filter-label">SORT</span>
+                            <PromptWord text="Sort" fontSize={36} />
                             <button
                                 type="button"
-                                class="rm-ach-chip"
-                                class:is-active={sortKey === "name"}
+                                class="rm-ach-tab"
+                                class:active={sortKey === "name"}
                                 onclick={() => toggleSort("name")}
                             >
                                 Name{getSortIndicator("name")}
                             </button>
                             <button
                                 type="button"
-                                class="rm-ach-chip"
-                                class:is-active={sortKey === "difficulty"}
+                                class="rm-ach-tab"
+                                class:active={sortKey === "difficulty"}
                                 onclick={() => toggleSort("difficulty")}
                             >
                                 Diff{getSortIndicator("difficulty")}
                             </button>
                             <button
                                 type="button"
-                                class="rm-ach-chip"
-                                class:is-active={sortKey === "unlocked"}
+                                class="rm-ach-tab"
+                                class:active={sortKey === "unlocked"}
                                 onclick={() => toggleSort("unlocked")}
                             >
                                 Unlock{getSortIndicator("unlocked")}
                             </button>
-                        </div>
 
-                        <!-- Row 2: Difficulty chips + Unlocked toggle -->
-                        <div class="rm-ach-filter-row">
-                            <span class="rm-ach-filter-label">DIFF</span>
+                            <span class="rm-ach-filter-divider"></span>
+
+                            <PromptWord text="Diff" fontSize={36} />
                             {#each DIFFICULTIES as diff}
                                 <button
                                     type="button"
-                                    class="rm-ach-chip rm-ach-chip--diff rm-ach-chip--{diff}"
-                                    class:is-active={selectedDifficulties.has(
+                                    class="rm-ach-tab"
+                                    class:active={selectedDifficulties.has(
                                         diff,
                                     )}
                                     onclick={() => toggleDifficulty(diff)}
@@ -468,89 +366,81 @@
 
                             <button
                                 type="button"
-                                class="rm-ach-chip is-active"
+                                class="rm-ach-tab"
+                                class:active={showUnlockedOnly}
                                 onclick={() => {
                                     showUnlockedOnly = !showUnlockedOnly;
                                 }}
                             >
-                                {showUnlockedOnly ? "UNLOCKED" : "ALL"}
+                                {showUnlockedOnly ? "Unlocked" : "All"}
                             </button>
-                        </div>
-
-                        <!-- Filter meta -->
-                        <div class="rm-ach-filter-meta">
-                            <span class="rm-ach-filter-result"
-                                >{filteredAchievements.length} / {stats.total}</span
-                            >
-                            {#if hasActiveFilters}
-                                <button
-                                    type="button"
-                                    class="rm-ach-filter-clear"
-                                    onclick={resetFilters}
-                                >
-                                    CLEAR ALL
-                                </button>
-                            {/if}
                         </div>
                     </div>
 
-                    <!-- Achievement grid -->
-                    {#if filteredAchievements.length === 0}
-                        <p class="rm-ach-empty">
-                            No achievements match the current filters.
-                        </p>
-                    {:else}
-                        <div class="rm-achievement-grid">
-                            {#each filteredAchievements as achievement}
-                                {@const unlocked =
-                                    achievementData!.progress[achievement.id]}
-                                <article
-                                    class="rm-achievement-card"
-                                    class:is-unlocked={!!unlocked}
-                                >
-                                    <div class="rm-achievement-card-header">
-                                        <span class="rm-achievement-status-icon"
-                                            >{unlocked ? "✓" : "○"}</span
-                                        >
-                                        <span class="rm-achievement-name"
-                                            >{achievement.name}</span
-                                        >
-                                        <span
-                                            class="rm-difficulty rm-difficulty--{achievement.difficulty}"
-                                            >{getDifficultyLabel(
-                                                achievement.difficulty,
-                                            )}</span
-                                        >
-                                    </div>
-                                    <p class="rm-achievement-desc">
-                                        {achievement.description}
-                                    </p>
-                                    {#if unlocked?.achieved_at}
-                                        <p class="rm-achievement-date">
-                                            {unlocked.achieved_at}
-                                        </p>
-                                    {/if}
-                                    {#if unlocked?.note}
-                                        <p class="rm-achievement-note">
-                                            {unlocked.note}
-                                        </p>
-                                    {/if}
-                                    {#if achievement.prerequisites.length > 0}
-                                        <div class="rm-achievement-prereqs">
-                                            {#each achievement.prerequisites as prereq}
-                                                <span class="rm-prereq-tag"
-                                                    >{prereq
-                                                        .split("::")[1]
-                                                        ?.replace(/_/g, " ") ??
-                                                        prereq}</span
-                                                >
-                                            {/each}
+                    <!-- Achievement grid (scrollable) -->
+                    <div class="rm-ach-card-scroll">
+                        {#if filteredAchievements.length === 0}
+                            <p class="rm-ach-empty">
+                                No achievements match the current filters.
+                            </p>
+                        {:else}
+                            <div class="rm-achievement-grid">
+                                {#each filteredAchievements as achievement}
+                                    {@const unlocked =
+                                        achievementData!.progress[
+                                            achievement.id
+                                        ]}
+                                    <article
+                                        class="rm-achievement-card"
+                                        class:is-unlocked={!!unlocked}
+                                    >
+                                        <div class="rm-achievement-card-header">
+                                            <span
+                                                class="rm-achievement-status-icon"
+                                                >{unlocked ? "✓" : "○"}</span
+                                            >
+                                            <span class="rm-achievement-name"
+                                                >{achievement.name}</span
+                                            >
+                                            <span
+                                                class="rm-difficulty rm-difficulty--{achievement.difficulty}"
+                                                >{getDifficultyLabel(
+                                                    achievement.difficulty,
+                                                )}</span
+                                            >
                                         </div>
-                                    {/if}
-                                </article>
-                            {/each}
-                        </div>
-                    {/if}
+                                        <p class="rm-achievement-desc">
+                                            {achievement.description}
+                                        </p>
+                                        {#if unlocked?.achieved_at}
+                                            <p class="rm-achievement-date">
+                                                {unlocked.achieved_at}
+                                            </p>
+                                        {/if}
+                                        {#if unlocked?.note}
+                                            <p class="rm-achievement-note">
+                                                {unlocked.note}
+                                            </p>
+                                        {/if}
+                                        {#if achievement.prerequisites.length > 0}
+                                            <div class="rm-achievement-prereqs">
+                                                {#each achievement.prerequisites as prereq}
+                                                    <span class="rm-prereq-tag"
+                                                        >{prereq
+                                                            .split("::")[1]
+                                                            ?.replace(
+                                                                /_/g,
+                                                                " ",
+                                                            ) ?? prereq}</span
+                                                    >
+                                                {/each}
+                                            </div>
+                                        {/if}
+                                    </article>
+                                {/each}
+                            </div>
+                        {/if}
+                    </div>
                 {/if}
             </div>
         {:else}
@@ -560,18 +450,10 @@
 </section>
 
 <style>
-    .rm-achievement-title {
-        position: fixed;
-        top: clamp(0.8rem, 1.5vh, 3rem);
-        right: clamp(1.2rem, 2.5vw, 5rem);
-        z-index: 10;
-        pointer-events: none;
-    }
-
     .rm-ach-layout {
         flex: 1;
         display: grid;
-        grid-template-columns: 1fr 2fr;
+        grid-template-columns: 1fr 3fr;
         overflow: hidden;
         height: 100%;
     }
@@ -585,6 +467,26 @@
         padding: clamp(1.5rem, 2.5vh, 4rem) clamp(1.2rem, 2vw, 3rem)
             clamp(6rem, 10vh, 10rem) clamp(1.5rem, 2.5vw, 4rem);
         box-sizing: border-box;
+        scrollbar-gutter: stable;
+    }
+
+    .rm-ach-sidebar::-webkit-scrollbar {
+        width: 14px;
+    }
+    .rm-ach-sidebar::-webkit-scrollbar-track {
+        background: var(--rm-black, #000);
+        border: 4px solid var(--rm-white, #fff);
+        border-radius: 0;
+        margin-top: 12vh;
+        margin-bottom: 12vh;
+    }
+    .rm-ach-sidebar::-webkit-scrollbar-thumb {
+        background: var(--rm-white, #fff);
+        border-radius: 0;
+        border: none;
+    }
+    .rm-ach-sidebar::-webkit-scrollbar-thumb:hover {
+        background: var(--rm-white, #fff);
     }
 
     .rm-ach-pack-list {
@@ -596,7 +498,7 @@
     }
 
     .rm-ach-pack-line {
-        margin: -0.6rem 0;
+        margin: -1.2rem 0;
         position: relative;
     }
 
@@ -604,7 +506,7 @@
         margin-left: 0;
     }
     .rm-ach-pack-line:nth-child(even) {
-        margin-left: 1.5vw;
+        margin-left: 3vw;
     }
 
     .rm-ach-pack-btn {
@@ -614,7 +516,7 @@
         border: none;
         background: var(--rm-black);
         cursor: pointer;
-        padding: 0.55rem 1.4rem 0.55rem 1.2rem;
+        padding: 1.1rem 2.8rem 1.1rem 2.4rem;
         width: fit-content;
         transition: background-color 140ms ease;
     }
@@ -654,7 +556,7 @@
     }
 
     .rm-ach-pack-btn :global(.p5m) {
-        font-size: clamp(1.8rem, 3.5vw, 2.8rem);
+        font-size: clamp(3.6rem, 7vw, 5.6rem);
     }
 
     .rm-ach-pack-quad {
@@ -684,27 +586,48 @@
     /* ── Content area ── */
 
     .rm-ach-content {
-        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
         height: 100%;
-        padding: clamp(1.5rem, 2.5vh, 4rem) clamp(8rem, 14vw, 20rem)
-            clamp(6rem, 10vh, 10rem) clamp(1.5rem, 2.5vw, 4rem);
+        padding: clamp(1.5rem, 2.5vh, 4rem) clamp(8rem, 14vw, 20rem) 0
+            clamp(1.5rem, 2.5vw, 4rem);
         box-sizing: border-box;
+    }
+
+    /* Scrollable card region */
+    .rm-ach-card-scroll {
+        flex: 1;
+        overflow-y: auto;
+        padding-right: clamp(8rem, 14vw, 20rem);
+        padding-bottom: clamp(6rem, 10vh, 10rem);
+        scrollbar-gutter: stable;
+    }
+
+    .rm-ach-card-scroll::-webkit-scrollbar {
+        width: 14px;
+    }
+    .rm-ach-card-scroll::-webkit-scrollbar-track {
+        background: var(--rm-black, #000);
+        border: 4px solid var(--rm-white, #fff);
+        border-radius: 0;
+        margin-top: 12vh;
+        margin-bottom: 12vh;
+    }
+    .rm-ach-card-scroll::-webkit-scrollbar-thumb {
+        background: var(--rm-white, #fff);
+        border-radius: 0;
+        border: none;
+    }
+    .rm-ach-card-scroll::-webkit-scrollbar-thumb:hover {
+        background: var(--rm-white, #fff);
     }
 
     .rm-ach-content-header {
         display: flex;
         align-items: baseline;
-        gap: clamp(0.6rem, 1vw, 1.5rem);
+        gap: clamp(0.5rem, 0.8vw, 1.2rem);
         margin-bottom: clamp(1rem, 1.5vw, 2.5rem);
-    }
-
-    .rm-ach-stats {
-        font-size: clamp(1.1rem, 1.4vw, 2.2rem);
-        font-weight: 800;
-        letter-spacing: 0.06em;
-        color: var(--rm-black);
-        -webkit-text-stroke: 0.05em var(--rm-white);
-        paint-order: stroke fill;
     }
 
     /* ── Filter bar ── */
@@ -718,173 +641,61 @@
         border-bottom: 2px solid rgba(255, 255, 255, 0.08);
     }
 
-    .rm-ach-search-wrap {
-        display: flex;
-        align-items: center;
-        background: var(--rm-black);
-        border: 2px solid rgba(255, 255, 255, 0.15);
-        clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 2% 100%);
-        transform: skewX(-3deg);
-        width: fit-content;
-        min-width: clamp(160px, 20vw, 360px);
-    }
-
-    .rm-ach-search-icon {
-        padding: 0 0.5rem 0 clamp(0.5rem, 0.7vw, 1.2rem);
-        font-size: clamp(0.7rem, 0.65vw, 1.1rem);
-        color: var(--rm-red);
-        flex-shrink: 0;
-        transform: skewX(3deg);
-    }
-
-    .rm-ach-search {
-        background: transparent;
-        border: none;
-        outline: none;
-        color: var(--rm-white);
-        font-family: "p5hatty", "Orbitron", Arial, sans-serif;
-        font-size: clamp(0.7rem, 0.65vw, 1.1rem);
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        padding: clamp(0.3rem, 0.4vw, 0.6rem) clamp(0.5rem, 0.7vw, 1rem)
-            clamp(0.3rem, 0.4vw, 0.6rem) 0;
-        width: clamp(120px, 15vw, 260px);
-        transform: skewX(3deg);
-    }
-
-    .rm-ach-search::-webkit-search-cancel-button {
-        display: none;
-    }
-
-    .rm-ach-search::placeholder {
-        color: rgba(255, 255, 255, 0.25);
-    }
-
-    .rm-ach-search-clear {
-        background: none;
-        border: none;
-        color: rgba(255, 255, 255, 0.45);
-        cursor: pointer;
-        padding: 0 clamp(0.4rem, 0.5vw, 0.8rem);
-        font-size: clamp(0.6rem, 0.55vw, 0.9rem);
-        transform: skewX(3deg);
-        transition: color 120ms ease;
-    }
-
-    .rm-ach-search-clear:hover {
-        color: var(--rm-red);
-    }
-
     .rm-ach-filter-row {
         display: flex;
         align-items: center;
-        gap: clamp(0.2rem, 0.3vw, 0.5rem);
+        gap: clamp(0.3rem, 0.5vw, 0.8rem);
         flex-wrap: wrap;
     }
 
     .rm-ach-filter-divider {
         width: 2px;
-        height: clamp(0.8rem, 0.8vw, 1.4rem);
+        height: clamp(1.2rem, 1.5vw, 2.4rem);
         background: rgba(255, 255, 255, 0.12);
         flex-shrink: 0;
-        margin: 0 clamp(0.15rem, 0.2vw, 0.35rem);
+        margin: 0 clamp(0.3rem, 0.5vw, 0.8rem);
     }
 
-    .rm-ach-filter-label {
-        font-size: clamp(0.52rem, 0.46vw, 0.8rem);
-        font-weight: 800;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-        color: var(--rm-red);
-        flex-shrink: 0;
-        padding-right: clamp(0.3rem, 0.4vw, 0.6rem);
-        border-right: 2px solid var(--rm-red);
-        margin-right: clamp(0.2rem, 0.25vw, 0.4rem);
-        align-self: center;
-    }
-
-    .rm-ach-chip {
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        background: var(--rm-black);
-        color: rgba(255, 255, 255, 0.5);
-        cursor: pointer;
-        padding: clamp(0.15rem, 0.2vw, 0.35rem) clamp(0.45rem, 0.55vw, 0.9rem);
+    .rm-ach-tab {
+        position: relative;
+        z-index: 0;
         font-family: "p5hatty", "Orbitron", Arial, sans-serif;
-        font-size: clamp(0.55rem, 0.5vw, 0.85rem);
+        font-size: clamp(1rem, 1.1vw, 1.6rem);
         font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 0.07em;
-        clip-path: polygon(4% 0%, 100% 0%, 96% 100%, 0% 100%);
-        transform: skewX(-3deg);
-        transition:
-            background 120ms ease,
-            color 120ms ease,
-            border-color 120ms ease;
+        letter-spacing: 0.06em;
+        padding: clamp(0.5rem, 0.6vw, 0.9rem) clamp(1rem, 1.2vw, 1.8rem);
+        border: none;
+        background: var(--rm-white);
+        color: var(--rm-white);
+        cursor: pointer;
+        clip-path: polygon(0% 0%, 100% 0%, 96% 100%, 4% 100%);
+        transition: all 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
+        white-space: nowrap;
         flex-shrink: 0;
     }
 
-    .rm-ach-chip:hover {
-        border-color: rgba(255, 255, 255, 0.45);
-        color: rgba(255, 255, 255, 0.8);
+    .rm-ach-tab::before {
+        content: "";
+        position: absolute;
+        inset: 4px;
+        background: var(--rm-black);
+        clip-path: polygon(0% 0%, 100% 0%, 96% 100%, 4% 100%);
+        z-index: -1;
+        transition: background 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
     }
 
-    .rm-ach-chip.is-active {
-        background: var(--rm-red);
-        color: var(--rm-white);
-        border-color: var(--rm-red);
+    .rm-ach-tab:hover {
+        transform: scale(1.06);
     }
 
-    /* ── Sidebar tag chips ── */
-
-    .rm-ach-sidebar-tags {
-        display: flex;
-        flex-wrap: wrap;
-        gap: clamp(0.15rem, 0.2vw, 0.35rem);
-        padding: clamp(0.4rem, 0.5vw, 0.8rem) 0 clamp(0.2rem, 0.3vw, 0.5rem)
-            clamp(0.8rem, 1vw, 1.5rem);
-        max-height: clamp(5rem, 8vh, 10rem);
-        overflow-y: auto;
+    .rm-ach-tab.active {
+        background: var(--rm-white);
+        color: var(--rm-black);
     }
 
-    .rm-ach-sidebar-tags::-webkit-scrollbar {
-        width: 3px;
-    }
-    .rm-ach-sidebar-tags::-webkit-scrollbar-thumb {
-        background: rgba(255, 255, 255, 0.2);
-    }
-
-    .rm-ach-filter-meta {
-        display: flex;
-        align-items: center;
-        gap: clamp(0.5rem, 0.7vw, 1.2rem);
-    }
-
-    .rm-ach-filter-result {
-        font-size: clamp(0.58rem, 0.52vw, 0.9rem);
-        font-weight: 800;
-        color: rgba(255, 255, 255, 0.35);
-        letter-spacing: 0.06em;
-        text-transform: uppercase;
-    }
-
-    .rm-ach-filter-clear {
-        border: none;
-        background: transparent;
-        color: var(--rm-red);
-        cursor: pointer;
-        font-family: "p5hatty", "Orbitron", Arial, sans-serif;
-        font-size: clamp(0.52rem, 0.46vw, 0.8rem);
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        padding: 0;
-        opacity: 0.7;
-        transition: opacity 120ms ease;
-    }
-
-    .rm-ach-filter-clear:hover {
-        opacity: 1;
+    .rm-ach-tab.active::before {
+        background: var(--rm-white);
     }
 
     .rm-ach-empty {
