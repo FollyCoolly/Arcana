@@ -2,7 +2,7 @@
     import { onMount } from "svelte";
     import { invoke } from "@tauri-apps/api/core";
     import CallingCardText from "$lib/CallingCardText.svelte";
-    import SkillNebula from "$lib/components/SkillNebula.svelte";
+    import CollageLabel from "$lib/CollageLabel.svelte";
     import type {
         SkillData,
         SkillWithLevel,
@@ -24,7 +24,24 @@
     let skillLoading = $state(false);
     let skillError = $state<string | null>(null);
     let skillData = $state<SkillData | null>(null);
-    let selectedSkill = $state<SkillWithLevel | null>(null);
+    let selectedIndex = $state(0);
+
+    let selectedSkill = $derived(
+        skillData && skillData.skills.length > 0
+            ? skillData.skills[selectedIndex]
+            : null,
+    );
+
+    let totalSkills = $derived(skillData ? skillData.skills.length : 0);
+
+    let currentLevelTitle = $derived.by(() => {
+        if (!selectedSkill) return null;
+        const titles = selectedSkill.skill.level_titles;
+        if (!titles || titles.length === 0 || selectedSkill.current_level === 0)
+            return null;
+        const idx = Math.min(selectedSkill.current_level, titles.length) - 1;
+        return titles[idx] ?? null;
+    });
 
     const ROMAN_NUMERALS = [
         "0",
@@ -77,14 +94,26 @@
         return rows;
     }
 
+    function navigatePrev() {
+        if (totalSkills <= 1) return;
+        selectedIndex = (selectedIndex - 1 + totalSkills) % totalSkills;
+    }
+
+    function navigateNext() {
+        if (totalSkills <= 1) return;
+        selectedIndex = (selectedIndex + 1) % totalSkills;
+    }
+
     function handleKeydown(event: KeyboardEvent) {
         if (event.key === "Escape") {
             event.preventDefault();
-            if (selectedSkill) {
-                selectedSkill = null;
-            } else {
-                onBack();
-            }
+            onBack();
+        } else if (event.key === "q" || event.key === "Q") {
+            event.preventDefault();
+            navigatePrev();
+        } else if (event.key === "e" || event.key === "E") {
+            event.preventDefault();
+            navigateNext();
         }
     }
 
@@ -94,6 +123,7 @@
 
         try {
             skillData = await invoke<SkillData>("load_skills");
+            selectedIndex = 0;
         } catch (error) {
             skillError =
                 typeof error === "string"
@@ -122,37 +152,68 @@
         <CallingCardText text="Skills" fontSize={82} />
     </div>
 
-    <button
-        type="button"
-        class="rm-back-btn"
-        onclick={() => {
-            if (selectedSkill) {
-                selectedSkill = null;
-            } else {
-                onBack();
-            }
-        }}
-    >
-        <KeyHint key="Esc" fontSize={36} />
-        <PromptWord text="Back" fontSize={72} />
-    </button>
+    <!-- Bottom-left key hints -->
+    <div class="rm-skills-hints">
+        <button
+            type="button"
+            class="rm-back-btn rm-back-btn--inline"
+            onclick={() => onBack()}
+        >
+            <KeyHint key="Esc" fontSize={36} />
+            <PromptWord text="Back" fontSize={72} />
+        </button>
+
+        {#if totalSkills > 1}
+            <div class="rm-nav-hint-group">
+                <button
+                    type="button"
+                    class="rm-nav-hint-btn"
+                    onclick={() => navigatePrev()}
+                >
+                    <KeyHint key="Q" fontSize={36} />
+                    <PromptWord text="Prev" fontSize={72} />
+                </button>
+
+                <button
+                    type="button"
+                    class="rm-nav-hint-btn"
+                    onclick={() => navigateNext()}
+                >
+                    <KeyHint key="E" fontSize={36} />
+                    <PromptWord text="Next" fontSize={72} />
+                </button>
+            </div>
+        {/if}
+    </div>
 
     {#if skillLoading}
         <p class="state-text" style="padding: 2rem;">Loading skills...</p>
     {:else if skillError}
         <p class="state-text error" style="padding: 2rem;">{skillError}</p>
-    {:else if skillData && !selectedSkill}
-        <div class="rm-nebula-container">
-            <SkillNebula
-                skills={skillData.skills}
-                onCardClick={(skill) => {
-                    selectedSkill = skill;
-                }}
-            />
-        </div>
     {:else if skillData && selectedSkill}
         <div class="rm-skill-detail">
             <div class="rm-skill-detail-left">
+                <div class="rm-skill-detail-header">
+                    <CollageLabel text={selectedSkill.skill.name} />
+                    <span class="rm-skill-level-badge">
+                        <span
+                            class="rm-skill-lv-frag"
+                            style:transform="rotate(-3deg)">Lv.</span
+                        >
+                        <span
+                            class="rm-skill-lv-frag rm-skill-lv-inv"
+                            style:transform="rotate(4deg)"
+                            >{selectedSkill.current_level >=
+                            selectedSkill.skill.max_level
+                                ? "MAX"
+                                : selectedSkill.current_level}</span
+                        >
+                    </span>
+                    {#if currentLevelTitle}
+                        <CollageLabel text={currentLevelTitle} />
+                    {/if}
+                </div>
+
                 <div
                     class="rm-tarot-card rm-tarot-card--large"
                     class:rm-tarot-card--leveled={selectedSkill.current_level >
@@ -200,30 +261,6 @@
                     </div>
                 </div>
 
-                <div class="rm-skill-stats">
-                    <div class="rm-skill-stat-row">
-                        <span class="rm-skill-stat-label">LEVEL</span>
-                        <span class="rm-skill-stat-value"
-                            >{selectedSkill.current_level} / {selectedSkill
-                                .skill.max_level}</span
-                        >
-                    </div>
-                    <div class="rm-skill-stat-row">
-                        <span class="rm-skill-stat-label">POINTS</span>
-                        <span class="rm-skill-stat-value"
-                            >{selectedSkill.current_points} / {selectedSkill.max_points}</span
-                        >
-                    </div>
-                    {#if selectedSkill.next_threshold}
-                        <div class="rm-skill-stat-row">
-                            <span class="rm-skill-stat-label">NEXT LV</span>
-                            <span class="rm-skill-stat-value"
-                                >{selectedSkill.next_threshold.points_required} pts</span
-                            >
-                        </div>
-                    {/if}
-                </div>
-
                 {#if selectedSkill.skill.description}
                     <p class="rm-skill-description">
                         {selectedSkill.skill.description}
@@ -232,10 +269,6 @@
             </div>
 
             <div class="rm-skill-detail-right">
-                <div class="rm-skill-detail-header">
-                    <CallingCardText text={selectedSkill.skill.name} fontSize={52} />
-                </div>
-
                 <div class="rm-skill-node-grid" style="--cols: 8">
                     {#each computeHexRows(selectedSkill.skill.nodes, 8) as row, rowIdx}
                         <div
@@ -246,21 +279,21 @@
                                 {@const unlocked = isNodeUnlocked(
                                     node.achievement_id,
                                 )}
-                                <div class="rm-hex-border">
+                                <div
+                                    class="rm-hex-border"
+                                    class:rm-hex-border--unlocked={unlocked}
+                                >
                                     <div
                                         class="rm-skill-node-hex"
                                         class:rm-skill-node-hex--unlocked={unlocked}
                                     >
-                                        <span class="rm-node-status"
-                                            >{unlocked ? "✓" : "○"}</span
-                                        >
                                         <span class="rm-node-name"
                                             >{getAchievementName(
                                                 node.achievement_id,
                                             )}</span
                                         >
                                         <span class="rm-node-points"
-                                            >+{node.points}</span
+                                            >{node.points} pt</span
                                         >
                                     </div>
                                 </div>
@@ -272,7 +305,7 @@
         </div>
     {:else}
         <p class="state-text" style="padding: 2rem;">
-            Skill data is not available yet.
+            No skills available yet.
         </p>
     {/if}
 </section>
@@ -286,22 +319,62 @@
         pointer-events: none;
     }
 
-    .rm-nebula-container {
-        position: absolute;
-        inset: 0;
-        overflow: hidden;
-        animation: rm-nebula-fade-in 400ms ease forwards;
+    /* ── Bottom-left hints container ── */
+    .rm-skills-hints {
+        position: fixed;
+        bottom: clamp(1.5rem, 3vh, 3.5rem);
+        left: clamp(1.5rem, 3vw, 4rem);
+        z-index: 10;
+        display: flex;
+        align-items: flex-end;
+        gap: clamp(1.5rem, 2vw, 3rem);
     }
 
-    @keyframes rm-nebula-fade-in {
-        from {
-            opacity: 0;
-        }
-        to {
-            opacity: 1;
-        }
+    /* Override the global .rm-back-btn positioning so it flows inline */
+    .rm-back-btn--inline {
+        position: static;
+        display: flex;
+        align-items: center;
+        gap: 0;
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 0;
+        transform: rotate(2deg);
+        transition: transform 120ms ease;
+    }
+    .rm-back-btn--inline:hover {
+        transform: rotate(2deg) scale(1.06);
+    }
+    .rm-back-btn--inline :global(.p5-prompt-word) {
+        margin-left: -1rem;
     }
 
+    .rm-nav-hint-group {
+        display: flex;
+        align-items: center;
+        gap: clamp(0.6rem, 1vw, 1.5rem);
+    }
+
+    .rm-nav-hint-btn {
+        display: flex;
+        align-items: center;
+        gap: 0;
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 0;
+        transform: rotate(-1deg);
+        transition: transform 120ms ease;
+    }
+    .rm-nav-hint-btn:hover {
+        transform: rotate(-1deg) scale(1.06);
+    }
+    .rm-nav-hint-btn :global(.p5-prompt-word) {
+        margin-left: -1rem;
+    }
+
+    /* ── Skill detail layout ── */
     .rm-skill-detail {
         flex: 1;
         display: grid;
@@ -320,57 +393,63 @@
         align-items: center;
         gap: clamp(0.8rem, 1vw, 1.5rem);
         overflow-y: auto;
-        padding: 0 clamp(1rem, 2vw, 3rem);
-    }
-
-    .rm-skill-stats {
-        width: clamp(400px, 27.5vw, 625px);
-        display: flex;
-        flex-direction: column;
-        gap: clamp(0.2rem, 0.3vw, 0.5rem);
-    }
-
-    .rm-skill-stat-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: baseline;
-        padding: clamp(0.15rem, 0.2vw, 0.35rem) 0;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    }
-
-    .rm-skill-stat-label {
-        font-size: clamp(0.6rem, 0.55vw, 0.95rem);
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
-        color: rgba(255, 255, 255, 0.5);
-    }
-
-    .rm-skill-stat-value {
-        font-size: clamp(0.75rem, 0.7vw, 1.2rem);
-        font-weight: 800;
-        letter-spacing: 0.04em;
+        padding: clamp(0.5rem, 0.8vw, 1.2rem) clamp(1rem, 2vw, 3rem) 0;
     }
 
     .rm-skill-description {
         margin: 0;
         width: clamp(400px, 27.5vw, 625px);
-        font-size: clamp(0.6rem, 0.55vw, 0.95rem);
+        font-size: clamp(1.5rem, 1.4vw, 2.3rem);
         color: rgba(255, 255, 255, 0.55);
-        line-height: 1.5;
+        line-height: 1.6;
     }
 
     .rm-skill-detail-right {
         overflow-y: auto;
-        padding-right: clamp(2rem, 4vw, 8rem);
+        padding: clamp(0.5rem, 0.8vw, 1.2rem) clamp(2rem, 4vw, 8rem) 0
+            clamp(0.3rem, 0.5vw, 0.8rem);
     }
 
     .rm-skill-detail-header {
-        margin-bottom: clamp(1rem, 1.5vw, 2.5rem);
+        display: flex;
+        align-items: center;
+        gap: clamp(0.7rem, 1.2vw, 1.8rem);
+        margin-bottom: clamp(0.6rem, 1vw, 1.5rem);
+        font-size: clamp(2.16rem, 2.43vw, 3.78rem);
+        flex-wrap: wrap;
+    }
+
+    .rm-skill-level-badge {
+        display: inline-flex;
+        align-items: center;
+        white-space: nowrap;
+        gap: -0.05em;
+    }
+
+    .rm-skill-lv-frag {
+        display: inline-block;
+        background: var(--rm-gold, #f5a623);
+        color: var(--rm-black, #000);
+        font-family: "p5hatty", "Orbitron", Arial, sans-serif;
+        font-weight: 800;
+        font-size: 1em;
+        line-height: 1;
+        padding: 0.06em 0.08em 0.12em;
+        transform-origin: center center;
+        box-shadow: 0.04em 0.06em 0 rgba(0, 0, 0, 0.35);
+    }
+
+    .rm-skill-lv-frag.rm-skill-lv-inv {
+        background: var(--rm-black, #000);
+        color: var(--rm-gold, #f5a623);
+        box-shadow:
+            0 0 0 0.07em var(--rm-gold, #f5a623),
+            0.04em 0.06em 0 rgba(0, 0, 0, 0.35);
+        margin-left: -0.03em;
     }
 
     .rm-skill-node-grid {
-        --hex-w: clamp(80px, 6.5vw, 180px);
+        --hex-w: clamp(96px, 7.8vw, 216px);
         --hex-h: calc(var(--hex-w) * 1.1547);
         --cols: 8;
         display: flex;
@@ -409,6 +488,11 @@
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
+        transition: background 150ms ease;
+    }
+
+    .rm-hex-border--unlocked {
+        background: var(--rm-black);
     }
 
     .rm-skill-node-hex {
@@ -436,17 +520,12 @@
     }
 
     .rm-skill-node-hex--unlocked {
-        background: var(--rm-red);
+        background: var(--rm-gold, #f5a623);
         color: var(--rm-black);
     }
 
-    .rm-node-status {
-        font-size: clamp(0.9rem, 1vw, 1.6rem);
-        font-weight: 800;
-    }
-
     .rm-node-name {
-        font-size: clamp(0.55rem, 0.7vw, 1rem);
+        font-size: clamp(0.78rem, 1.02vw, 1.38rem);
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.06em;
@@ -460,7 +539,7 @@
     }
 
     .rm-node-points {
-        font-size: clamp(0.55rem, 0.7vw, 1rem);
+        font-size: clamp(0.72rem, 0.9vw, 1.26rem);
         font-weight: 800;
         opacity: 0.7;
     }
