@@ -27,7 +27,7 @@ struct ReadFileInput {
 struct UpdateMissionInput {
     /// Mission ID to update (omit if only updating main_menu)
     mission_id: Option<String>,
-    /// Fields to update: progress (0-100), status (proposed/active/completed/archived/rejected), completed_at (ISO 8601)
+    /// Fields to update: progress (0-100), status (proposed/active/completed/archived/rejected), completed_at (ISO 8601), parent_id, title, description, deadline, linked_achievement_id, ai_metadata
     updates: Option<Value>,
     /// Main menu config update. Keys: countdown, progress. Each: {mission_id, label} or null to clear
     main_menu: Option<Value>,
@@ -148,7 +148,7 @@ impl ArcanaServer {
     }
 
     #[tool(
-        description = "Update a mission's fields or the main_menu config in missions.json. Can update progress (0-100), status (proposed/active/completed/archived/rejected), completed_at, or main_menu display."
+        description = "Update a mission's fields or the main_menu config in missions.json. Can update progress (0-100), status (proposed/active/completed/archived/rejected), completed_at, parent_id, title, description, deadline, linked_achievement_id, ai_metadata, or main_menu display."
     )]
     fn update_mission(
         &self,
