@@ -75,6 +75,15 @@ pub fn update_mission(data_dir: &Path, input: &Value) -> Result<String, String> 
                             changes.push(format!("{id}.linked_achievement_id: set to {s}"));
                         }
                     }
+                    "parent_id" => {
+                        if val.is_null() {
+                            mission.parent_id = None;
+                            changes.push(format!("{id}.parent_id: cleared"));
+                        } else if let Some(s) = val.as_str() {
+                            mission.parent_id = Some(s.to_string());
+                            changes.push(format!("{id}.parent_id: set to {s}"));
+                        }
+                    }
                     "ai_metadata" => {
                         mission.ai_metadata = Some(val.clone());
                         changes.push(format!("{id}.ai_metadata: updated"));
@@ -165,6 +174,7 @@ pub fn create_mission(data_dir: &Path, input: &Value) -> Result<String, String> 
             .map(|s| s.to_string()),
         created_at: input["created_at"].as_str().map(|s| s.to_string()),
         completed_at: None,
+        parent_id: input["parent_id"].as_str().map(|s| s.to_string()),
         ai_metadata: input.get("ai_metadata").cloned(),
     };
 

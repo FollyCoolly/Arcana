@@ -38,6 +38,7 @@ pub fn load_missions() -> Result<MissionData, String> {
                 linked_achievement_id: m.linked_achievement_id,
                 created_at: m.created_at,
                 completed_at: m.completed_at,
+                parent_id: m.parent_id,
                 days_remaining,
                 difficulty,
             }

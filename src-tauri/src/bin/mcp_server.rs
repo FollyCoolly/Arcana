@@ -51,6 +51,8 @@ struct CreateMissionInput {
     linked_achievement_id: Option<String>,
     /// ISO 8601 creation timestamp
     created_at: Option<String>,
+    /// Parent mission ID for sub-task relationships
+    parent_id: Option<String>,
     /// AI generation metadata
     ai_metadata: Option<Value>,
 }

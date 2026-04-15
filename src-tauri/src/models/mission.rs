@@ -30,6 +30,8 @@ pub struct Mission {
     #[serde(default)]
     pub completed_at: Option<String>,
     #[serde(default)]
+    pub parent_id: Option<String>,
+    #[serde(default)]
     pub ai_metadata: Option<serde_json::Value>,
 }
 
@@ -60,6 +62,7 @@ pub struct MissionResponse {
     pub linked_achievement_id: Option<String>,
     pub created_at: Option<String>,
     pub completed_at: Option<String>,
+    pub parent_id: Option<String>,
     pub days_remaining: Option<i64>,
     pub difficulty: Option<String>,
 }

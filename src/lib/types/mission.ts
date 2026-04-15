@@ -8,6 +8,7 @@ export type MissionResponse = {
     linked_achievement_id?: string;
     created_at?: string;
     completed_at?: string;
+    parent_id?: string;
     days_remaining?: number;
     difficulty?: string;
 };

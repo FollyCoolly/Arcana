@@ -41,6 +41,7 @@ Mission 模块管理用户的长期目标和重要任务。日常追踪需求由
 | `linked_achievement_id` | string | 否 | 关联的成就 ID，由 AI agent 判断是更新进度还是解锁 |
 | `created_at` | string | 否 | 创建时间，ISO 8601 |
 | `completed_at` | string | 否 | 完成时间，ISO 8601 |
+| `parent_id` | string | 否 | 父任务 ID，用于表示子任务关系（仅关系标记，不影响进度计算） |
 | `ai_metadata` | object | 否 | AI Agent 元数据（预留） |
 
 ### `main_menu` — AI 控制的主菜单展示区
