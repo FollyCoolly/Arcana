@@ -63,7 +63,9 @@ def validate_missions(data: dict, path: Path) -> None:
         seen_ids.add(mid)
 
         if m["status"] not in MISSION_STATUSES:
-            fail(f"{prefix}: invalid status '{m['status']}', must be one of {MISSION_STATUSES}")
+            fail(
+                f"{prefix}: invalid status '{m['status']}', must be one of {MISSION_STATUSES}"
+            )
 
         progress = m.get("progress")
         if progress is not None:
@@ -78,7 +80,9 @@ def validate_missions(data: dict, path: Path) -> None:
             if isinstance(widget_data, dict) and "mission_id" in widget_data:
                 ref_id = widget_data["mission_id"]
                 if ref_id not in seen_ids:
-                    fail(f"{path.name}: main_menu.{widget}.mission_id '{ref_id}' not found in missions")
+                    fail(
+                        f"{path.name}: main_menu.{widget}.mission_id '{ref_id}' not found in missions"
+                    )
 
 
 def validate_achievement_progress(data: dict, path: Path) -> None:
@@ -94,7 +98,9 @@ def validate_achievement_progress(data: dict, path: Path) -> None:
             fail(f"{path.name}: achievements['{aid}'] must be an object")
         status = entry.get("status")
         if status not in ACHIEVEMENT_STATUSES:
-            fail(f"{path.name}: achievements['{aid}'].status '{status}' must be one of {ACHIEVEMENT_STATUSES}")
+            fail(
+                f"{path.name}: achievements['{aid}'].status '{status}' must be one of {ACHIEVEMENT_STATUSES}"
+            )
 
 
 def validate_changelog(data: dict, path: Path) -> None:
@@ -115,7 +121,9 @@ def validate_changelog(data: dict, path: Path) -> None:
                 fail(f"{prefix}: missing required field '{field}'")
 
         if entry.get("skill") not in CHANGELOG_SKILLS:
-            fail(f"{prefix}: invalid skill '{entry.get('skill')}', must be one of {CHANGELOG_SKILLS}")
+            fail(
+                f"{prefix}: invalid skill '{entry.get('skill')}', must be one of {CHANGELOG_SKILLS}"
+            )
 
         changes = entry.get("changes")
         if not isinstance(changes, list):
@@ -125,9 +133,13 @@ def validate_changelog(data: dict, path: Path) -> None:
             cprefix = f"{prefix}.changes[{j}]"
             ctype = change.get("type")
             if ctype not in CHANGELOG_CHANGE_TYPES:
-                fail(f"{cprefix}: invalid type '{ctype}', must be one of {CHANGELOG_CHANGE_TYPES}")
+                fail(
+                    f"{cprefix}: invalid type '{ctype}', must be one of {CHANGELOG_CHANGE_TYPES}"
+                )
             if ctype == "update" and "old_value" not in change:
-                fail(f"{cprefix}: 'update' type change must have 'old_value' for rollback")
+                fail(
+                    f"{cprefix}: 'update' type change must have 'old_value' for rollback"
+                )
 
 
 def validate_mission_memory(data: dict, path: Path) -> None:
@@ -153,7 +165,9 @@ def validate_status(data: dict, path: Path) -> None:
 
     for key, val in metrics.items():
         if not isinstance(val, (int, float)):
-            fail(f"{path.name}: metrics['{key}'] must be a number, got {type(val).__name__}")
+            fail(
+                f"{path.name}: metrics['{key}'] must be a number, got {type(val).__name__}"
+            )
 
 
 def validate_loaded_packs(data: dict, path: Path) -> None:
@@ -176,7 +190,9 @@ def validate_pack_manifest(data: dict, path: Path) -> None:
             fail(f"{path}: missing required field '{field}'")
 
     if data.get("id") != pack_id:
-        fail(f"{path}: manifest.id '{data.get('id')}' must equal directory name '{pack_id}'")
+        fail(
+            f"{path}: manifest.id '{data.get('id')}' must equal directory name '{pack_id}'"
+        )
 
 
 def validate_pack_achievements(data: dict, path: Path) -> None:
@@ -206,7 +222,9 @@ def validate_pack_achievements(data: dict, path: Path) -> None:
         seen_ids.add(aid)
 
         if a["difficulty"] not in DIFFICULTY_LEVELS:
-            fail(f"{prefix}: invalid difficulty '{a['difficulty']}', must be one of {DIFFICULTY_LEVELS}")
+            fail(
+                f"{prefix}: invalid difficulty '{a['difficulty']}', must be one of {DIFFICULTY_LEVELS}"
+            )
 
 
 def validate_pack_skills(data: dict, path: Path) -> None:
@@ -235,14 +253,18 @@ def validate_pack_skills(data: dict, path: Path) -> None:
         thresholds = s["level_thresholds"]
         if not isinstance(thresholds, list):
             fail(f"{prefix}: 'level_thresholds' must be an array")
-        if len(thresholds) != max_level:
-            fail(f"{prefix}: level_thresholds length {len(thresholds)} != max_level {max_level}")
+        if len(thresholds) != max_level - 1:
+            fail(
+                f"{prefix}: level_thresholds length {len(thresholds)} != max_level - 1 ({max_level - 1})"
+            )
 
         prev_points = -1
         for j, t in enumerate(thresholds):
             pts = t.get("points_required", 0)
             if pts <= prev_points:
-                fail(f"{prefix}: level_thresholds[{j}].points_required {pts} must be > previous {prev_points}")
+                fail(
+                    f"{prefix}: level_thresholds[{j}].points_required {pts} must be > previous {prev_points}"
+                )
             prev_points = pts
 
         nodes = s["nodes"]
@@ -270,8 +292,10 @@ def check_changelog_freshness(file_name: str) -> None:
 
     changelog_path = DATA_DIR / "ai_changelog.json"
     if not changelog_path.exists():
-        warn(f"'{file_name}' was modified but ai_changelog.json does not exist yet. "
-             "Remember to create it and log this change.")
+        warn(
+            f"'{file_name}' was modified but ai_changelog.json does not exist yet. "
+            "Remember to create it and log this change."
+        )
         return
 
     try:
@@ -281,8 +305,10 @@ def check_changelog_freshness(file_name: str) -> None:
 
     entries = changelog.get("entries")
     if not isinstance(entries, list) or len(entries) == 0:
-        warn(f"'{file_name}' was modified but ai_changelog.json has no entries. "
-             "Remember to log this change.")
+        warn(
+            f"'{file_name}' was modified but ai_changelog.json has no entries. "
+            "Remember to log this change."
+        )
         return
 
     latest = entries[-1]
@@ -294,8 +320,10 @@ def check_changelog_freshness(file_name: str) -> None:
             ts = ts.replace(tzinfo=timezone.utc)
         age = (now - ts).total_seconds()
         if age > 60:
-            warn(f"'{file_name}' was modified but the latest ai_changelog.json entry "
-                 f"is {int(age)}s old. Did you forget to update the changelog?")
+            warn(
+                f"'{file_name}' was modified but the latest ai_changelog.json entry "
+                f"is {int(age)}s old. Did you forget to update the changelog?"
+            )
     except (ValueError, TypeError):
         pass  # Can't parse timestamp — don't warn
 
@@ -350,8 +378,7 @@ def main() -> None:
     if file_name in VALIDATORS:
         VALIDATORS[file_name](data, file_path)
     elif file_path.parent.name == "packs" or (
-        file_path.parent.parent.is_dir()
-        and file_path.parent.parent.name == "packs"
+        file_path.parent.parent.is_dir() and file_path.parent.parent.name == "packs"
     ):
         # Pack files: data/packs/<pack_id>/<file>.json
         # Check if we're inside a pack directory

@@ -54,13 +54,14 @@ pub fn load_skills() -> Result<SkillData, String> {
                 ));
             }
 
-            // Validate: level_thresholds count == max_level
-            if skill.level_thresholds.len() as u32 != skill.max_level {
+            // Validate: level_thresholds count == max_level - 1 (Lv.1 is implicit)
+            let expected_threshold_count = skill.max_level.saturating_sub(1) as usize;
+            if skill.level_thresholds.len() != expected_threshold_count {
                 return Err(format!(
-                    "Skill '{}': level_thresholds count ({}) != max_level ({})",
+                    "Skill '{}': level_thresholds count ({}) != max_level - 1 ({})",
                     skill.id,
                     skill.level_thresholds.len(),
-                    skill.max_level
+                    expected_threshold_count
                 ));
             }
 
@@ -105,6 +106,17 @@ pub fn load_skills() -> Result<SkillData, String> {
                 }
             }
 
+            // Prepend implicit Lv.1 threshold (points >= 1 = Lv.1)
+            let mut skill = skill;
+            skill.level_thresholds.insert(
+                0,
+                LevelThreshold {
+                    level: 1,
+                    points_required: 1,
+                    required_key_achievements: vec![],
+                },
+            );
+
             // Calculate level
             let total_points: u32 = skill
                 .nodes
@@ -139,6 +151,11 @@ pub fn load_skills() -> Result<SkillData, String> {
                 .iter()
                 .find(|t| t.level == current_level + 1)
                 .cloned();
+
+            // Fill in default level titles if the pack didn't provide any
+            if skill.level_titles.is_empty() {
+                skill.level_titles = default_level_titles(skill.max_level);
+            }
 
             all_skills.push(SkillWithLevel {
                 skill,

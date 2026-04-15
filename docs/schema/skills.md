@@ -31,7 +31,7 @@
 | `name` | string | 是 | 显示名称 |
 | `description` | string | 否 | 技能描述 |
 | `max_level` | number | 是 | 最大等级 |
-| `level_thresholds` | array | 是 | 等级门槛，共 `max_level` 条 |
+| `level_thresholds` | array | 是 | 等级门槛（Lv.2 起），共 `max_level - 1` 条。Lv.1 隐含为 points ≥ 1 |
 | `nodes` | array | 是 | 技能树节点列表 |
 
 ### `nodes[]` 字段
@@ -48,7 +48,7 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| `level` | number | 是 | 等级编号（1-indexed） |
+| `level` | number | 是 | 等级编号（从 2 开始，Lv.1 由系统隐含） |
 | `points_required` | number | 是 | 累计所需积分 |
 | `required_key_achievements` | string[] | 否 | 该等级**新增**的关键成就 ID（增量式，低等级的自动继承；省略视为 `[]`） |
 
@@ -64,7 +64,6 @@
       "description": "General software development proficiency.",
       "max_level": 5,
       "level_thresholds": [
-        { "level": 1, "points_required": 5 },
         { "level": 2, "points_required": 15 },
         {
           "level": 3,
@@ -100,17 +99,18 @@
 ```
 calculate_skill_level(skill, unlocked_achievement_ids):
     total_points = 0
-
     for node in skill.nodes:
         if node.achievement_id in unlocked_achievement_ids:
             total_points += node.points
 
-    current_level = 0
+    if total_points == 0:
+        return 0
+
+    current_level = 1    # points > 0 → at least Lv.1
     accumulated_keys = []
     for threshold in skill.level_thresholds (ascending by level):
         accumulated_keys += threshold.required_key_achievements ?? []
         all_keys_unlocked = all(id in unlocked_achievement_ids for id in accumulated_keys)
-
         if total_points >= threshold.points_required AND all_keys_unlocked:
             current_level = threshold.level
         else:
@@ -124,10 +124,9 @@ calculate_skill_level(skill, unlocked_achievement_ids):
 以 `programmer::programming_general` 为例，假设用户已解锁 `hello_world`、`first_pr_merged`、`shipped_side_project`：
 
 - `node_hello_world` 贡献 5 分，`node_first_pr` 贡献 10 分，`node_shipped` 贡献 20 分 → total_points = 35
-- Level 1：35 >= 5，accumulated_keys = [] → 通过
+- Level 1：total_points > 0 → 自动获得
 - Level 2：35 >= 15，accumulated_keys = [] → 通过
 - Level 3：35 >= 30，accumulated_keys = [`shipped_side_project`]，已解锁 → 通过
-- Level 4：35 >= 50 → 不满足 → break
 - 结果：Level 3
 
 ## 连线推导算法（前端渲染）
@@ -153,6 +152,6 @@ derive_edges(skill, achievements_map):
 1. 技能 ID 必须以 `<manifest.id>::` 开头
 2. `nodes[].achievement_id` 必须引用同包内有效成就
 3. `level_thresholds` 的 `points_required` 必须单调递增
-4. `level_thresholds` 条目数必须等于 `max_level`
+4. `level_thresholds` 条目数必须等于 `max_level - 1`（Lv.1 由系统隐含）
 5. `required_key_achievements` 引用的成就 ID 必须存在
 6. 同一技能内 `node_id` 不可重复
