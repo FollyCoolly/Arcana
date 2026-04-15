@@ -1,7 +1,6 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { invoke } from "@tauri-apps/api/core";
-    import CallingCardText from "$lib/CallingCardText.svelte";
     import CollageLabel from "$lib/CollageLabel.svelte";
     import type {
         SkillData,
@@ -148,10 +147,6 @@
 </script>
 
 <section class="rm-stage">
-    <div class="rm-skills-title">
-        <CallingCardText text="Skills" fontSize={82} />
-    </div>
-
     <!-- Bottom-left key hints -->
     <div class="rm-skills-hints">
         <button
@@ -311,14 +306,6 @@
 </section>
 
 <style>
-    .rm-skills-title {
-        position: fixed;
-        top: clamp(0.8rem, 1.5vh, 3rem);
-        right: clamp(1.2rem, 2.5vw, 5rem);
-        z-index: 10;
-        pointer-events: none;
-    }
-
     /* ── Bottom-left hints container ── */
     .rm-skills-hints {
         position: fixed;
