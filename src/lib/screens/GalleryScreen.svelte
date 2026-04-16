@@ -1,7 +1,6 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { invoke } from "@tauri-apps/api/core";
-    import CallingCardText from "$lib/CallingCardText.svelte";
     import MenuItem from "$lib/MenuItem.svelte";
     import type { LetterConfig } from "$lib/MenuItem.svelte";
     import type {
@@ -21,6 +20,10 @@
     let galleryData = $state<GalleryData | null>(null);
     let selectedMedia = $state<MediaItem | null>(null);
 
+    // Sidebar refs for selection quad
+    let sidebarRef = $state<HTMLElement | undefined>(undefined);
+    let catBtnRefs = $state<(HTMLButtonElement | undefined)[]>([]);
+
     let gallerySortKey = $state<GallerySortKey>("rating");
     let gallerySortOrder = $state<GallerySortOrder>("desc");
     let galleryActiveCategory = $state<GalleryCategory>("anime");
@@ -38,8 +41,8 @@
             icon: "A",
             mediaTypes: ["anime"],
             sortOptions: [
-                { key: "rating", label: "评分" },
-                { key: "date", label: "看完" },
+                { key: "rating", label: "Rating" },
+                { key: "date", label: "Consume" },
             ],
         },
         {
@@ -48,8 +51,8 @@
             icon: "G",
             mediaTypes: ["game"],
             sortOptions: [
-                { key: "playtime", label: "时长" },
-                { key: "rating", label: "评分" },
+                { key: "playtime", label: "Playtime" },
+                { key: "rating", label: "Rating" },
             ],
         },
         {
@@ -58,8 +61,8 @@
             icon: "T",
             mediaTypes: ["tv"],
             sortOptions: [
-                { key: "rating", label: "评分" },
-                { key: "date", label: "看完" },
+                { key: "rating", label: "Rating" },
+                { key: "date", label: "Consume" },
             ],
         },
         {
@@ -68,8 +71,8 @@
             icon: "M",
             mediaTypes: ["movie"],
             sortOptions: [
-                { key: "rating", label: "评分" },
-                { key: "date", label: "看完" },
+                { key: "rating", label: "Rating" },
+                { key: "date", label: "Consume" },
             ],
         },
         {
@@ -78,8 +81,8 @@
             icon: "B",
             mediaTypes: ["book"],
             sortOptions: [
-                { key: "rating", label: "评分" },
-                { key: "date", label: "读完" },
+                { key: "rating", label: "Rating" },
+                { key: "date", label: "Consume" },
             ],
         },
     ];
@@ -178,6 +181,15 @@
             },
         ],
     };
+
+    const GALLERY_QUAD_CONFIGS: { rot: number; clip: string }[] = [
+        { rot: -8, clip: "polygon(3% 5%, 97% 0%, 95% 95%, 1% 100%)" },
+        { rot: -4, clip: "polygon(1% 8%, 99% 2%, 97% 92%, 3% 98%)" },
+        { rot: -1, clip: "polygon(2% 0%, 98% 6%, 96% 96%, 0% 88%)" },
+        { rot: 1, clip: "polygon(0% 6%, 98% 0%, 100% 94%, 2% 100%)" },
+        { rot: 3, clip: "polygon(1% 4%, 97% 0%, 100% 90%, 3% 96%)" },
+        { rot: -2, clip: "polygon(0% 8%, 99% 0%, 100% 100%, 2% 92%)" },
+    ];
 
     function selectGalleryCategory(id: GalleryCategory) {
         galleryActiveCategory = id;
@@ -338,6 +350,40 @@
         }
     }
 
+    // Selection quad effect for sidebar
+    $effect(() => {
+        const idx = GALLERY_CATEGORIES.findIndex(
+            (c) => c.id === galleryActiveCategory,
+        );
+        const btn = catBtnRefs[idx];
+        const container = sidebarRef;
+        if (!btn || !container) return;
+
+        const btnRect = btn.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
+
+        const centerX = btnRect.left + btnRect.width / 2 - containerRect.left;
+        const centerY = btnRect.top + btnRect.height / 2 - containerRect.top;
+
+        const quadW = btn.offsetWidth * 1.5;
+        const quadH = btn.offsetHeight * 1.3;
+        const cfg =
+            GALLERY_QUAD_CONFIGS[idx % GALLERY_QUAD_CONFIGS.length];
+
+        container.style.setProperty(
+            "--pack-quad-x",
+            `${centerX - quadW / 2}px`,
+        );
+        container.style.setProperty(
+            "--pack-quad-y",
+            `${centerY - quadH / 2}px`,
+        );
+        container.style.setProperty("--pack-quad-w", `${quadW}px`);
+        container.style.setProperty("--pack-quad-h", `${quadH}px`);
+        container.style.setProperty("--pack-quad-rot", `${cfg.rot}deg`);
+        container.style.setProperty("--pack-quad-clip", cfg.clip);
+    });
+
     onMount(() => {
         if (!galleryData && !galleryLoading) {
             void loadGalleryData();
@@ -351,10 +397,6 @@
 </script>
 
 <section class="rm-stage">
-    <div class="rm-items-title">
-        <CallingCardText text="Gallery" fontSize={82} />
-    </div>
-
     <button
         type="button"
         class="rm-back-btn"
@@ -377,42 +419,45 @@
     {:else if galleryData && !selectedMedia}
         <div class="rm-gallery-layout">
             <!-- LEFT: category nav + sort -->
-            <div class="rm-gallery-sidebar">
-                <nav class="rm-gallery-nav">
-                    {#each GALLERY_CATEGORIES as cat}
-                        <button
-                            type="button"
-                            class="rm-gallery-nav-item"
-                            class:is-active={galleryActiveCategory === cat.id}
-                            onclick={() => selectGalleryCategory(cat.id)}
+            <div class="rm-gallery-sidebar" bind:this={sidebarRef}>
+                <ul class="rm-gallery-pack-list">
+                    {#each GALLERY_CATEGORIES as cat, ci}
+                        <li
+                            class="rm-gallery-pack-line"
+                            style:z-index={galleryActiveCategory === cat.id ? 10 : 0}
                         >
-                            <span class="rm-gallery-nav-icon">{cat.icon}</span>
-                            <MenuItem
-                                letters={GALLERY_CATEGORY_LETTERS[cat.id]}
-                            />
-                        </button>
+                            <button
+                                type="button"
+                                class="rm-gallery-pack-btn"
+                                class:is-active={galleryActiveCategory === cat.id}
+                                onclick={() => selectGalleryCategory(cat.id)}
+                                onmouseenter={() => selectGalleryCategory(cat.id)}
+                                bind:this={catBtnRefs[ci]}
+                            >
+                                <MenuItem
+                                    letters={GALLERY_CATEGORY_LETTERS[cat.id]}
+                                    active={galleryActiveCategory === cat.id}
+                                />
+                            </button>
+                        </li>
                     {/each}
-                </nav>
+                </ul>
+                <div class="rm-gallery-pack-quad" aria-hidden="true"></div>
 
-                <div class="rm-items-filter-section">
-                    <h4 class="rm-items-filter-title">Sort</h4>
-                    {#each getActiveSortOptions() as opt}
-                        <button
-                            type="button"
-                            class="rm-items-filter-btn"
-                            class:is-active={gallerySortKey === opt.key}
-                            onclick={() => toggleGallerySort(opt.key)}
-                        >
-                            {opt.label}
-                            {#if gallerySortKey === opt.key}
-                                <span class="rm-items-sort-arrow"
-                                    >{gallerySortOrder === "asc"
-                                        ? "↑"
-                                        : "↓"}</span
-                                >
-                            {/if}
-                        </button>
-                    {/each}
+                <div class="rm-gallery-filters">
+                    <div class="rm-gallery-filter-row">
+                        <PromptWord text="Sort" fontSize={36} />
+                        {#each getActiveSortOptions() as opt}
+                            <button
+                                type="button"
+                                class="rm-gallery-tab"
+                                class:active={gallerySortKey === opt.key}
+                                onclick={() => toggleGallerySort(opt.key)}
+                            >
+                                {opt.label}{#if gallerySortKey === opt.key}{gallerySortOrder === "asc" ? " ▲" : " ▼"}{/if}
+                            </button>
+                        {/each}
+                    </div>
                 </div>
             </div>
 
@@ -697,58 +742,62 @@
         </p>
     {/if}
 </section>
-
 <style>
-    .rm-items-title {
-        position: fixed;
-        top: clamp(0.8rem, 1.5vh, 3rem);
-        right: clamp(1.2rem, 2.5vw, 5rem);
-        z-index: 10;
-        pointer-events: none;
+
+    /* ── Gallery filter tabs ── */
+    .rm-gallery-filters {
+        display: flex;
+        flex-direction: column;
+        gap: clamp(0.5rem, 0.6vw, 1rem);
     }
 
-    /* ── Shared filter styles ── */
-    .rm-items-filter-section {
-        margin-bottom: clamp(1rem, 1.5vw, 2.5rem);
+    .rm-gallery-filter-row {
+        display: flex;
+        align-items: center;
+        gap: clamp(0.3rem, 0.5vw, 0.8rem);
+        flex-wrap: wrap;
     }
 
-    .rm-items-filter-title {
-        margin: 0 0 clamp(0.4rem, 0.5vw, 0.9rem);
-        font-size: clamp(0.72rem, 0.62vw, 1.3rem);
-        color: var(--rm-red);
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
-        border-left: 0.2rem solid var(--rm-red);
-        padding-left: clamp(0.4rem, 0.5vw, 1rem);
-    }
-
-    .rm-items-filter-btn {
-        display: block;
-        width: fit-content;
-        border: none;
-        background: transparent;
-        color: var(--rm-white);
-        cursor: pointer;
-        padding: clamp(0.15rem, 0.25vw, 0.4rem) clamp(0.4rem, 0.6vw, 1rem);
-        font-family: inherit;
-        font-size: clamp(0.65rem, 0.58vw, 1rem);
+    .rm-gallery-tab {
+        position: relative;
+        z-index: 0;
+        font-family: "p5hatty", "Orbitron", Arial, sans-serif;
+        font-size: clamp(1rem, 1.1vw, 1.6rem);
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.06em;
-        opacity: 0.35;
-        transition: opacity 140ms ease;
+        padding: clamp(0.5rem, 0.6vw, 0.9rem) clamp(1rem, 1.2vw, 1.8rem);
+        border: none;
+        background: var(--rm-white);
+        color: var(--rm-white);
+        cursor: pointer;
+        clip-path: polygon(0% 0%, 100% 0%, 96% 100%, 4% 100%);
+        transition: all 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
+        white-space: nowrap;
+        flex-shrink: 0;
     }
 
-    .rm-items-filter-btn:hover {
-        opacity: 0.65;
+    .rm-gallery-tab::before {
+        content: "";
+        position: absolute;
+        inset: 4px;
+        background: var(--rm-black);
+        clip-path: polygon(0% 0%, 100% 0%, 96% 100%, 4% 100%);
+        z-index: -1;
+        transition: background 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
     }
 
-    .rm-items-filter-btn.is-active {
-        opacity: 1;
+    .rm-gallery-tab:hover {
+        transform: scale(1.06);
     }
 
-    .rm-items-sort-arrow {
-        margin-left: 0.2em;
+    .rm-gallery-tab.active {
+        background: var(--rm-white);
+        color: var(--rm-black);
+    }
+
+    .rm-gallery-tab.active::before {
+        background: var(--rm-white);
     }
 
     /* ── Gallery ── */
@@ -761,6 +810,7 @@
     }
 
     .rm-gallery-sidebar {
+        position: relative;
         overflow-y: auto;
         height: 100%;
         padding: clamp(1.5rem, 2.5vh, 4rem) clamp(1.2rem, 2vw, 3rem)
@@ -769,72 +819,120 @@
         display: flex;
         flex-direction: column;
         gap: clamp(1.5rem, 2.5vh, 3rem);
+        scrollbar-gutter: stable;
     }
 
-    .rm-gallery-nav {
+    .rm-gallery-sidebar::-webkit-scrollbar {
+        width: 14px;
+    }
+    .rm-gallery-sidebar::-webkit-scrollbar-track {
+        background: var(--rm-black, #000);
+        border: 4px solid var(--rm-white, #fff);
+        border-radius: 0;
+        margin-top: 12vh;
+        margin-bottom: 12vh;
+    }
+    .rm-gallery-sidebar::-webkit-scrollbar-thumb {
+        background: var(--rm-white, #fff);
+        border-radius: 0;
+        border: none;
+    }
+    .rm-gallery-sidebar::-webkit-scrollbar-thumb:hover {
+        background: var(--rm-white, #fff);
+    }
+
+    .rm-gallery-pack-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
         display: flex;
         flex-direction: column;
-        align-items: flex-start;
-        gap: clamp(0.3rem, 0.5vh, 0.6rem);
     }
 
-    .rm-gallery-nav-item {
+    .rm-gallery-pack-line {
+        margin: -1.2rem 0;
         position: relative;
+    }
+
+    .rm-gallery-pack-line:nth-child(odd) {
+        margin-left: 0;
+    }
+    .rm-gallery-pack-line:nth-child(even) {
+        margin-left: 3vw;
+    }
+
+    .rm-gallery-pack-btn {
         display: inline-flex;
         align-items: center;
-        gap: clamp(0.4rem, 0.8vw, 1rem);
-        background: none;
+        gap: 0.5rem;
         border: none;
+        background: var(--rm-black);
         cursor: pointer;
-        padding: clamp(0.3rem, 0.5vh, 0.6rem) clamp(0.6rem, 1vw, 1.2rem);
-        opacity: 0.35;
-        transition:
-            opacity 140ms ease,
-            transform 140ms ease;
+        padding: 1.1rem 2.8rem 1.1rem 2.4rem;
+        width: fit-content;
+        transition: background-color 140ms ease;
     }
 
-    .rm-gallery-nav-item::before {
-        content: "";
+    .rm-gallery-pack-btn:not(.is-active):hover {
+        background: var(--rm-red);
+    }
+
+    .rm-gallery-pack-btn.is-active {
+        background: var(--rm-red);
+    }
+
+    /* Per-item rotation + clip-path */
+    .rm-gallery-pack-line:nth-child(6n + 1) .rm-gallery-pack-btn {
+        transform: rotate(-5deg);
+        clip-path: polygon(0% 8%, 100% 0%, 98% 92%, 2% 100%);
+    }
+    .rm-gallery-pack-line:nth-child(6n + 2) .rm-gallery-pack-btn {
+        transform: rotate(-3deg);
+        clip-path: polygon(1% 5%, 99% 0%, 97% 96%, 0% 100%);
+    }
+    .rm-gallery-pack-line:nth-child(6n + 3) .rm-gallery-pack-btn {
+        transform: rotate(-1deg);
+        clip-path: polygon(2% 0%, 100% 4%, 96% 100%, 0% 92%);
+    }
+    .rm-gallery-pack-line:nth-child(6n + 4) .rm-gallery-pack-btn {
+        transform: rotate(1deg);
+        clip-path: polygon(0% 6%, 98% 0%, 100% 94%, 3% 100%);
+    }
+    .rm-gallery-pack-line:nth-child(6n + 5) .rm-gallery-pack-btn {
+        transform: rotate(2deg);
+        clip-path: polygon(1% 0%, 97% 4%, 99% 100%, 2% 96%);
+    }
+    .rm-gallery-pack-line:nth-child(6n + 6) .rm-gallery-pack-btn {
+        transform: rotate(-2deg);
+        clip-path: polygon(0% 4%, 100% 0%, 98% 96%, 1% 100%);
+    }
+
+    .rm-gallery-pack-btn :global(.p5m) {
+        font-size: clamp(3.6rem, 7vw, 5.6rem);
+    }
+
+    .rm-gallery-pack-quad {
         position: absolute;
-        inset: 0;
-        background: var(--rm-red, #e5191c);
-        clip-path: polygon(4% 8%, 98% 0%, 96% 94%, 1% 100%);
-        transform: skewX(-2deg) rotate(-0.5deg);
-        opacity: 0;
-        z-index: -1;
+        left: var(--pack-quad-x);
+        top: var(--pack-quad-y);
+        width: var(--pack-quad-w);
+        height: var(--pack-quad-h);
+        transform: rotate(var(--pack-quad-rot));
+        z-index: 15;
+        background: var(--rm-red);
+        mix-blend-mode: difference;
+        clip-path: var(
+            --pack-quad-clip,
+            polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)
+        );
+        pointer-events: none;
         transition:
-            opacity 120ms ease,
-            transform 120ms ease;
-    }
-
-    .rm-gallery-nav-item:hover {
-        opacity: 0.7;
-    }
-
-    .rm-gallery-nav-item.is-active {
-        opacity: 1;
-    }
-
-    .rm-gallery-nav-item.is-active::before {
-        opacity: 1;
-        transform: skewX(-3deg) rotate(-1deg);
-    }
-
-    .rm-gallery-nav-item :global(.p5m) {
-        font-size: clamp(2.1rem, 5.25vw, 3.75rem);
-    }
-
-    .rm-gallery-nav-icon {
-        font-family: "p5hatty", "Orbitron", Arial, sans-serif;
-        font-size: clamp(1.3rem, 2.2vw, 2.2rem);
-        font-weight: 900;
-        color: var(--rm-white);
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: clamp(1.8rem, 3vw, 3rem);
-        transform: rotate(-8deg) skewX(-5deg);
-        line-height: 1;
+            left 120ms ease,
+            top 120ms ease,
+            width 120ms ease,
+            height 120ms ease,
+            transform 120ms ease,
+            clip-path 120ms ease;
     }
 
     .rm-gallery-content {

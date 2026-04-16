@@ -37,9 +37,9 @@
     let packBtnRefs = $state<(HTMLButtonElement | undefined)[]>([]);
 
     // Filter & sort state
-    let selectedDifficulties = $state<Set<string>>(new Set());
+    let selectedDifficulties = $state<Set<string>>(new Set(["beginner", "intermediate", "advanced", "expert", "legendary"]));
     let showUnlockedOnly = $state(false);
-    let sortKey = $state<SortKey>("default");
+    let sortKey = $state<SortKey>("unlocked");
     let sortDir = $state<SortDir>("asc");
 
     const DIFFICULTIES: Difficulty[] = [
@@ -150,9 +150,9 @@
     }
 
     function resetFilters() {
-        selectedDifficulties = new Set();
+        selectedDifficulties = new Set(DIFFICULTIES);
         showUnlockedOnly = false;
-        sortKey = "default";
+        sortKey = "unlocked";
         sortDir = "asc";
     }
 
@@ -364,10 +364,10 @@
 
                             <span class="rm-ach-filter-divider"></span>
 
+                            <PromptWord text="Status" fontSize={36} />
                             <button
                                 type="button"
-                                class="rm-ach-tab"
-                                class:active={showUnlockedOnly}
+                                class="rm-ach-tab active"
                                 onclick={() => {
                                     showUnlockedOnly = !showUnlockedOnly;
                                 }}
