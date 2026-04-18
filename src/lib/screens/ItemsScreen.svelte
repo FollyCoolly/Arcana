@@ -1,7 +1,6 @@
 <script lang="ts">
     import { onMount } from "svelte";
-    import { invoke, convertFileSrc } from "@tauri-apps/api/core";
-    import CallingCardText from "$lib/CallingCardText.svelte";
+    import { invoke } from "@tauri-apps/api/core";
     import KeyHint from "$lib/KeyHint.svelte";
     import PromptWord from "$lib/PromptWord.svelte";
     import type {
@@ -17,11 +16,108 @@
     let itemError = $state<string | null>(null);
     let itemData = $state<ItemData | null>(null);
     let selectedItem = $state<ItemWithComputed | null>(null);
-    let itemDetailMode = $state(false);
     let itemFilterSource = $state<string | null>(null);
     let itemFilterCategory = $state<string | null>(null);
     let itemSortKey = $state<ItemSortKey>("name");
     let itemSortOrder = $state<ItemSortOrder>("asc");
+    let selectedIndex = $state(0);
+    let rowRefs = $state<(HTMLElement | undefined)[]>([]);
+    let listRef = $state<HTMLElement | undefined>(undefined);
+
+    /* ── Deterministic hash for per-item visual variation ── */
+    function itemHash(s: string): number {
+        let h = 0;
+        for (let i = 0; i < s.length; i++)
+            h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+        return ((h >>> 0) % 10000) / 10000;
+    }
+
+    function getItemWidthPercent(item: ItemWithComputed): number {
+        const nameLen = Math.min(item.name.length, 20);
+        const base = 49 + (nameLen / 20) * 2;
+        const jitter = (itemHash(item.id) - 0.5) * 2;
+        return Math.max(48, Math.min(52, base + jitter));
+    }
+
+    function getItemClipPath(item: ItemWithComputed): string {
+        const h1 = itemHash(item.id + "_rt");
+        const h2 = itemHash(item.id + "_rb");
+        const h3 = itemHash(item.id + "_rs");
+        const h4 = itemHash(item.id + "_rx");
+        // Trapezoid: narrow left edge, wide right edge (radiating from left)
+        const leftInset = 10 + h3 * 4; // 10-14% from top/bottom
+        // Right edge Y: per-item variation
+        const rtY = h1 * 10; // 0% – 10%
+        const rbY = 90 + h2 * 10; // 90% – 100%
+        // Right edge X: slanted (one corner pulled inward 5-15%)
+        const slant = 1 + h4 * 2; // 1% – 3% inset
+        const topPulled = h4 > 0.5;
+        const rtX = topPulled ? 100 - slant : 100;
+        const rbX = topPulled ? 100 : 100 - slant;
+        return `polygon(0% ${leftInset.toFixed(1)}%, ${rtX.toFixed(1)}% ${rtY.toFixed(1)}%, ${rbX.toFixed(1)}% ${rbY.toFixed(1)}%, 0% ${(100 - leftInset).toFixed(1)}%)`;
+    }
+
+    /* ── Scroll-driven radial fan effect ── */
+    let rafId = 0;
+
+    function updateFanEffect() {
+        if (!listRef) return;
+        const rect = listRef.getBoundingClientRect();
+        const centerY = rect.top + rect.height / 2;
+        const halfH = rect.height / 2;
+        if (halfH === 0) return;
+
+        for (const row of rowRefs) {
+            if (!row) continue;
+            const rr = row.getBoundingClientRect();
+            const mid = rr.top + rr.height / 2;
+            const t = Math.max(-1.2, Math.min(1.2, (mid - centerY) / halfH));
+            const abs = Math.abs(t);
+
+            // Scale: 1.0 at center → 0.8 at edges (mild perspective)
+            const scale = 1.0 - abs * 0.2;
+            // Fan rotation: radiate from left to right
+            const rotate = t * 12;
+            row.style.transform = `scale(${scale.toFixed(3)}) rotate(${rotate.toFixed(1)}deg)`;
+            const hideThreshold = t < 0 ? 0.45 : 0.75;
+            if (abs > hideThreshold) {
+                row.style.visibility = "hidden";
+                row.style.pointerEvents = "none";
+            } else {
+                row.style.visibility = "visible";
+                row.style.pointerEvents = "";
+            }
+        }
+    }
+
+    function onListScroll() {
+        cancelAnimationFrame(rafId);
+        rafId = requestAnimationFrame(updateFanEffect);
+    }
+
+    // Wire up scroll listener
+    $effect(() => {
+        const el = listRef;
+        if (!el) return;
+        el.addEventListener("scroll", onListScroll, { passive: true });
+        return () => {
+            el.removeEventListener("scroll", onListScroll);
+            cancelAnimationFrame(rafId);
+        };
+    });
+
+    // Re-run fan on data/filter/sort changes
+    $effect(() => {
+        void itemFilterCategory;
+        void itemFilterSource;
+        void itemSortKey;
+        void itemSortOrder;
+        void itemData;
+        void selectedItem;
+        if (listRef) {
+            requestAnimationFrame(() => requestAnimationFrame(updateFanEffect));
+        }
+    });
 
     const ITEM_SORT_OPTIONS: { key: ItemSortKey; label: string }[] = [
         { key: "name", label: "名称" },
@@ -141,12 +237,41 @@
     function handleKeydown(event: KeyboardEvent) {
         if (event.key === "Escape") {
             event.preventDefault();
-            if (itemDetailMode) {
-                itemDetailMode = false;
-            } else if (selectedItem) {
+            if (selectedItem) {
                 selectedItem = null;
             } else {
                 onBack();
+            }
+            return;
+        }
+        {
+            const items = getFilteredSortedItems();
+            if (event.key === "ArrowDown") {
+                event.preventDefault();
+                if (items.length > 0) {
+                    selectedIndex = Math.min(
+                        selectedIndex + 1,
+                        items.length - 1,
+                    );
+                    selectedItem = items[selectedIndex];
+                    rowRefs[selectedIndex]?.scrollIntoView({
+                        block: "nearest",
+                        behavior: "smooth",
+                    });
+                }
+                return;
+            }
+            if (event.key === "ArrowUp") {
+                event.preventDefault();
+                if (items.length > 0) {
+                    selectedIndex = Math.max(selectedIndex - 1, 0);
+                    selectedItem = items[selectedIndex];
+                    rowRefs[selectedIndex]?.scrollIntoView({
+                        block: "nearest",
+                        behavior: "smooth",
+                    });
+                }
+                return;
             }
         }
     }
@@ -179,15 +304,12 @@
 </script>
 
 <section class="rm-stage">
-    <div class="rm-items-title">
-        <CallingCardText text="Items" fontSize={82} />
-    </div>
 
     {#if itemLoading}
         <p class="state-text" style="padding: 2rem;">Loading items...</p>
     {:else if itemError}
         <p class="state-text error" style="padding: 2rem;">{itemError}</p>
-    {:else if itemData && !itemDetailMode}
+    {:else if itemData}
         {@const filteredStats = getFilteredItemStats()}
         <div class="rm-items-layout">
             <!-- LEFT: Category nav + stats -->
@@ -279,14 +401,23 @@
                     >
                 </div>
 
-                <div class="rm-items-list">
+                <div class="rm-items-list" bind:this={listRef}>
                     {#each getFilteredSortedItems() as item, i}
                         {@const sortVal = getItemSortValue(item)}
                         <button
                             type="button"
                             class="rm-item-row"
                             class:is-selected={selectedItem?.id === item.id}
+                            bind:this={rowRefs[i]}
+                            style="width: {getItemWidthPercent(
+                                item,
+                            )}%; clip-path: {getItemClipPath(item)};"
                             onclick={() => {
+                                selectedIndex = i;
+                                selectedItem = item;
+                            }}
+                            onmouseenter={() => {
+                                selectedIndex = i;
                                 selectedItem = item;
                             }}
                         >
@@ -296,165 +427,6 @@
                             {/if}
                         </button>
                     {/each}
-                </div>
-
-                <div class="rm-items-summary">
-                    {#if selectedItem}
-                        <span class="rm-items-summary-chip"
-                            >{formatPrice(selectedItem.price)}</span
-                        >
-                        {#if selectedItem.days_owned !== null}
-                            <span class="rm-items-summary-chip"
-                                >{selectedItem.days_owned}天</span
-                            >
-                        {/if}
-                        <span class="rm-items-summary-chip rm-items-daily"
-                            >{formatDailyCost(selectedItem.daily_cost)}/d</span
-                        >
-                        {#if selectedItem.color}
-                            <span class="rm-items-summary-chip"
-                                >{selectedItem.color}</span
-                            >
-                        {/if}
-                        {#each Object.entries(selectedItem.extra).slice(0, 2) as [, val]}
-                            <span class="rm-items-summary-chip"
-                                >{formatExtraValue(val)}</span
-                            >
-                        {/each}
-                        <button
-                            type="button"
-                            class="rm-items-detail-btn"
-                            onclick={() => {
-                                itemDetailMode = true;
-                            }}>详情 →</button
-                        >
-                    {:else}
-                        <span class="rm-items-summary-hint"
-                            >选择物品查看摘要</span
-                        >
-                    {/if}
-                </div>
-            </div>
-        </div>
-    {:else if itemData && itemDetailMode && selectedItem}
-        <!-- Item detail view (Gallery-style) -->
-        <div class="rm-gallery-detail">
-            <button
-                type="button"
-                class="rm-back-btn"
-                onclick={() => {
-                    itemDetailMode = false;
-                }}
-            >
-                <KeyHint key="Esc" fontSize={36} />
-                <PromptWord text="Back" fontSize={72} />
-            </button>
-
-            <div class="rm-gallery-detail-inner">
-                {#if selectedItem.image}
-                    <div class="rm-gallery-detail-cover">
-                        <img
-                            src={convertFileSrc(selectedItem.image)}
-                            alt={selectedItem.name}
-                            class="rm-gallery-detail-img"
-                        />
-                    </div>
-                {/if}
-
-                <div class="rm-gallery-detail-info">
-                    <h2 class="rm-gallery-detail-title">{selectedItem.name}</h2>
-                    {#if selectedItem.brand}
-                        <p class="rm-gallery-detail-original">
-                            {selectedItem.brand}
-                        </p>
-                    {/if}
-
-                    <div class="rm-gallery-detail-meta">
-                        {#if selectedItem.price !== null}
-                            <div class="rm-gallery-detail-row">
-                                <span class="rm-gallery-detail-label"
-                                    >PRICE</span
-                                >
-                                <span class="rm-gallery-detail-value"
-                                    >{formatPrice(selectedItem.price)}</span
-                                >
-                            </div>
-                        {/if}
-                        {#if selectedItem.daily_cost !== null}
-                            <div class="rm-gallery-detail-row">
-                                <span class="rm-gallery-detail-label"
-                                    >DAILY</span
-                                >
-                                <span
-                                    class="rm-gallery-detail-value"
-                                    style="color: var(--rm-red)"
-                                    >{formatDailyCost(
-                                        selectedItem.daily_cost,
-                                    )}/day</span
-                                >
-                            </div>
-                        {/if}
-                        {#if selectedItem.days_owned !== null}
-                            <div class="rm-gallery-detail-row">
-                                <span class="rm-gallery-detail-label"
-                                    >OWNED</span
-                                >
-                                <span class="rm-gallery-detail-value"
-                                    >{selectedItem.days_owned} days</span
-                                >
-                            </div>
-                        {/if}
-                        {#if selectedItem.purchase_date}
-                            <div class="rm-gallery-detail-row">
-                                <span class="rm-gallery-detail-label">DATE</span
-                                >
-                                <span class="rm-gallery-detail-value"
-                                    >{selectedItem.purchase_date}</span
-                                >
-                            </div>
-                        {/if}
-                        {#if selectedItem.purchase_channel}
-                            <div class="rm-gallery-detail-row">
-                                <span class="rm-gallery-detail-label">FROM</span
-                                >
-                                <span class="rm-gallery-detail-value"
-                                    >{selectedItem.purchase_channel}</span
-                                >
-                            </div>
-                        {/if}
-                        {#if selectedItem.main_category}
-                            <div class="rm-gallery-detail-row">
-                                <span class="rm-gallery-detail-label"
-                                    >CATEGORY</span
-                                >
-                                <span class="rm-gallery-detail-value"
-                                    >{selectedItem.main_category}{selectedItem.sub_category
-                                        ? ` / ${selectedItem.sub_category}`
-                                        : ""}</span
-                                >
-                            </div>
-                        {/if}
-                        {#if selectedItem.color}
-                            <div class="rm-gallery-detail-row">
-                                <span class="rm-gallery-detail-label"
-                                    >COLOR</span
-                                >
-                                <span class="rm-gallery-detail-value"
-                                    >{selectedItem.color}</span
-                                >
-                            </div>
-                        {/if}
-                    </div>
-
-                    {#if Object.keys(selectedItem.extra).length > 0}
-                        <div class="rm-gallery-detail-tags">
-                            {#each Object.entries(selectedItem.extra) as [key, val]}
-                                <span class="rm-gallery-detail-tag"
-                                    >{key}: {formatExtraValue(val)}</span
-                                >
-                            {/each}
-                        </div>
-                    {/if}
                 </div>
             </div>
         </div>
@@ -466,19 +438,12 @@
 </section>
 
 <style>
-    .rm-items-title {
-        position: fixed;
-        top: clamp(0.8rem, 1.5vh, 3rem);
-        right: clamp(1.2rem, 2.5vw, 5rem);
-        z-index: 10;
-        pointer-events: none;
-    }
 
     .rm-items-layout {
         display: grid;
         grid-template-columns: clamp(10rem, 20vw, 18rem) 1fr;
         overflow: hidden;
-        height: 75vh;
+        height: 90vh;
         margin: auto 0;
     }
 
@@ -592,8 +557,8 @@
         display: flex;
         flex-direction: column;
         height: 100%;
-        padding: clamp(1rem, 1.5vh, 2rem) clamp(6rem, 10vw, 16rem)
-            clamp(1rem, 1.5vh, 2rem) clamp(1.5rem, 2vw, 3rem);
+        padding: clamp(0.5rem, 1vh, 1rem) clamp(1rem, 2vw, 3rem)
+            clamp(0.5rem, 1vh, 1rem) 0;
         box-sizing: border-box;
         overflow: hidden;
     }
@@ -602,7 +567,8 @@
         display: flex;
         align-items: center;
         gap: clamp(0.3rem, 0.4vw, 0.6rem);
-        margin-bottom: clamp(0.6rem, 0.8vw, 1.2rem);
+        margin-bottom: clamp(0.4rem, 0.5vw, 0.8rem);
+        padding-left: clamp(1rem, 1.5vw, 2.5rem);
         flex-wrap: wrap;
         flex-shrink: 0;
     }
@@ -647,44 +613,53 @@
         letter-spacing: 0.06em;
     }
 
-    /* ── Item list (parallelogram) ── */
+    /* ── Item list: radial fan from left ── */
     .rm-items-list {
         flex: 1;
         overflow-y: auto;
         display: flex;
         flex-direction: column;
-        gap: clamp(0.1rem, 0.15vw, 0.25rem);
-        transform: skewX(-4deg);
-        border: 2px solid var(--rm-white);
-        padding: clamp(0.3rem, 0.4vw, 0.6rem);
-        background: var(--rm-black);
+        align-items: flex-start;
+        /* Generous vertical padding so items can scroll through the center zone */
+        padding: 25vh 0 40vh 0;
+        padding-left: 15vw;
+        transform: rotate(-8deg);
+        transform-origin: 0% 50%;
+        gap: 0;
+        scrollbar-width: none;
+    }
+
+    .rm-items-list::-webkit-scrollbar {
+        display: none;
     }
 
     .rm-item-row {
         display: flex;
         align-items: center;
-        justify-content: space-between;
         border: none;
-        background: transparent;
         color: var(--rm-white);
         cursor: pointer;
-        padding: clamp(0.4rem, 0.55vw, 0.9rem) clamp(1rem, 1.2vw, 2rem);
+        padding: clamp(2.4rem, 6vw, 5rem) clamp(1.2rem, 1.5vw, 2.5rem);
+        margin-bottom: -2vw;
         font-family: inherit;
-        font-size: clamp(1.1rem, 1.1vw, 1.8rem);
+        font-size: clamp(1rem, 1vw, 1.6rem);
         font-weight: 800;
         text-align: left;
-        transition: background 140ms ease;
         flex-shrink: 0;
-        transform: skewX(4deg);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-    }
+        position: relative;
 
-    .rm-item-row:last-child {
-        border-bottom: none;
+        /* Fan radiates from left — pin transform origin to left edge */
+        transform-origin: 0% 50%;
+        will-change: transform;
+
+        background: var(--rm-black);
+        /* clip-path is set per-item via inline style */
+        transition: background 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
     }
 
     .rm-item-row:hover {
-        background: rgba(255, 255, 255, 0.1);
+        background: rgba(255, 255, 255, 0.12);
+        z-index: 3;
     }
 
     .rm-item-row.is-selected {
@@ -704,162 +679,17 @@
         flex-shrink: 0;
         margin-left: clamp(0.8rem, 1vw, 1.6rem);
         font-weight: 700;
-        opacity: 0.6;
+        color: rgba(255, 255, 255, 0.45);
         white-space: nowrap;
         font-size: 0.85em;
+        letter-spacing: 0.04em;
     }
 
     .rm-item-row.is-selected .rm-item-row-attr {
-        opacity: 0.9;
+        color: rgba(255, 255, 255, 0.9);
     }
 
     /* ── Bottom summary bar ── */
-    .rm-items-summary {
-        flex-shrink: 0;
-        display: flex;
-        align-items: center;
-        gap: clamp(0.4rem, 0.5vw, 0.8rem);
-        padding: clamp(0.6rem, 0.8vw, 1.2rem) clamp(0.8rem, 1vw, 1.6rem);
-        border-top: 2px solid rgba(255, 255, 255, 0.1);
-        min-height: clamp(2rem, 3vw, 3.5rem);
-        flex-wrap: wrap;
-    }
-
-    .rm-items-summary-chip {
-        font-size: clamp(0.6rem, 0.55vw, 0.95rem);
-        font-weight: 800;
-        letter-spacing: 0.04em;
-        padding: clamp(0.15rem, 0.2vw, 0.3rem) clamp(0.4rem, 0.5vw, 0.8rem);
-        background: rgba(255, 255, 255, 0.08);
-        clip-path: polygon(3% 0%, 100% 0%, 97% 100%, 0% 100%);
-    }
-
-    .rm-items-summary-hint {
-        font-size: clamp(0.6rem, 0.55vw, 0.95rem);
-        font-weight: 600;
-        color: rgba(255, 255, 255, 0.25);
-        letter-spacing: 0.04em;
-    }
-
-    .rm-items-detail-btn {
-        margin-left: auto;
-        border: none;
-        background: var(--rm-red);
-        color: var(--rm-white);
-        cursor: pointer;
-        padding: clamp(0.3rem, 0.35vw, 0.5rem) clamp(0.8rem, 1vw, 1.6rem);
-        font-family: inherit;
-        font-size: clamp(0.6rem, 0.55vw, 0.95rem);
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        clip-path: polygon(4% 0%, 100% 0%, 96% 100%, 0% 100%);
-        transform: skewX(-3deg);
-        transition: opacity 140ms ease;
-    }
-
-    .rm-items-detail-btn:hover {
-        opacity: 0.85;
-    }
 
     /* ── Gallery detail (reused for item detail view) ── */
-    .rm-gallery-detail {
-        flex: 1;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: clamp(2rem, 4vh, 6rem) clamp(2rem, 4vw, 6rem);
-        box-sizing: border-box;
-        overflow-y: auto;
-        height: 100%;
-    }
-
-    .rm-gallery-detail-inner {
-        display: grid;
-        grid-template-columns: auto 1fr;
-        gap: clamp(1.5rem, 2.5vw, 4rem);
-        max-width: 70%;
-        width: 100%;
-    }
-
-    .rm-gallery-detail-cover {
-        width: clamp(330px, 33vw, 780px);
-        flex-shrink: 0;
-    }
-
-    .rm-gallery-detail-img {
-        display: block;
-        width: 100%;
-        height: auto;
-        clip-path: polygon(3% 0%, 100% 2%, 97% 100%, 0% 97%);
-    }
-
-    .rm-gallery-detail-info {
-        display: flex;
-        flex-direction: column;
-        gap: clamp(0.75rem, 1.2vw, 1.8rem);
-    }
-
-    .rm-gallery-detail-title {
-        margin: 0;
-        font-size: clamp(2.1rem, 2.7vw, 4.5rem);
-        font-weight: 900;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
-        line-height: 1.1;
-    }
-
-    .rm-gallery-detail-original {
-        margin: 0;
-        font-size: clamp(0.975rem, 0.9vw, 1.5rem);
-        color: rgba(255, 255, 255, 0.45);
-        font-weight: 600;
-        letter-spacing: 0.03em;
-    }
-
-    .rm-gallery-detail-meta {
-        display: flex;
-        flex-direction: column;
-        gap: clamp(0.225rem, 0.3vw, 0.45rem);
-    }
-
-    .rm-gallery-detail-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: baseline;
-        padding: clamp(0.225rem, 0.3vw, 0.525rem) 0;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    }
-
-    .rm-gallery-detail-label {
-        font-size: clamp(0.825rem, 0.75vw, 1.275rem);
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
-        color: rgba(255, 255, 255, 0.5);
-    }
-
-    .rm-gallery-detail-value {
-        font-size: clamp(0.975rem, 0.9vw, 1.5rem);
-        font-weight: 800;
-        letter-spacing: 0.04em;
-    }
-
-    .rm-gallery-detail-tags {
-        display: flex;
-        flex-wrap: wrap;
-        gap: clamp(0.3rem, 0.4vw, 0.6rem);
-        margin-top: clamp(0.3rem, 0.4vw, 0.6rem);
-    }
-
-    .rm-gallery-detail-tag {
-        font-size: clamp(0.75rem, 0.69vw, 1.125rem);
-        font-weight: 700;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: var(--rm-white);
-        background: rgba(229, 25, 28, 0.2);
-        clip-path: polygon(4% 0%, 100% 0%, 96% 100%, 0% 100%);
-        padding: clamp(0.15rem, 0.2vw, 0.3rem) clamp(0.5rem, 0.6vw, 1rem);
-    }
 </style>
