@@ -15,8 +15,7 @@ const KNOWN_KEYS: &[&str] = &[
     "价格",
     "购入日期",
     "购入方式",
-    "主类",
-    "品类",
+    "类别",
     "颜色",
 ];
 
@@ -107,8 +106,7 @@ fn parse_md_file(path: &Path, source_id: &str) -> Option<ItemWithComputed> {
     let price = get_number(&frontmatter, "价格");
     let purchase_date = get_string(&frontmatter, "购入日期");
     let purchase_channel = get_string(&frontmatter, "购入方式");
-    let main_category = get_string(&frontmatter, "主类");
-    let sub_category = get_string(&frontmatter, "品类");
+    let category = get_string(&frontmatter, "类别");
     let color = get_string(&frontmatter, "颜色");
 
     // Extra: all keys not in KNOWN_KEYS
@@ -141,8 +139,7 @@ fn parse_md_file(path: &Path, source_id: &str) -> Option<ItemWithComputed> {
         price,
         purchase_date,
         purchase_channel,
-        main_category,
-        sub_category,
+        category,
         color,
         image,
         extra,
@@ -163,7 +160,6 @@ pub fn load_items() -> Result<ItemData, String> {
 
     for source in &source_file.sources {
         let source_path = Path::new(&source.path);
-        let icon = source.icon.clone().unwrap_or_else(|| "📦".to_string());
 
         if !source_path.is_dir() {
             eprintln!(
@@ -173,7 +169,6 @@ pub fn load_items() -> Result<ItemData, String> {
             source_infos.push(ItemSourceInfo {
                 id: source.id.clone(),
                 name: source.name.clone(),
-                icon,
                 item_count: 0,
             });
             continue;
@@ -201,7 +196,6 @@ pub fn load_items() -> Result<ItemData, String> {
         source_infos.push(ItemSourceInfo {
             id: source.id.clone(),
             name: source.name.clone(),
-            icon,
             item_count: source_items.len(),
         });
 
@@ -228,42 +222,17 @@ pub fn load_items() -> Result<ItemData, String> {
             SourceStats {
                 source_id: si.id.clone(),
                 source_name: si.name.clone(),
-                source_icon: si.icon.clone(),
                 item_count: items_in_source.len(),
                 total_value: items_in_source.iter().filter_map(|i| i.price).sum(),
             }
         })
         .collect();
 
-    // By main category
-    let mut cat_map: HashMap<String, (usize, f64)> = HashMap::new();
-    for item in &all_items {
-        let cat = item
-            .main_category
-            .clone()
-            .unwrap_or_else(|| "未分类".to_string());
-        let entry = cat_map.entry(cat).or_insert((0, 0.0));
-        entry.0 += 1;
-        if let Some(p) = item.price {
-            entry.1 += p;
-        }
-    }
-    let mut by_main_category: Vec<CategoryStats> = cat_map
-        .into_iter()
-        .map(|(name, (item_count, total_value))| CategoryStats {
-            name,
-            item_count,
-            total_value,
-        })
-        .collect();
-    by_main_category.sort_by(|a, b| b.item_count.cmp(&a.item_count));
-
     let stats = ItemStats {
         total_items,
         total_value,
         average_daily_cost,
         by_source,
-        by_main_category,
     };
 
     Ok(ItemData {

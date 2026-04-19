@@ -1,7 +1,6 @@
 export type ItemSourceInfo = {
     id: string;
     name: string;
-    icon: string;
     item_count: number;
 };
 
@@ -13,8 +12,7 @@ export type ItemWithComputed = {
     price: number | null;
     purchase_date: string | null;
     purchase_channel: string | null;
-    main_category: string | null;
-    sub_category: string | null;
+    category: string | null;
     color: string | null;
     image: string | null;
     extra: Record<string, unknown>;
@@ -25,13 +23,6 @@ export type ItemWithComputed = {
 export type SourceStats = {
     source_id: string;
     source_name: string;
-    source_icon: string;
-    item_count: number;
-    total_value: number;
-};
-
-export type CategoryStats = {
-    name: string;
     item_count: number;
     total_value: number;
 };
@@ -41,7 +32,6 @@ export type ItemStats = {
     total_value: number;
     average_daily_cost: number;
     by_source: SourceStats[];
-    by_main_category: CategoryStats[];
 };
 
 export type ItemData = {

@@ -17,7 +17,6 @@
     let itemData = $state<ItemData | null>(null);
     let selectedItem = $state<ItemWithComputed | null>(null);
     let itemFilterSource = $state<string | null>(null);
-    let itemFilterCategory = $state<string | null>(null);
     let itemSortKey = $state<ItemSortKey>("name");
     let itemSortOrder = $state<ItemSortOrder>("asc");
     let selectedIndex = $state(0);
@@ -108,7 +107,6 @@
 
     // Re-run fan on data/filter/sort changes
     $effect(() => {
-        void itemFilterCategory;
         void itemFilterSource;
         void itemSortKey;
         void itemSortOrder;
@@ -168,11 +166,6 @@
 
         if (itemFilterSource) {
             items = items.filter((i) => i.source_id === itemFilterSource);
-        }
-        if (itemFilterCategory) {
-            items = items.filter(
-                (i) => (i.main_category ?? "未分类") === itemFilterCategory,
-            );
         }
 
         const sorted = [...items];
@@ -318,9 +311,9 @@
                     <button
                         type="button"
                         class="rm-items-cat-btn"
-                        class:is-active={!itemFilterCategory}
+                        class:is-active={!itemFilterSource}
                         onclick={() => {
-                            itemFilterCategory = null;
+                            itemFilterSource = null;
                             selectedItem = null;
                         }}
                     >
@@ -329,23 +322,25 @@
                             >{itemData.stats.total_items}</span
                         >
                     </button>
-                    {#each itemData.stats.by_main_category as cat, i}
+                    {#each itemData.stats.by_source as src, i}
                         <button
                             type="button"
                             class="rm-items-cat-btn"
-                            class:is-active={itemFilterCategory === cat.name}
+                            class:is-active={itemFilterSource === src.source_id}
                             class:rm-items-cat-even={i % 2 === 0}
                             onclick={() => {
-                                itemFilterCategory =
-                                    itemFilterCategory === cat.name
+                                itemFilterSource =
+                                    itemFilterSource === src.source_id
                                         ? null
-                                        : cat.name;
+                                        : src.source_id;
                                 selectedItem = null;
                             }}
                         >
-                            <span class="rm-items-cat-label">{cat.name}</span>
+                            <span class="rm-items-cat-label"
+                                >{src.source_name}</span
+                            >
                             <span class="rm-items-cat-count"
-                                >{cat.item_count}</span
+                                >{src.item_count}</span
                             >
                         </button>
                     {/each}

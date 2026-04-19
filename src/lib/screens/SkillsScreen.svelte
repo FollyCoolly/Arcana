@@ -85,6 +85,108 @@
         return after ? formatGroupName(after) : achievementId;
     }
 
+    function sortNodes(nodes: SkillNode[], data: AchievementData | null): SkillNode[] {
+        if (nodes.length <= 1) return [...nodes];
+
+        const COLS = 8;
+
+        const nodeIds = new Set(nodes.map((n) => n.achievement_id));
+        const prereqMap = new Map<string, string[]>();
+        if (data) {
+            for (const pack of data.packs) {
+                for (const ach of pack.achievements) {
+                    if (!nodeIds.has(ach.id)) continue;
+                    const local = ach.prerequisites.filter((p) => nodeIds.has(p));
+                    if (local.length > 0) prereqMap.set(ach.id, local);
+                }
+            }
+        }
+
+        function hexCol(i: number): number {
+            let rem = i, row = 0;
+            while (true) {
+                const rc = row % 2 === 0 ? COLS : COLS - 1;
+                if (rem < rc) return rem;
+                rem -= rc; row++;
+            }
+        }
+
+        // Step 1: sort by points ascending
+        const arr = [...nodes].sort((a, b) => a.points - b.points);
+
+        // Step 2: topo sort within each same-points window (prereqs before dependents)
+        let wi = 0;
+        while (wi < arr.length) {
+            let wj = wi;
+            while (wj < arr.length && arr[wj].points === arr[wi].points) wj++;
+            if (wj - wi > 1) {
+                const winIds = new Set(arr.slice(wi, wj).map((n) => n.achievement_id));
+                const inDeg = new Map<string, number>();
+                const fwd = new Map<string, string[]>();
+                for (let k = wi; k < wj; k++) {
+                    inDeg.set(arr[k].achievement_id, 0);
+                    fwd.set(arr[k].achievement_id, []);
+                }
+                for (let k = wi; k < wj; k++) {
+                    for (const pid of prereqMap.get(arr[k].achievement_id) ?? []) {
+                        if (winIds.has(pid)) {
+                            fwd.get(pid)!.push(arr[k].achievement_id);
+                            inDeg.set(arr[k].achievement_id, inDeg.get(arr[k].achievement_id)! + 1);
+                        }
+                    }
+                }
+                const queue = [...inDeg.entries()].filter(([, d]) => d === 0).map(([id]) => id);
+                const order: string[] = [];
+                const byId = new Map(arr.slice(wi, wj).map((n) => [n.achievement_id, n]));
+                while (queue.length > 0) {
+                    const id = queue.shift()!;
+                    order.push(id);
+                    for (const dep of fwd.get(id) ?? []) {
+                        const d = inDeg.get(dep)! - 1;
+                        inDeg.set(dep, d);
+                        if (d === 0) queue.push(dep);
+                    }
+                }
+                if (order.length === wj - wi) {
+                    for (let k = wi; k < wj; k++) arr[k] = byId.get(order[k - wi])!;
+                }
+            }
+            wi = wj;
+        }
+
+        // Step 3: best-effort column alignment — swap within same-points window
+        // to place a node in the same column as its already-placed prerequisite
+        const placed = new Map<string, number>();
+        wi = 0;
+        while (wi < arr.length) {
+            let wj = wi;
+            while (wj < arr.length && arr[wj].points === arr[wi].points) wj++;
+            for (let k = wi; k < wj; k++) {
+                let targetCol: number | null = null;
+                for (const pid of prereqMap.get(arr[k].achievement_id) ?? []) {
+                    const pp = placed.get(pid);
+                    if (pp !== undefined) { targetCol = hexCol(pp); break; }
+                }
+                if (targetCol !== null && hexCol(k) !== targetCol) {
+                    for (let m = k + 1; m < wj; m++) {
+                        if (hexCol(m) === targetCol) {
+                            [arr[k], arr[m]] = [arr[m], arr[k]];
+                            break;
+                        }
+                    }
+                }
+                placed.set(arr[k].achievement_id, k);
+            }
+            wi = wj;
+        }
+
+        return arr;
+    }
+
+    let sortedNodes = $derived(
+        selectedSkill ? sortNodes(selectedSkill.skill.nodes, achievementData) : [],
+    );
+
     function computeHexRows(nodes: SkillNode[], cols: number): SkillNode[][] {
         const rows: SkillNode[][] = [];
         let idx = 0;
@@ -236,7 +338,7 @@
 
             <div class="rm-skill-detail-right">
                 <div class="rm-skill-node-grid" style="--cols: 8">
-                    {#each computeHexRows(selectedSkill.skill.nodes, 8) as row, rowIdx}
+                    {#each computeHexRows(sortedNodes, 8) as row, rowIdx}
                         <div
                             class="rm-hex-row"
                             class:rm-hex-row--odd={rowIdx % 2 === 1}
