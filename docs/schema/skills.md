@@ -33,6 +33,7 @@
 | `max_level` | number | 是 | 最大等级 |
 | `level_thresholds` | array | 是 | 等级门槛（Lv.2 起），共 `max_level - 1` 条。Lv.1 隐含为 points ≥ 1 |
 | `nodes` | array | 是 | 技能树节点列表 |
+| `card_image` | string | 否 | 卡面图片路径（相对于 app 根目录，如 `/card_examples/finance.png`）。有值时前端使用图片卡面，否则使用 HTML 生成的默认卡面 |
 
 ### `nodes[]` 字段
 

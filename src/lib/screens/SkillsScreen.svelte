@@ -11,6 +11,8 @@
     import { formatGroupName } from "$lib/utils/format";
     import KeyHint from "$lib/KeyHint.svelte";
     import PromptWord from "$lib/PromptWord.svelte";
+    import CardTitle from "$lib/components/CardTitle.svelte";
+    import { hashStr } from "$lib/utils/cardTitle";
 
     let {
         onBack,
@@ -25,13 +27,16 @@
     let skillData = $state<SkillData | null>(null);
     let selectedIndex = $state(0);
 
-    let selectedSkill = $derived(
-        skillData && skillData.skills.length > 0
-            ? skillData.skills[selectedIndex]
-            : null,
+    let visibleSkills = $derived(
+        skillData ? skillData.skills.filter((s) => s.current_level > 0) : [],
     );
 
-    let totalSkills = $derived(skillData ? skillData.skills.length : 0);
+    let selectedSkill = $derived(
+        visibleSkills.length > 0 ? visibleSkills[selectedIndex] : null,
+    );
+
+    let totalSkills = $derived(visibleSkills.length);
+    let titleSeed = $derived(selectedSkill ? hashStr(selectedSkill.skill.id) : 0);
 
     let currentLevelTitle = $derived.by(() => {
         if (!selectedSkill) return null;
@@ -209,50 +214,16 @@
                     {/if}
                 </div>
 
-                <div
-                    class="rm-tarot-card rm-tarot-card--large"
-                    class:rm-tarot-card--leveled={selectedSkill.current_level >
-                        0}
-                >
-                    <div class="rm-tarot-card-inner">
-                        <div class="rm-tarot-top">
-                            <span class="rm-tarot-level"
-                                >{toRomanNumeral(
-                                    selectedSkill.current_level,
-                                )}</span
-                            >
-                            <span class="rm-tarot-pack"
-                                >{selectedSkill.pack_name}</span
-                            >
-                        </div>
-                        <div class="rm-tarot-art">
-                            <div class="rm-tarot-star-stack">
-                                <div class="rm-tarot-star rm-ts-1"></div>
-                                <div class="rm-tarot-star rm-ts-2"></div>
-                                <div class="rm-tarot-star rm-ts-3"></div>
-                                <div class="rm-tarot-star rm-ts-4"></div>
-                                <div class="rm-tarot-star rm-ts-5"></div>
-                            </div>
-                            <div class="rm-tarot-stripe"></div>
-                        </div>
-                        <div class="rm-tarot-name-strip">
-                            <span class="rm-tarot-name"
-                                >{selectedSkill.skill.name}</span
-                            >
-                        </div>
-                        <div class="rm-tarot-bottom">
-                            <div class="rm-tarot-progress">
-                                <div
-                                    class="rm-tarot-progress-fill"
-                                    style:width="{getSkillProgressPercent(
-                                        selectedSkill,
-                                    )}%"
-                                ></div>
-                            </div>
-                            <span class="rm-tarot-lv"
-                                >LV {selectedSkill.current_level}</span
-                            >
-                        </div>
+                <div class="rm-skill-image-card">
+                    <img
+                        src={selectedSkill.skill.card_image ?? '/card_examples/fool.png'}
+                        alt={selectedSkill.skill.name}
+                    />
+                    <div class="rm-image-card-title-area">
+                        <CardTitle
+                            text={selectedSkill.skill.name}
+                            seed={titleSeed}
+                        />
                     </div>
                 </div>
 
@@ -404,6 +375,7 @@
         margin-bottom: clamp(0.6rem, 1vw, 1.5rem);
         font-size: clamp(2.16rem, 2.43vw, 3.78rem);
         flex-wrap: wrap;
+        --rm-gold: #ffffff;
     }
 
     .rm-skill-level-badge {
@@ -478,9 +450,7 @@
         transition: background 150ms ease;
     }
 
-    .rm-hex-border--unlocked {
-        background: var(--rm-black);
-    }
+
 
     .rm-skill-node-hex {
         width: calc(100% - 10px);
@@ -507,8 +477,8 @@
     }
 
     .rm-skill-node-hex--unlocked {
-        background: var(--rm-gold, #f5a623);
-        color: var(--rm-black);
+        background: #e0093b;
+        color: var(--rm-white);
     }
 
     .rm-node-name {

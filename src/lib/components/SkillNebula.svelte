@@ -3,6 +3,7 @@
   import { CSS3DRenderer, CSS3DObject } from 'three/examples/jsm/renderers/CSS3DRenderer.js';
   import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
   import type { SkillWithLevel } from '$lib/types/skill';
+  import { buildCardTitleSvg, hashStr } from '$lib/utils/cardTitle';
 
   let {
     skills,
@@ -54,33 +55,11 @@
     el.className = `rm-tarot-card rm-nebula-card${leveled ? ' rm-tarot-card--leveled' : ''}`;
     el.style.width = '160px';
 
-    el.innerHTML = `
-      <div class="rm-tarot-card-inner">
-        <div class="rm-tarot-top">
-          <span class="rm-tarot-level">${ROMAN[skill.current_level] ?? skill.current_level}</span>
-          <span class="rm-tarot-pack">${escapeHtml(skill.pack_name)}</span>
-        </div>
-        <div class="rm-tarot-art">
-          <div class="rm-tarot-star-stack">
-            <div class="rm-tarot-star rm-ts-1"></div>
-            <div class="rm-tarot-star rm-ts-2"></div>
-            <div class="rm-tarot-star rm-ts-3"></div>
-            <div class="rm-tarot-star rm-ts-4"></div>
-            <div class="rm-tarot-star rm-ts-5"></div>
-          </div>
-          <div class="rm-tarot-stripe"></div>
-        </div>
-        <div class="rm-tarot-name-strip">
-          <span class="rm-tarot-name">${escapeHtml(skill.skill.name)}</span>
-        </div>
-        <div class="rm-tarot-bottom">
-          <div class="rm-tarot-progress">
-            <div class="rm-tarot-progress-fill" style="width:${progressPct}%"></div>
-          </div>
-          <span class="rm-tarot-lv">LV ${skill.current_level}</span>
-        </div>
-      </div>
-    `;
+    const cardImage = skill.skill.card_image ?? '/card_examples/fool.png';
+    el.className = 'rm-nebula-card rm-nebula-image-card';
+    const titleSvg = buildCardTitleSvg(skill.skill.name, hashStr(skill.skill.id));
+    el.innerHTML = `<img src="${escapeHtml(cardImage)}" alt="${escapeHtml(skill.skill.name)}" />`
+      + `<div class="rm-nebula-title-area">${titleSvg}</div>`;
 
     return el;
   }

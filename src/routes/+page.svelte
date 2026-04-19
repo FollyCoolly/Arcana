@@ -1206,6 +1206,59 @@
         opacity: 1;
     }
 
+    :global(.rm-nebula-image-card) {
+        width: 160px;
+        height: 320px;
+        background: #ffffff;
+        display: grid;
+        grid-template-columns: 1fr 18fr 1fr;
+        grid-template-rows: 1fr 32fr 7fr;
+    }
+
+    :global(.rm-nebula-title-area),
+    :global(.rm-image-card-title-area) {
+        grid-column: 1 / -1;
+        grid-row: 3;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transform: translateY(-50%);
+    }
+
+    :global(.rm-nebula-image-card img) {
+        grid-column: 2;
+        grid-row: 2;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+        min-width: 0;
+        min-height: 0;
+    }
+
+    :global(.rm-skill-image-card) {
+        width: clamp(400px, 27.5vw, 625px);
+        aspect-ratio: 10 / 20;
+        background: #ffffff;
+        display: grid;
+        grid-template-columns: 1fr 18fr 1fr;
+        grid-template-rows: 1fr 32fr 7fr;
+        margin-top: clamp(1rem, 3vh, 4rem);
+        flex-shrink: 0;
+    }
+
+    :global(.rm-skill-image-card img) {
+        grid-column: 2;
+        grid-row: 2;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+        min-width: 0;
+        min-height: 0;
+    }
+
     :global(.rm-tarot-star-stack) {
         position: absolute;
         width: 70%;

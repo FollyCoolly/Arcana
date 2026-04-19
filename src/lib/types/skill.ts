@@ -18,6 +18,7 @@ export type SkillDef = {
   level_titles?: string[];
   level_thresholds: LevelThreshold[];
   nodes: SkillNode[];
+  card_image?: string;
 };
 
 export type SkillWithLevel = {

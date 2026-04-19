@@ -64,6 +64,8 @@ pub struct SkillDef {
     pub level_titles: Vec<String>,
     pub level_thresholds: Vec<LevelThreshold>,
     pub nodes: Vec<SkillNode>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub card_image: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -134,6 +136,7 @@ mod tests {
             level_titles: default_level_titles(5),
             level_thresholds: vec![],
             nodes: vec![],
+            card_image: None,
         };
         let json = serde_json::to_string(&skill).unwrap();
         println!("Serialized: {}", json);
