@@ -51,11 +51,19 @@ pub struct SourceStats {
 }
 
 #[derive(Serialize)]
+pub struct CategoryStats {
+    pub name: String,
+    pub item_count: usize,
+    pub total_value: f64,
+}
+
+#[derive(Serialize)]
 pub struct ItemStats {
     pub total_items: usize,
     pub total_value: f64,
     pub average_daily_cost: f64,
     pub by_source: Vec<SourceStats>,
+    pub by_category: Vec<CategoryStats>,
 }
 
 #[derive(Serialize)]

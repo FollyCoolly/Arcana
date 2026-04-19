@@ -3,12 +3,9 @@
     import { invoke } from "@tauri-apps/api/core";
     import KeyHint from "$lib/KeyHint.svelte";
     import PromptWord from "$lib/PromptWord.svelte";
-    import type {
-        ItemData,
-        ItemWithComputed,
-        ItemSortKey,
-        ItemSortOrder,
-    } from "$lib/types/item";
+    import MenuItem from "$lib/MenuItem.svelte";
+    import type { LetterConfig } from "$lib/MenuItem.svelte";
+    import type { ItemData, ItemWithComputed } from "$lib/types/item";
 
     let { onBack }: { onBack: () => void } = $props();
 
@@ -16,12 +13,90 @@
     let itemError = $state<string | null>(null);
     let itemData = $state<ItemData | null>(null);
     let selectedItem = $state<ItemWithComputed | null>(null);
-    let itemFilterSource = $state<string | null>(null);
-    let itemSortKey = $state<ItemSortKey>("name");
-    let itemSortOrder = $state<ItemSortOrder>("asc");
+    let itemFilterCategory = $state<string | null>(null);
     let selectedIndex = $state(0);
     let rowRefs = $state<(HTMLElement | undefined)[]>([]);
     let listRef = $state<HTMLElement | undefined>(undefined);
+    let catNavRef = $state<HTMLElement | undefined>(undefined);
+    let catBtnRefs = $state<(HTMLButtonElement | undefined)[]>([]);
+
+    /* ── Category label mapping (Chinese → English for MenuItem display) ── */
+    const CATEGORY_LABELS: Record<string, string> = {
+        "衣物": "WEAR",
+        "鞋子": "SHOES",
+        "配饰": "GEAR",
+        "电子产品": "TECH",
+        "生活电器": "HOME",
+        "手办": "FIGS",
+        "家具": "DECO",
+        "实体书": "BOOKS",
+        "专辑": "DISC",
+    };
+
+    function getCategoryLabel(name: string): string {
+        return CATEGORY_LABELS[name] ?? name;
+    }
+
+    /* ── Category sidebar: letter configs + quad effect ── */
+    const QUAD_CONFIGS: { rot: number; clip: string }[] = [
+        { rot: -8, clip: "polygon(3% 5%, 97% 0%, 95% 95%, 1% 100%)" },
+        { rot: -4, clip: "polygon(1% 8%, 99% 2%, 97% 92%, 3% 98%)" },
+        { rot: -1, clip: "polygon(2% 0%, 98% 6%, 96% 96%, 0% 88%)" },
+        { rot: 1, clip: "polygon(0% 6%, 98% 0%, 100% 94%, 2% 100%)" },
+        { rot: 3, clip: "polygon(1% 4%, 97% 0%, 100% 90%, 3% 96%)" },
+        { rot: -2, clip: "polygon(0% 8%, 99% 0%, 100% 100%, 2% 92%)" },
+    ];
+
+    const letterCache = new Map<string, LetterConfig[]>();
+
+    function getSourceLetterConfigs(name: string, index: number): LetterConfig[] {
+        const key = `${index}:${name}`;
+        if (letterCache.has(key)) return letterCache.get(key)!;
+        const SIZES = ["0.75em", "0.82em", "0.88em", "0.92em", "1.0em", "1.08em", "1.15em"];
+        const OFFSETS = [-3, -2, -1, 0, 1, 2, 3, 4];
+        const ROTATES = [-6, -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5];
+        const letters: LetterConfig[] = name.split("").map((char, i) => {
+            if (char === " ") return { char: " ", size: "0.5em", yOffset: 0, rotate: 0 };
+            const seed = index * 37 + i * 13;
+            const colorVariant = (seed * 3) % 5;
+            return {
+                char,
+                size: SIZES[seed % SIZES.length],
+                yOffset: OFFSETS[(seed * 7) % OFFSETS.length],
+                rotate: ROTATES[(seed * 11) % ROTATES.length],
+                weight: i === 0 ? 800 : 700,
+                color: colorVariant === 0 ? ("black" as const) : undefined,
+                outline: colorVariant === 0 && seed % 2 === 0,
+                rounded: colorVariant === 0 && seed % 2 !== 0,
+            };
+        });
+        letterCache.set(key, letters);
+        return letters;
+    }
+
+    $effect(() => {
+        if (!itemData || !catNavRef) return;
+        void itemFilterCategory;
+        const idx = itemData.stats.by_category.findIndex(
+            (c) => c.name === itemFilterCategory,
+        );
+        if (idx < 0) return;
+        const btn = catBtnRefs[idx];
+        if (!btn) return;
+        const btnRect = btn.getBoundingClientRect();
+        const containerRect = catNavRef.getBoundingClientRect();
+        const centerX = btnRect.left + btnRect.width / 2 - containerRect.left;
+        const centerY = btnRect.top + btnRect.height / 2 - containerRect.top;
+        const quadW = btn.offsetWidth * 1.5;
+        const quadH = btn.offsetHeight * 1.3;
+        const cfg = QUAD_CONFIGS[idx % QUAD_CONFIGS.length];
+        catNavRef.style.setProperty("--cat-quad-x", `${centerX - quadW / 2}px`);
+        catNavRef.style.setProperty("--cat-quad-y", `${centerY - quadH / 2}px`);
+        catNavRef.style.setProperty("--cat-quad-w", `${quadW}px`);
+        catNavRef.style.setProperty("--cat-quad-h", `${quadH}px`);
+        catNavRef.style.setProperty("--cat-quad-rot", `${cfg.rot}deg`);
+        catNavRef.style.setProperty("--cat-quad-clip", cfg.clip);
+    });
 
     /* ── Deterministic hash for per-item visual variation ── */
     function itemHash(s: string): number {
@@ -105,11 +180,9 @@
         };
     });
 
-    // Re-run fan on data/filter/sort changes
+    // Re-run fan on data/filter changes
     $effect(() => {
-        void itemFilterSource;
-        void itemSortKey;
-        void itemSortOrder;
+        void itemFilterCategory;
         void itemData;
         void selectedItem;
         if (listRef) {
@@ -117,106 +190,16 @@
         }
     });
 
-    const ITEM_SORT_OPTIONS: { key: ItemSortKey; label: string }[] = [
-        { key: "name", label: "名称" },
-        { key: "price", label: "价格" },
-        { key: "daily_cost", label: "日均" },
-        { key: "date", label: "购入" },
-        { key: "days_owned", label: "天数" },
-    ];
-
-    function formatPrice(price: number | null): string {
-        if (price === null || price === undefined) return "—";
-        return `¥${price.toLocaleString("zh-CN", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-    }
-
-    function formatDailyCost(cost: number | null): string {
-        if (cost === null || cost === undefined) return "—";
-        return `¥${cost.toFixed(2)}`;
-    }
-
-    function toggleItemSort(key: ItemSortKey) {
-        if (itemSortKey === key) {
-            itemSortOrder = itemSortOrder === "asc" ? "desc" : "asc";
-        } else {
-            itemSortKey = key;
-            itemSortOrder = key === "name" ? "asc" : "desc";
-        }
-    }
-
-    function getItemSortValue(item: ItemWithComputed): string {
-        switch (itemSortKey) {
-            case "price":
-                return formatPrice(item.price);
-            case "daily_cost":
-                return formatDailyCost(item.daily_cost) + "/d";
-            case "date":
-                return item.purchase_date ?? "—";
-            case "days_owned":
-                return item.days_owned !== null ? item.days_owned + "天" : "—";
-            default:
-                return "";
-        }
-    }
-
     function getFilteredSortedItems(): ItemWithComputed[] {
         if (!itemData) return [];
-
-        let items = itemData.items;
-
-        if (itemFilterSource) {
-            items = items.filter((i) => i.source_id === itemFilterSource);
-        }
-
-        const sorted = [...items];
-        const dir = itemSortOrder === "asc" ? 1 : -1;
-
-        sorted.sort((a, b) => {
-            switch (itemSortKey) {
-                case "name":
-                    return dir * a.name.localeCompare(b.name, "zh-CN");
-                case "price":
-                    return dir * ((a.price ?? 0) - (b.price ?? 0));
-                case "daily_cost":
-                    return (
-                        dir *
-                        ((a.daily_cost ?? Infinity) -
-                            (b.daily_cost ?? Infinity))
-                    );
-                case "date":
-                    return (
-                        dir *
-                        (a.purchase_date ?? "").localeCompare(
-                            b.purchase_date ?? "",
-                        )
-                    );
-                case "days_owned":
-                    return dir * ((a.days_owned ?? 0) - (b.days_owned ?? 0));
-                default:
-                    return 0;
-            }
-        });
-
-        return sorted;
+        const items = itemFilterCategory
+            ? itemData.items.filter((i) => i.category === itemFilterCategory)
+            : itemData.items;
+        return [...items].sort((a, b) =>
+            a.name.localeCompare(b.name, "zh-CN"),
+        );
     }
 
-    function getFilteredItemStats(): {
-        total: number;
-        value: number;
-        avgDaily: number;
-    } {
-        const items = getFilteredSortedItems();
-        const total = items.length;
-        const value = items.reduce((sum, i) => sum + (i.price ?? 0), 0);
-        const dailyCosts = items
-            .map((i) => i.daily_cost)
-            .filter((c): c is number => c !== null);
-        const avgDaily =
-            dailyCosts.length > 0
-                ? dailyCosts.reduce((a, b) => a + b, 0) / dailyCosts.length
-                : 0;
-        return { total, value, avgDaily };
-    }
 
     function formatExtraValue(val: unknown): string {
         if (val === null || val === undefined) return "—";
@@ -275,6 +258,9 @@
 
         try {
             itemData = await invoke<ItemData>("load_items");
+            if (itemData.stats.by_category.length > 0) {
+                itemFilterCategory = itemData.stats.by_category[0].name;
+            }
         } catch (error) {
             itemError =
                 typeof error === "string" ? error : "Failed to load item data.";
@@ -303,69 +289,40 @@
     {:else if itemError}
         <p class="state-text error" style="padding: 2rem;">{itemError}</p>
     {:else if itemData}
-        {@const filteredStats = getFilteredItemStats()}
         <div class="rm-items-layout">
             <!-- LEFT: Category nav + stats -->
             <div class="rm-items-sidebar">
-                <nav class="rm-items-cat-nav">
-                    <button
-                        type="button"
-                        class="rm-items-cat-btn"
-                        class:is-active={!itemFilterSource}
-                        onclick={() => {
-                            itemFilterSource = null;
-                            selectedItem = null;
-                        }}
-                    >
-                        <span class="rm-items-cat-label">ALL</span>
-                        <span class="rm-items-cat-count"
-                            >{itemData.stats.total_items}</span
-                        >
-                    </button>
-                    {#each itemData.stats.by_source as src, i}
-                        <button
-                            type="button"
-                            class="rm-items-cat-btn"
-                            class:is-active={itemFilterSource === src.source_id}
-                            class:rm-items-cat-even={i % 2 === 0}
-                            onclick={() => {
-                                itemFilterSource =
-                                    itemFilterSource === src.source_id
-                                        ? null
-                                        : src.source_id;
-                                selectedItem = null;
-                            }}
-                        >
-                            <span class="rm-items-cat-label"
-                                >{src.source_name}</span
+                <nav class="rm-items-cat-nav" bind:this={catNavRef}>
+                    <ul class="rm-items-cat-list">
+                        {#each itemData.stats.by_category as cat, i}
+                            <li
+                                class="rm-items-cat-line"
+                                style:z-index={itemFilterCategory === cat.name ? 10 : 0}
                             >
-                            <span class="rm-items-cat-count"
-                                >{src.item_count}</span
-                            >
-                        </button>
-                    {/each}
+                                <button
+                                    type="button"
+                                    class="rm-items-cat-btn"
+                                    class:is-active={itemFilterCategory === cat.name}
+                                    bind:this={catBtnRefs[i]}
+                                    onclick={() => {
+                                        itemFilterCategory = cat.name;
+                                        selectedItem = null;
+                                    }}
+                                    onmouseenter={() => {
+                                        itemFilterCategory = cat.name;
+                                        selectedItem = null;
+                                    }}
+                                >
+                                    <MenuItem
+                                        letters={getSourceLetterConfigs(getCategoryLabel(cat.name), i)}
+                                        active={itemFilterCategory === cat.name}
+                                    />
+                                </button>
+                            </li>
+                        {/each}
+                    </ul>
+                    <div class="rm-items-cat-quad" aria-hidden="true"></div>
                 </nav>
-
-                <div class="rm-items-stat-block">
-                    <div class="rm-items-stat-row">
-                        <span class="rm-items-stat-label">TOTAL</span>
-                        <span class="rm-items-stat-value"
-                            >{filteredStats.total}</span
-                        >
-                    </div>
-                    <div class="rm-items-stat-row">
-                        <span class="rm-items-stat-label">VALUE</span>
-                        <span class="rm-items-stat-value"
-                            >{formatPrice(filteredStats.value)}</span
-                        >
-                    </div>
-                    <div class="rm-items-stat-row">
-                        <span class="rm-items-stat-label">AVG/DAY</span>
-                        <span class="rm-items-stat-value rm-items-daily"
-                            >{formatDailyCost(filteredStats.avgDaily)}</span
-                        >
-                    </div>
-                </div>
 
                 <button type="button" class="rm-back-btn" onclick={onBack}>
                     <KeyHint key="Esc" fontSize={36} />
@@ -375,30 +332,8 @@
 
             <!-- RIGHT: Sort + list + summary -->
             <div class="rm-items-content">
-                <div class="rm-items-sort-bar">
-                    {#each ITEM_SORT_OPTIONS as opt}
-                        <button
-                            type="button"
-                            class="rm-items-sort-btn"
-                            class:is-active={itemSortKey === opt.key}
-                            onclick={() => toggleItemSort(opt.key)}
-                        >
-                            {opt.label}
-                            {#if itemSortKey === opt.key}
-                                <span class="rm-items-sort-arrow"
-                                    >{itemSortOrder === "asc" ? "↑" : "↓"}</span
-                                >
-                            {/if}
-                        </button>
-                    {/each}
-                    <span class="rm-items-result-count"
-                        >{filteredStats.total}</span
-                    >
-                </div>
-
                 <div class="rm-items-list" bind:this={listRef}>
                     {#each getFilteredSortedItems() as item, i}
-                        {@const sortVal = getItemSortValue(item)}
                         <button
                             type="button"
                             class="rm-item-row"
@@ -417,9 +352,6 @@
                             }}
                         >
                             <span class="rm-item-row-name">{item.name}</span>
-                            {#if sortVal}
-                                <span class="rm-item-row-attr">{sortVal}</span>
-                            {/if}
                         </button>
                     {/each}
                 </div>
@@ -436,7 +368,7 @@
 
     .rm-items-layout {
         display: grid;
-        grid-template-columns: clamp(10rem, 20vw, 18rem) 1fr;
+        grid-template-columns: clamp(26rem, 42vw, 46rem) 1fr;
         overflow: hidden;
         height: 90vh;
         margin: auto 0;
@@ -447,107 +379,114 @@
         display: flex;
         flex-direction: column;
         height: 100%;
-        padding: clamp(1rem, 1.5vh, 2rem) clamp(1rem, 1.5vw, 2.5rem)
+        padding: clamp(1.5rem, 2.5vh, 3rem) clamp(1.5rem, 2vw, 3rem)
             clamp(1rem, 1.5vh, 2rem);
         box-sizing: border-box;
         overflow-y: auto;
     }
 
     .rm-items-cat-nav {
+        position: relative;
+        isolation: isolate;
+        overflow: hidden;
+        margin-bottom: auto;
+        padding: 3.2rem 0 3.2rem 0.8rem;
+    }
+
+    .rm-items-cat-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
         display: flex;
         flex-direction: column;
-        gap: clamp(0.3rem, 0.4vw, 0.6rem);
-        margin-bottom: auto;
+    }
+
+    .rm-items-cat-line {
+        margin: -0.64rem 0;
+        position: relative;
+    }
+
+    .rm-items-cat-line:nth-child(odd) {
+        margin-left: 0;
+    }
+
+    .rm-items-cat-line:nth-child(even) {
+        margin-left: 3.2vw;
     }
 
     .rm-items-cat-btn {
-        display: flex;
+        display: inline-flex;
         align-items: center;
-        gap: clamp(0.3rem, 0.4vw, 0.6rem);
-        width: fit-content;
+        gap: 0.5rem;
         border: none;
-        background: rgba(255, 255, 255, 0.06);
-        color: var(--rm-white);
+        background: var(--rm-black);
         cursor: pointer;
-        padding: clamp(0.3rem, 0.4vw, 0.6rem) clamp(0.8rem, 1vw, 1.6rem);
-        font-family: inherit;
-        font-size: clamp(0.65rem, 0.6vw, 1rem);
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        clip-path: polygon(4% 0%, 100% 0%, 96% 100%, 0% 100%);
-        transform: skewX(-5deg);
-        opacity: 0.45;
-        transition:
-            opacity 140ms ease,
-            background 140ms ease,
-            color 140ms ease;
+        padding: 1.28rem 3.2rem 1.28rem 2.56rem;
+        width: fit-content;
+        transition: background-color 140ms ease;
     }
 
-    .rm-items-cat-btn.rm-items-cat-even {
-        align-self: flex-end;
-    }
-
-    .rm-items-cat-btn:hover {
-        opacity: 0.75;
-        background: rgba(255, 255, 255, 0.12);
+    .rm-items-cat-btn:not(.is-active):hover {
+        background: var(--rm-red);
     }
 
     .rm-items-cat-btn.is-active {
-        opacity: 1;
         background: var(--rm-red);
-        color: var(--rm-white);
+        z-index: 1;
     }
 
-    .rm-items-cat-label {
-        transform: skewX(5deg);
+    .rm-items-cat-btn :global(.p5m) {
+        font-size: clamp(3.2rem, 5.12vw, 4.8rem);
     }
 
-    .rm-items-cat-count {
-        transform: skewX(5deg);
-        font-size: 0.75em;
-        opacity: 0.55;
+    /* Per-item rotation + clip-path via <li> wrapper */
+    .rm-items-cat-line:nth-child(6n + 1) .rm-items-cat-btn {
+        transform: rotate(-5deg);
+        clip-path: polygon(0% 8%, 100% 0%, 98% 92%, 2% 100%);
+    }
+    .rm-items-cat-line:nth-child(6n + 2) .rm-items-cat-btn {
+        transform: rotate(-3deg);
+        clip-path: polygon(1% 5%, 99% 0%, 97% 96%, 0% 100%);
+    }
+    .rm-items-cat-line:nth-child(6n + 3) .rm-items-cat-btn {
+        transform: rotate(-1deg);
+        clip-path: polygon(2% 0%, 100% 4%, 96% 100%, 0% 92%);
+    }
+    .rm-items-cat-line:nth-child(6n + 4) .rm-items-cat-btn {
+        transform: rotate(1deg);
+        clip-path: polygon(0% 6%, 98% 0%, 100% 94%, 3% 100%);
+    }
+    .rm-items-cat-line:nth-child(6n + 5) .rm-items-cat-btn {
+        transform: rotate(2deg);
+        clip-path: polygon(1% 0%, 97% 4%, 99% 100%, 2% 96%);
+    }
+    .rm-items-cat-line:nth-child(6n + 6) .rm-items-cat-btn {
+        transform: rotate(-2deg);
+        clip-path: polygon(0% 4%, 100% 0%, 98% 96%, 1% 100%);
     }
 
-    .rm-items-cat-btn.is-active .rm-items-cat-count {
-        opacity: 0.8;
+    .rm-items-cat-quad {
+        position: absolute;
+        left: var(--cat-quad-x, -9999px);
+        top: var(--cat-quad-y, -9999px);
+        width: var(--cat-quad-w, 0);
+        height: var(--cat-quad-h, 0);
+        transform: rotate(var(--cat-quad-rot, 0deg));
+        z-index: 15;
+        background: var(--rm-red);
+        mix-blend-mode: difference;
+        clip-path: var(--cat-quad-clip, polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%));
+        pointer-events: none;
+        transition:
+            left 120ms ease,
+            top 120ms ease,
+            width 120ms ease,
+            height 120ms ease,
+            transform 120ms ease,
+            clip-path 120ms ease;
     }
 
-    .rm-items-stat-block {
-        display: flex;
-        flex-direction: column;
-        gap: clamp(0.15rem, 0.2vw, 0.4rem);
-        margin-top: clamp(1.5rem, 2.5vh, 3rem);
-        padding-top: clamp(1rem, 1.5vh, 2rem);
-        border-top: 2px solid rgba(255, 255, 255, 0.08);
-    }
-
-    .rm-items-stat-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: baseline;
-        padding: clamp(0.1rem, 0.15vw, 0.25rem) 0;
-    }
-
-    .rm-items-stat-label {
-        font-size: clamp(0.55rem, 0.5vw, 0.85rem);
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
-        color: rgba(255, 255, 255, 0.4);
-    }
-
-    .rm-items-stat-value {
-        font-size: clamp(0.7rem, 0.65vw, 1.1rem);
-        font-weight: 800;
-        letter-spacing: 0.04em;
-    }
-
-    .rm-items-daily {
-        color: var(--rm-red);
-    }
-
-    /* ── Right content: sort + list + summary ── */
+    /* ── Right content: list ── */
     .rm-items-content {
         display: flex;
         flex-direction: column;
@@ -556,56 +495,6 @@
             clamp(0.5rem, 1vh, 1rem) 0;
         box-sizing: border-box;
         overflow: hidden;
-    }
-
-    .rm-items-sort-bar {
-        display: flex;
-        align-items: center;
-        gap: clamp(0.3rem, 0.4vw, 0.6rem);
-        margin-bottom: clamp(0.4rem, 0.5vw, 0.8rem);
-        padding-left: clamp(1rem, 1.5vw, 2.5rem);
-        flex-wrap: wrap;
-        flex-shrink: 0;
-    }
-
-    .rm-items-sort-btn {
-        border: none;
-        background: rgba(255, 255, 255, 0.06);
-        color: var(--rm-white);
-        cursor: pointer;
-        padding: clamp(0.2rem, 0.25vw, 0.4rem) clamp(0.5rem, 0.6vw, 1rem);
-        font-family: inherit;
-        font-size: clamp(0.58rem, 0.52vw, 0.9rem);
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-        opacity: 0.45;
-        transform: skewX(-3deg);
-        transition:
-            opacity 140ms ease,
-            background 140ms ease;
-    }
-
-    .rm-items-sort-btn:hover {
-        opacity: 0.75;
-    }
-
-    .rm-items-sort-btn.is-active {
-        opacity: 1;
-        background: var(--rm-red);
-    }
-
-    .rm-items-sort-arrow {
-        margin-left: 0.2em;
-    }
-
-    .rm-items-result-count {
-        margin-left: auto;
-        font-size: clamp(0.55rem, 0.5vw, 0.85rem);
-        font-weight: 800;
-        color: rgba(255, 255, 255, 0.35);
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
     }
 
     /* ── Item list: radial fan from left ── */
@@ -670,21 +559,7 @@
         min-width: 0;
     }
 
-    .rm-item-row-attr {
-        flex-shrink: 0;
-        margin-left: clamp(0.8rem, 1vw, 1.6rem);
-        font-weight: 700;
-        color: rgba(255, 255, 255, 0.45);
-        white-space: nowrap;
-        font-size: 0.85em;
-        letter-spacing: 0.04em;
-    }
-
-    .rm-item-row.is-selected .rm-item-row-attr {
-        color: rgba(255, 255, 255, 0.9);
-    }
-
-    /* ── Bottom summary bar ── */
+    /* ── Gallery detail (reused for item detail view) ── */
 
     /* ── Gallery detail (reused for item detail view) ── */
 </style>

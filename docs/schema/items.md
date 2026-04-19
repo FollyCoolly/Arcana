@@ -107,12 +107,19 @@ ItemStats {
   total_items: number
   total_value: number         // 所有有价格物品之和
   average_daily_cost: number  // 所有有值 daily_cost 的均值
-  by_source: [SourceStats]    // 按来源（即类别）统计
+  by_source: [SourceStats]    // 按数据源统计
+  by_category: [CategoryStats] // 按 frontmatter `类别` 字段统计，按数量降序
 }
 
 SourceStats {
   source_id: string
   source_name: string
+  item_count: number
+  total_value: number
+}
+
+CategoryStats {
+  name: string       // 与 frontmatter `类别` 值一致
   item_count: number
   total_value: number
 }

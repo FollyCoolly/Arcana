@@ -228,11 +228,33 @@ pub fn load_items() -> Result<ItemData, String> {
         })
         .collect();
 
+    // By category (from item `category` field)
+    let mut cat_map: HashMap<String, (usize, f64)> = HashMap::new();
+    for item in &all_items {
+        if let Some(cat) = &item.category {
+            let entry = cat_map.entry(cat.clone()).or_insert((0, 0.0));
+            entry.0 += 1;
+            if let Some(p) = item.price {
+                entry.1 += p;
+            }
+        }
+    }
+    let mut by_category: Vec<CategoryStats> = cat_map
+        .into_iter()
+        .map(|(name, (item_count, total_value))| CategoryStats {
+            name,
+            item_count,
+            total_value,
+        })
+        .collect();
+    by_category.sort_by(|a, b| b.item_count.cmp(&a.item_count));
+
     let stats = ItemStats {
         total_items,
         total_value,
         average_daily_cost,
         by_source,
+        by_category,
     };
 
     Ok(ItemData {

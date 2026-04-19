@@ -27,11 +27,18 @@ export type SourceStats = {
     total_value: number;
 };
 
+export type CategoryStats = {
+    name: string;
+    item_count: number;
+    total_value: number;
+};
+
 export type ItemStats = {
     total_items: number;
     total_value: number;
     average_daily_cost: number;
     by_source: SourceStats[];
+    by_category: CategoryStats[];
 };
 
 export type ItemData = {
