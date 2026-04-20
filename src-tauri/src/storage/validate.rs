@@ -1,7 +1,7 @@
 //! Shared data validation — pure logic, no I/O.
 //!
 //! Rules mirror `scripts/validate_data.py` so that Rust agent, Tauri commands,
-//! and (future) MCP Server all enforce the same constraints.
+//! and arcana-data CLI all enforce the same constraints.
 
 use serde_json::Value;
 use std::collections::HashSet;

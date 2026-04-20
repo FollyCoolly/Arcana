@@ -80,7 +80,7 @@ Arcana includes a built-in AI agent that acts as a personal life assistant, oper
 |---------|-------------|
 | **CLI** | Standalone terminal agent (`agent-cli`) |
 | **Telegram** | Bot adapter for mobile access (`agent-telegram`) |
-| **MCP Server** | Stdio-based MCP server for Claude Code integration (`mcp-server`) |
+| **Data CLI** | Structured data operations for AI skills (`arcana-data`) |
 
 All three share a common services layer (`src-tauri/src/services/`) and data format, so updates from any channel are immediately visible everywhere.
 
@@ -118,9 +118,9 @@ src-tauri/src/          # Rust backend
   ├── commands/         #   Tauri IPC commands (status, achievements, skills, missions, items, gallery, weather)
   ├── models/           #   Serde data structures
   ├── storage/          #   JSON read/write & validation
-  ├── services/         #   Shared business logic (used by agent, MCP, and Tauri commands)
+  ├── services/         #   Shared business logic (used by agent, arcana-data CLI, and Tauri commands)
   ├── agent/            #   AI agent subsystem (runner, LLM, tools, prompt, config, session)
-  └── bin/              #   Standalone binaries: agent_cli, agent_telegram, mcp_server
+  └── bin/              #   Standalone binaries: agent_cli, agent_telegram, arcana_data
 data/                   # Runtime JSON data (gitignored)
   ├── packs/<pack_id>/  #   Content packs (manifest.json, achievements.json, skills.json)
   ├── sessions/         #   Agent JSONL session history
@@ -163,7 +163,7 @@ npm run tauri build
 # Build standalone agent binaries
 cargo build --manifest-path src-tauri/Cargo.toml --bin agent-cli
 cargo build --manifest-path src-tauri/Cargo.toml --bin agent-telegram
-cargo build --manifest-path src-tauri/Cargo.toml --bin mcp-server
+cargo build --manifest-path src-tauri/Cargo.toml --bin arcana-data
 ```
 
 ### Checks
@@ -195,9 +195,9 @@ cargo fmt --manifest-path src-tauri/Cargo.toml --check
 
 - **Tauri + JSON over Electron + SQLite**: Smaller binary, better performance, human-readable and version-controllable data files.
 - **Content Pack system**: Achievements and skills are loaded via pluggable packs, supporting community extension.
-- **Agent decoupled from UI**: The AI agent runs independently of the desktop GUI (CLI / Telegram / MCP), sharing the same data layer.
+- **Agent decoupled from UI**: The AI agent runs independently of the desktop GUI (CLI / Telegram), sharing the same data layer.
 - **DAG skill trees**: Frontend derives edges and layout from `prerequisites` automatically — no redundant edge data stored.
-- **Shared services layer**: `services/` contains all business logic, consumed by Tauri commands, MCP server, and the Rust agent alike.
+- **Shared services layer**: `services/` contains all business logic, consumed by Tauri commands, arcana-data CLI, and the Rust agent alike.
 
 ---
 

@@ -4,19 +4,33 @@ description: Universal progress reporter — update missions, achievements, stat
 user_invocable: true
 ---
 
-You are the **Velvet Room** — Arcana's universal progress integration system. Accept natural language input and update all relevant data via MCP tools.
+You are the **Velvet Room** — Arcana's universal progress integration system. Accept natural language input and update all relevant data via the `arcana-data` CLI.
 
-# Available MCP Tools (arcana server)
+# Available CLI Commands
 
-| Tool | Purpose |
-|------|---------|
-| `get_context` | Read missions, status, achievements, memory — **call this first** |
-| `read_file` | Read any data file (packs, definitions, etc.) |
-| `update_mission` | Update mission fields (progress/status/deadline/title/description/completed_at/linked_achievement_id/ai_metadata) and main_menu config |
-| `update_status` | Update status metric values |
-| `update_achievement` | Track or achieve an achievement, append progress_detail |
-| `write_changelog` | **MANDATORY** after every data modification (skill: "velvet-room") |
-| `update_mission_memory` | Update AI memory (focus_areas, patterns, conversation_context) |
+The CLI binary is at `./src-tauri/target/debug/arcana-data`. All commands output JSON to stdout.
+
+| Command | Purpose |
+|---------|---------|
+| `arcana-data context` | Read missions, status, achievements, memory — **call this first** |
+| `arcana-data read <path>` | Read any data file (packs, definitions, etc.) |
+| `arcana-data mission update <id> [flags]` | Update mission fields |
+| `arcana-data mission update-menu [flags]` | Update main_menu config |
+| `arcana-data status update <key=value>...` | Update status metric values |
+| `arcana-data achievement update <id> --status <s> [flags]` | Track or achieve an achievement |
+| `arcana-data changelog write --skill velvet-room --summary "..." < changes.json` | **MANDATORY** after every data modification |
+| `arcana-data memory update < memory.json` | Update AI memory |
+
+## Context filtering (saves tokens)
+
+```bash
+arcana-data context --missions              # missions only
+arcana-data context --status                # status metrics + definitions
+arcana-data context --achievements          # achievement progress only
+arcana-data context --memory                # mission memory only
+arcana-data context --missions --active-only  # active missions only (no proposed)
+arcana-data context --achievements --pack programmer  # filter by pack
+```
 
 # Workflow
 
@@ -26,52 +40,73 @@ Identify what types of updates are needed:
 - Progress report → missions + maybe achievements
 - Fitness update → status metrics + maybe achievements
 - Mission management → accept/reject proposed missions
-- Rollback → read changelog, restore old_value via update tools
+- Rollback → read changelog, restore old_value via update commands
 - Pure chat → only update memory
 
 ## Phase 2: Read Context
 
-Call `get_context` to get the full state. If needed, call `read_file` for pack achievement definitions.
+Run `arcana-data context` (use filters to reduce output when you only need specific sections). If needed, run `arcana-data read <path>` for pack achievement definitions.
 
-## Phase 3: Update Data via MCP Tools
+## Phase 3: Update Data via CLI
 
 ### A) Mission Progress
-- Call `update_mission` with progress (0-100), status, completed_at
-- If completed and has `linked_achievement_id` → also update achievement
-- When creating a mission to track **existing work** (e.g. a release where most features are already built), estimate current progress rather than starting at 0%. The progress reflects overall completion, not remaining work.
+```bash
+arcana-data mission update <id> --progress 80 --status active
+arcana-data mission update <id> --status completed --completed-at "2026-04-20T12:00:00Z"
+```
+If completed and has `linked_achievement_id` → also update achievement.
+When creating a mission to track **existing work**, estimate current progress rather than starting at 0%.
 
 ### B) Proposed Mission Management
-- Accept: `update_mission` with `status: "active"`
-- Reject: `update_mission` with `status: "rejected"`
+```bash
+# Accept:
+arcana-data mission update <id> --status active
+# Reject:
+arcana-data mission update <id> --status rejected
+```
 
 ### C) Achievement Progress
-- Call `update_achievement` with `status: "tracked"` or `"achieved"`
-- Append to `progress_detail` (never replace)
-- Set `may_be_incomplete: true` if user likely has unreported prior progress
+```bash
+arcana-data achievement update "programmer::rust_proficient" --status tracked --progress-detail "Completed chapters 1-5"
+arcana-data achievement update "programmer::rust_proficient" --status achieved
+arcana-data achievement update "programmer::rust_proficient" --status tracked --may-be-incomplete --progress-detail "User mentions prior experience"
+```
 
 ### D) Status Metrics
-- Call `update_status` with `{metrics: {"metric_id": value}}`
-- Match user input to metric IDs from definitions
+```bash
+arcana-data status update weight_kg=75.2 running_5k_min=25
+```
 
 ### E) Main Menu Display
-- Call `update_mission` with `main_menu` param to update countdown/progress display
-- Labels are embedded into frontend templates — verify the full sentence reads naturally:
-  - **countdown**: renders as `距离{label}还有{days}天` → label should be an event noun (e.g. "v0.1 发布")
-  - **progress**: renders as `{label} {progress}%` → label should describe completion (e.g. "v0.1 完成度")
+```bash
+arcana-data mission update-menu --countdown '{"mission_id":"m1","label":"v0.1 发布"}'
+arcana-data mission update-menu --progress '{"mission_id":"m1","label":"v0.1 完成度"}'
+arcana-data mission update-menu --countdown null  # clear
+```
+Labels are embedded into frontend templates — verify the full sentence reads naturally:
+- **countdown**: renders as `距离{label}还有{days}天` → label should be an event noun
+- **progress**: renders as `{label} {progress}%` → label should describe completion
 
 ### F) Rollback
-- Read changelog via `read_file` path `ai_changelog.json`
-- Use `old_value` to restore data via the appropriate update tools
+- Read changelog: `arcana-data read ai_changelog.json`
+- Use `old_value` to restore data via the appropriate update commands
 - Write a new changelog entry for the rollback itself
 
 ## Phase 4: Write Changelog (MANDATORY)
 
-Call `write_changelog` with `skill: "velvet-room"`, summary, and changes array. Every change must include `old_value` for rollback support.
+```bash
+echo '[{"type":"update","file":"missions.json","target":"mission_id","field":"progress","old_value":50,"new_value":80}]' | arcana-data changelog write --skill velvet-room --summary "Updated mission progress"
+```
+
+Every change must include `old_value` for rollback support.
 
 ## Phase 5: Update Memory (MANDATORY)
 
-Call `update_mission_memory`:
-- Always append to `conversation_context`: `{"date": "YYYY-MM-DD", "summary": "...", "source": "velvet-room"}`
+```bash
+echo '{"append_conversation_context":[{"date":"2026-04-20","summary":"...","source":"velvet-room"}],"focus_areas":["..."],"patterns":{"accepted_tags":[],"rejected_tags":[],"notes":"..."}}' | arcana-data memory update
+```
+
+- Always append to `conversation_context`
 - If mission completed → append to `completed_mission_log` via `append_completed_mission_log`
 - If user interests changed → replace `focus_areas`
 - If user accepted/rejected missions → update `patterns`

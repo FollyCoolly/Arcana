@@ -5,7 +5,7 @@ use std::path::Path;
 
 /// Write a changelog entry. `skill` is provided by the caller:
 /// - Agent tools pass `"agent"`
-/// - MCP callers pass their skill name (`"velvet-room"`, `"phan-site"`, etc.)
+/// - CLI callers pass their skill name (`"velvet-room"`, `"phan-site"`, etc.)
 pub fn write_changelog(data_dir: &Path, skill: &str, input: &Value) -> Result<String, String> {
     let changelog_path = data_dir.join("ai_changelog.json");
 
