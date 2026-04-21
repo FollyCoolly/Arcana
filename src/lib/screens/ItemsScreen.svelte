@@ -290,6 +290,97 @@
         <p class="state-text error" style="padding: 2rem;">{itemError}</p>
     {:else if itemData}
         <div class="rm-items-layout">
+            <svg
+                class="rm-items-divider"
+                viewBox="-700 0 800 1000"
+                preserveAspectRatio="xMaxYMid meet"
+                aria-hidden="true"
+            >
+                <path
+                    d="M -685.48 -200 A 1993 1993 0 0 1 -685.48 1200"
+                    fill="none"
+                    stroke="var(--rm-black)"
+                    stroke-width="48"
+                />
+                <path
+                    d="M -634.27 -200 A 2041 2041 0 0 1 -634.27 1200"
+                    fill="none"
+                    stroke="var(--rm-gray)"
+                    stroke-width="48"
+                />
+                <path
+                    d="M -583.24 -200 A 2089 2089 0 0 1 -583.24 1200"
+                    fill="none"
+                    stroke="var(--rm-black)"
+                    stroke-width="48"
+                />
+                <path
+                    d="M -532.37 -200 A 2137 2137 0 0 1 -532.37 1200"
+                    fill="none"
+                    stroke="var(--rm-gray)"
+                    stroke-width="48"
+                />
+                <path
+                    d="M -481.63 -200 A 2185 2185 0 0 1 -481.63 1200"
+                    fill="none"
+                    stroke="var(--rm-black)"
+                    stroke-width="48"
+                />
+                <path
+                    d="M -431.02 -200 A 2233 2233 0 0 1 -431.02 1200"
+                    fill="none"
+                    stroke="var(--rm-gray)"
+                    stroke-width="48"
+                />
+                <path
+                    d="M -380.53 -200 A 2281 2281 0 0 1 -380.53 1200"
+                    fill="none"
+                    stroke="var(--rm-black)"
+                    stroke-width="48"
+                />
+                <path
+                    d="M -330.16 -200 A 2329 2329 0 0 1 -330.16 1200"
+                    fill="none"
+                    stroke="var(--rm-gray)"
+                    stroke-width="48"
+                />
+                <path
+                    d="M -279.88 -200 A 2377 2377 0 0 1 -279.88 1200"
+                    fill="none"
+                    stroke="var(--rm-black)"
+                    stroke-width="48"
+                />
+                <path
+                    d="M -229.7 -200 A 2425 2425 0 0 1 -229.7 1200"
+                    fill="none"
+                    stroke="var(--rm-gray)"
+                    stroke-width="48"
+                />
+                <path
+                    d="M -179.6 -200 A 2473 2473 0 0 1 -179.6 1200"
+                    fill="none"
+                    stroke="var(--rm-black)"
+                    stroke-width="48"
+                />
+                <path
+                    d="M -129.6 -200 A 2521 2521 0 0 1 -129.6 1200"
+                    fill="none"
+                    stroke="var(--rm-gray)"
+                    stroke-width="48"
+                />
+                <path
+                    d="M -79.68 -200 A 2569 2569 0 0 1 -79.68 1200"
+                    fill="none"
+                    stroke="var(--rm-black)"
+                    stroke-width="48"
+                />
+                <path
+                    d="M 0 0 A 2596 2596 0 0 1 0 1000"
+                    fill="none"
+                    stroke="var(--rm-white)"
+                    stroke-width="6"
+                />
+            </svg>
             <!-- LEFT: Category nav + stats -->
             <div class="rm-items-sidebar">
                 <nav class="rm-items-cat-nav" bind:this={catNavRef}>
@@ -370,8 +461,24 @@
         display: grid;
         grid-template-columns: clamp(26rem, 42vw, 46rem) 1fr;
         overflow: hidden;
-        height: 90vh;
-        margin: auto 0;
+        height: 100vh;
+        margin: 0;
+        position: relative;
+    }
+
+    .rm-items-divider {
+        position: absolute;
+        top: 0;
+        left: clamp(26rem, 42vw, 46rem);
+        height: 100vh;
+        /* width derived from viewBox aspect ratio (800:1000 = 4:5) */
+        width: 80vh;
+        /* align viewBox x=0 (white arc's rightmost boundary) to the grid column border.
+           viewBox x=0 is at 700/800 = 87.5% of SVG box width. */
+        transform: translateX(-87.5%);
+        z-index: 0;
+        pointer-events: none;
+        overflow: visible;
     }
 
     /* ── Left sidebar: category nav + stats ── */
@@ -383,6 +490,8 @@
             clamp(1rem, 1.5vh, 2rem);
         box-sizing: border-box;
         overflow-y: auto;
+        position: relative;
+        z-index: 1;
     }
 
     .rm-items-cat-nav {

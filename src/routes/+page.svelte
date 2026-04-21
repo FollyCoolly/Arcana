@@ -661,6 +661,8 @@
         --rm-black: #000000;
         --rm-white: #ffffff;
         --rm-red: #e5191c;
+        --rm-gray: #2e2e2e;
+        --rm-gold: #f5a623;
         position: relative;
         min-height: 100vh;
         color: var(--rm-white);
