@@ -7,6 +7,9 @@
     import type { LetterConfig } from "$lib/MenuItem.svelte";
     import type { ItemData, ItemWithComputed } from "$lib/types/item";
 
+    type SortKey = "name" | "days_owned" | "price" | "daily_cost";
+    type SortDir = "asc" | "desc";
+
     let { onBack }: { onBack: () => void } = $props();
 
     let itemLoading = $state(false);
@@ -21,6 +24,52 @@
     let catBtnRefs = $state<(HTMLButtonElement | undefined)[]>([]);
     let scrollRatio = $state(0);
     let thumbRatio = $state(1);
+    let sortKey = $state<SortKey>("name");
+    let sortDir = $state<SortDir>("asc");
+
+    function toggleSort(key: SortKey) {
+        if (sortKey === key) {
+            sortDir = sortDir === "asc" ? "desc" : "asc";
+        } else {
+            sortKey = key;
+            sortDir = "asc";
+        }
+        selectedIndex = 0;
+        selectedItem = null;
+    }
+
+    function getSortIndicator(key: SortKey): string {
+        if (sortKey !== key) return "";
+        return sortDir === "asc" ? " ▲" : " ▼";
+    }
+
+    function getPillContent(
+        item: ItemWithComputed,
+    ): { main: string; unit: string } | null {
+        if (sortKey === "name") return null;
+        if (sortKey === "days_owned") {
+            if (item.days_owned === null || item.days_owned === undefined)
+                return { main: "D", unit: "—" };
+            return { main: "D", unit: String(item.days_owned) };
+        }
+        if (sortKey === "price") {
+            if (item.price === null || item.price === undefined)
+                return { main: "￥", unit: "—" };
+            return { main: "￥", unit: formatMoney(item.price) };
+        }
+        if (sortKey === "daily_cost") {
+            if (item.daily_cost === null || item.daily_cost === undefined)
+                return { main: "￥", unit: "—" };
+            return { main: "￥", unit: formatMoney(item.daily_cost) };
+        }
+        return null;
+    }
+
+    function formatMoney(n: number): string {
+        if (n >= 100) return Math.round(n).toLocaleString("en-US");
+        if (n >= 10) return n.toFixed(1);
+        return n.toFixed(2);
+    }
 
     /* ── Category label mapping (Chinese → English for MenuItem display) ── */
     const CATEGORY_LABELS: Record<string, string> = {
@@ -207,12 +256,18 @@
         };
     });
 
-    // Re-run fan on data/filter changes
+    // Re-run fan on data/filter/sort changes
     $effect(() => {
         void itemFilterCategory;
         void itemData;
         void selectedItem;
+        void sortKey;
+        void sortDir;
         if (listRef) {
+            // Run synchronously so newly-mounted rows don't flash as "visible"
+            // before the next paint, then again after layout settles.
+            updateFanEffect();
+            updateScrollIndicator();
             requestAnimationFrame(() =>
                 requestAnimationFrame(() => {
                     updateFanEffect();
@@ -227,7 +282,28 @@
         const items = itemFilterCategory
             ? itemData.items.filter((i) => i.category === itemFilterCategory)
             : itemData.items;
-        return [...items].sort((a, b) => a.name.localeCompare(b.name, "zh-CN"));
+        const dir = sortDir === "asc" ? 1 : -1;
+        const nullsLast = (v: number | null) =>
+            v === null || v === undefined ? Number.POSITIVE_INFINITY : v;
+        return [...items].sort((a, b) => {
+            if (sortKey === "name") {
+                return dir * a.name.localeCompare(b.name, "zh-CN");
+            }
+            if (sortKey === "days_owned") {
+                return (
+                    dir * (nullsLast(a.days_owned) - nullsLast(b.days_owned))
+                );
+            }
+            if (sortKey === "price") {
+                return dir * (nullsLast(a.price) - nullsLast(b.price));
+            }
+            if (sortKey === "daily_cost") {
+                return (
+                    dir * (nullsLast(a.daily_cost) - nullsLast(b.daily_cost))
+                );
+            }
+            return 0;
+        });
     }
 
     function formatExtraValue(val: unknown): string {
@@ -242,11 +318,7 @@
     function handleKeydown(event: KeyboardEvent) {
         if (event.key === "Escape") {
             event.preventDefault();
-            if (selectedItem) {
-                selectedItem = null;
-            } else {
-                onBack();
-            }
+            onBack();
             return;
         }
         {
@@ -468,14 +540,51 @@
 
             <!-- RIGHT: Sort + list + summary -->
             <div class="rm-items-content">
+                <div class="rm-items-sort-bar">
+                    <button
+                        type="button"
+                        class="rm-ach-tab"
+                        class:active={sortKey === "name"}
+                        onclick={() => toggleSort("name")}
+                    >
+                        Name{getSortIndicator("name")}
+                    </button>
+                    <button
+                        type="button"
+                        class="rm-ach-tab"
+                        class:active={sortKey === "days_owned"}
+                        onclick={() => toggleSort("days_owned")}
+                    >
+                        Owned{getSortIndicator("days_owned")}
+                    </button>
+                    <button
+                        type="button"
+                        class="rm-ach-tab"
+                        class:active={sortKey === "price"}
+                        onclick={() => toggleSort("price")}
+                    >
+                        Price{getSortIndicator("price")}
+                    </button>
+                    <button
+                        type="button"
+                        class="rm-ach-tab"
+                        class:active={sortKey === "daily_cost"}
+                        onclick={() => toggleSort("daily_cost")}
+                    >
+                        Daily{getSortIndicator("daily_cost")}
+                    </button>
+                </div>
                 <div class="rm-items-list" bind:this={listRef}>
                     {#each getFilteredSortedItems() as item, i}
+                        {@const pill = getPillContent(item)}
                         <button
                             type="button"
                             class="rm-item-row"
                             class:is-selected={selectedItem?.id === item.id}
                             bind:this={rowRefs[i]}
-                            style="width: {getItemWidthPercent(item)}%; --row-clip: {getItemClipPath(item)};"
+                            style="width: {getItemWidthPercent(
+                                item,
+                            )}%; --row-clip: {getItemClipPath(item)};"
                             onclick={() => {
                                 selectedIndex = i;
                                 selectedItem = item;
@@ -486,9 +595,22 @@
                             }}
                         >
                             {#if selectedItem?.id === item.id}
-                                <span class="rm-item-selection-tri" aria-hidden="true"></span>
+                                <span
+                                    class="rm-item-selection-tri"
+                                    aria-hidden="true"
+                                ></span>
                             {/if}
                             <span class="rm-item-row-name">{item.name}</span>
+                            {#if pill}
+                                <span class="rm-item-pill" aria-hidden="true">
+                                    <span class="rm-item-pill-main"
+                                        >{pill.main}</span
+                                    >
+                                    <span class="rm-item-pill-unit"
+                                        >{pill.unit}</span
+                                    >
+                                </span>
+                            {/if}
                         </button>
                     {/each}
                 </div>
@@ -695,6 +817,58 @@
         overflow: hidden;
     }
 
+    /* ── Sort bar (above the list, aligned to list's visual x-start) ── */
+    .rm-items-sort-bar {
+        display: flex;
+        align-items: center;
+        gap: clamp(0.3rem, 0.5vw, 0.8rem);
+        flex-wrap: wrap;
+        padding: clamp(1rem, 2vh, 2rem) 0 clamp(0.5rem, 1vh, 1rem) 11vw;
+        position: relative;
+        z-index: 2;
+    }
+
+    .rm-ach-tab {
+        position: relative;
+        z-index: 0;
+        font-family: "p5hatty", "Orbitron", Arial, sans-serif;
+        font-size: clamp(1rem, 1.1vw, 1.6rem);
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        padding: clamp(0.5rem, 0.6vw, 0.9rem) clamp(1rem, 1.2vw, 1.8rem);
+        border: none;
+        background: var(--rm-white);
+        color: var(--rm-white);
+        cursor: pointer;
+        clip-path: polygon(0% 0%, 100% 0%, 96% 100%, 4% 100%);
+        transition: all 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
+        white-space: nowrap;
+    }
+
+    .rm-ach-tab::before {
+        content: "";
+        position: absolute;
+        inset: 4px;
+        background: var(--rm-black);
+        clip-path: polygon(0% 0%, 100% 0%, 96% 100%, 4% 100%);
+        z-index: -1;
+        transition: background 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+
+    .rm-ach-tab:hover {
+        transform: scale(1.06);
+    }
+
+    .rm-ach-tab.active {
+        background: var(--rm-white);
+        color: var(--rm-black);
+    }
+
+    .rm-ach-tab.active::before {
+        background: var(--rm-white);
+    }
+
     /* ── Item list: radial fan from left ── */
     .rm-items-list {
         flex: 1;
@@ -703,7 +877,7 @@
         flex-direction: column;
         align-items: flex-start;
         /* Generous vertical padding so items can scroll through the center zone */
-        padding: 5vh 0 40vh 0;
+        padding: 40vh 0 40vh 0;
         padding-left: 8vw;
         transform: translate(3vw, -8vh) rotate(8.85deg);
         transform-origin: 0% 0%;
@@ -771,6 +945,8 @@
     }
 
     .rm-item-row-name {
+        font-family: "方正兰亭黑_GBK", inherit;
+        font-size: clamp(1.3rem, 1.5vw, 2.2rem);
         letter-spacing: 0.02em;
         white-space: nowrap;
         overflow: hidden;
@@ -779,6 +955,42 @@
         min-width: 0;
         position: relative;
         z-index: 2;
+    }
+
+    /* ── Sort-value pill (inside right side of row quadrilateral) ── */
+    .rm-item-pill {
+        position: absolute;
+        right: clamp(1.5rem, 2vw, 3rem);
+        top: 50%;
+        transform: translateY(-50%);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: clamp(7.5rem, 9.5vw, 11.5rem);
+        height: clamp(3.2rem, 4vw, 4.8rem);
+        padding: 0 clamp(1.2rem, 1.4vw, 2rem);
+        background: var(--rm-white);
+        color: var(--rm-black);
+        border-radius: 9999px;
+        font-family:
+            "方正兰亭黑_GBK", "Inter", "SF Pro Display", "Helvetica Neue",
+            Arial, sans-serif;
+        font-size: clamp(1.4rem, 1.6vw, 2rem);
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: 0.01em;
+        white-space: nowrap;
+        pointer-events: none;
+        z-index: 3;
+    }
+
+    .rm-item-pill-main {
+        text-align: left;
+    }
+
+    .rm-item-pill-unit {
+        text-align: right;
+        font-weight: 600;
     }
 
     /* ── Gallery detail (reused for item detail view) ── */

@@ -10,7 +10,6 @@ use crate::storage::json_store::{read_json_file, resolve_data_dir};
 
 /// Known frontmatter keys that map to public fields (Chinese keys).
 const KNOWN_KEYS: &[&str] = &[
-    "名称",
     "品牌",
     "价格",
     "购入日期",
@@ -101,7 +100,7 @@ fn parse_md_file(path: &Path, source_id: &str) -> Option<ItemWithComputed> {
     let file_stem = path.file_stem()?.to_string_lossy().to_string();
     let md_dir = path.parent()?;
 
-    let name = get_string(&frontmatter, "名称").unwrap_or_else(|| file_stem.clone());
+    let name = file_stem.clone();
     let brand = get_string(&frontmatter, "品牌");
     let price = get_number(&frontmatter, "价格");
     let purchase_date = get_string(&frontmatter, "购入日期");

@@ -941,6 +941,27 @@
         padding: clamp(6rem, 10vh, 12rem) clamp(2rem, 3vw, 5rem)
             clamp(7rem, 12vh, 12rem) clamp(1.5rem, 2.5vw, 4rem);
         box-sizing: border-box;
+        scrollbar-gutter: stable;
+        margin-right: clamp(1rem, 2vw, 3rem);
+    }
+
+    .rm-gallery-content::-webkit-scrollbar {
+        width: 14px;
+    }
+    .rm-gallery-content::-webkit-scrollbar-track {
+        background: var(--rm-black, #000);
+        border: 4px solid var(--rm-white, #fff);
+        border-radius: 0;
+        margin-top: 12vh;
+        margin-bottom: 12vh;
+    }
+    .rm-gallery-content::-webkit-scrollbar-thumb {
+        background: var(--rm-white, #fff);
+        border-radius: 0;
+        border: none;
+    }
+    .rm-gallery-content::-webkit-scrollbar-thumb:hover {
+        background: var(--rm-white, #fff);
     }
 
     .rm-gallery-wall {
@@ -1100,6 +1121,27 @@
         box-sizing: border-box;
         overflow-y: auto;
         height: 100%;
+        scrollbar-gutter: stable;
+        margin-right: clamp(1rem, 2vw, 3rem);
+    }
+
+    .rm-gallery-detail::-webkit-scrollbar {
+        width: 14px;
+    }
+    .rm-gallery-detail::-webkit-scrollbar-track {
+        background: var(--rm-black, #000);
+        border: 4px solid var(--rm-white, #fff);
+        border-radius: 0;
+        margin-top: 12vh;
+        margin-bottom: 12vh;
+    }
+    .rm-gallery-detail::-webkit-scrollbar-thumb {
+        background: var(--rm-white, #fff);
+        border-radius: 0;
+        border: none;
+    }
+    .rm-gallery-detail::-webkit-scrollbar-thumb:hover {
+        background: var(--rm-white, #fff);
     }
 
     .rm-gallery-detail-inner {
