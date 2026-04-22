@@ -19,18 +19,20 @@
     let listRef = $state<HTMLElement | undefined>(undefined);
     let catNavRef = $state<HTMLElement | undefined>(undefined);
     let catBtnRefs = $state<(HTMLButtonElement | undefined)[]>([]);
+    let scrollRatio = $state(0);
+    let thumbRatio = $state(1);
 
     /* ── Category label mapping (Chinese → English for MenuItem display) ── */
     const CATEGORY_LABELS: Record<string, string> = {
-        "衣物": "WEAR",
-        "鞋子": "SHOES",
-        "配饰": "GEAR",
-        "电子产品": "TECH",
-        "生活电器": "HOME",
-        "手办": "FIGS",
-        "家具": "DECO",
-        "实体书": "BOOKS",
-        "专辑": "DISC",
+        衣物: "WEAR",
+        鞋子: "SHOES",
+        配饰: "GEAR",
+        电子产品: "TECH",
+        生活电器: "HOME",
+        手办: "FIGS",
+        家具: "DECO",
+        实体书: "BOOKS",
+        专辑: "DISC",
     };
 
     function getCategoryLabel(name: string): string {
@@ -49,14 +51,26 @@
 
     const letterCache = new Map<string, LetterConfig[]>();
 
-    function getSourceLetterConfigs(name: string, index: number): LetterConfig[] {
+    function getSourceLetterConfigs(
+        name: string,
+        index: number,
+    ): LetterConfig[] {
         const key = `${index}:${name}`;
         if (letterCache.has(key)) return letterCache.get(key)!;
-        const SIZES = ["0.75em", "0.82em", "0.88em", "0.92em", "1.0em", "1.08em", "1.15em"];
+        const SIZES = [
+            "0.75em",
+            "0.82em",
+            "0.88em",
+            "0.92em",
+            "1.0em",
+            "1.08em",
+            "1.15em",
+        ];
         const OFFSETS = [-3, -2, -1, 0, 1, 2, 3, 4];
         const ROTATES = [-6, -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5];
         const letters: LetterConfig[] = name.split("").map((char, i) => {
-            if (char === " ") return { char: " ", size: "0.5em", yOffset: 0, rotate: 0 };
+            if (char === " ")
+                return { char: " ", size: "0.5em", yOffset: 0, rotate: 0 };
             const seed = index * 37 + i * 13;
             const colorVariant = (seed * 3) % 5;
             return {
@@ -153,7 +167,7 @@
             // Fan rotation: radiate from left to right
             const rotate = t * 12;
             row.style.transform = `scale(${scale.toFixed(3)}) rotate(${rotate.toFixed(1)}deg)`;
-            const hideThreshold = t < 0 ? 0.45 : 0.75;
+            const hideThreshold = t < 0 ? 0.7 : 0.45;
             if (abs > hideThreshold) {
                 row.style.visibility = "hidden";
                 row.style.pointerEvents = "none";
@@ -164,9 +178,22 @@
         }
     }
 
+    function updateScrollIndicator() {
+        if (!listRef) return;
+        const max = listRef.scrollHeight - listRef.clientHeight;
+        scrollRatio = max > 0 ? listRef.scrollTop / max : 0;
+        thumbRatio =
+            listRef.scrollHeight > 0
+                ? Math.min(1, listRef.clientHeight / listRef.scrollHeight)
+                : 1;
+    }
+
     function onListScroll() {
         cancelAnimationFrame(rafId);
-        rafId = requestAnimationFrame(updateFanEffect);
+        rafId = requestAnimationFrame(() => {
+            updateFanEffect();
+            updateScrollIndicator();
+        });
     }
 
     // Wire up scroll listener
@@ -186,7 +213,12 @@
         void itemData;
         void selectedItem;
         if (listRef) {
-            requestAnimationFrame(() => requestAnimationFrame(updateFanEffect));
+            requestAnimationFrame(() =>
+                requestAnimationFrame(() => {
+                    updateFanEffect();
+                    updateScrollIndicator();
+                }),
+            );
         }
     });
 
@@ -195,11 +227,8 @@
         const items = itemFilterCategory
             ? itemData.items.filter((i) => i.category === itemFilterCategory)
             : itemData.items;
-        return [...items].sort((a, b) =>
-            a.name.localeCompare(b.name, "zh-CN"),
-        );
+        return [...items].sort((a, b) => a.name.localeCompare(b.name, "zh-CN"));
     }
-
 
     function formatExtraValue(val: unknown): string {
         if (val === null || val === undefined) return "—";
@@ -283,7 +312,6 @@
 </script>
 
 <section class="rm-stage">
-
     {#if itemLoading}
         <p class="state-text" style="padding: 2rem;">Loading items...</p>
     {:else if itemError}
@@ -388,12 +416,15 @@
                         {#each itemData.stats.by_category as cat, i}
                             <li
                                 class="rm-items-cat-line"
-                                style:z-index={itemFilterCategory === cat.name ? 10 : 0}
+                                style:z-index={itemFilterCategory === cat.name
+                                    ? 10
+                                    : 0}
                             >
                                 <button
                                     type="button"
                                     class="rm-items-cat-btn"
-                                    class:is-active={itemFilterCategory === cat.name}
+                                    class:is-active={itemFilterCategory ===
+                                        cat.name}
                                     bind:this={catBtnRefs[i]}
                                     onclick={() => {
                                         itemFilterCategory = cat.name;
@@ -405,7 +436,10 @@
                                     }}
                                 >
                                     <MenuItem
-                                        letters={getSourceLetterConfigs(getCategoryLabel(cat.name), i)}
+                                        letters={getSourceLetterConfigs(
+                                            getCategoryLabel(cat.name),
+                                            i,
+                                        )}
                                         active={itemFilterCategory === cat.name}
                                     />
                                 </button>
@@ -421,6 +455,17 @@
                 </button>
             </div>
 
+            <!-- Tangent scroll indicator (read-only, decorative) -->
+            <div
+                class="rm-items-scroll-indicator"
+                aria-hidden="true"
+                style="--thumb-ratio: {thumbRatio}; --scroll-ratio: {scrollRatio};"
+            >
+                <div class="rm-items-scroll-track">
+                    <div class="rm-items-scroll-thumb"></div>
+                </div>
+            </div>
+
             <!-- RIGHT: Sort + list + summary -->
             <div class="rm-items-content">
                 <div class="rm-items-list" bind:this={listRef}>
@@ -430,9 +475,7 @@
                             class="rm-item-row"
                             class:is-selected={selectedItem?.id === item.id}
                             bind:this={rowRefs[i]}
-                            style="width: {getItemWidthPercent(
-                                item,
-                            )}%; clip-path: {getItemClipPath(item)};"
+                            style="width: {getItemWidthPercent(item)}%; --row-clip: {getItemClipPath(item)};"
                             onclick={() => {
                                 selectedIndex = i;
                                 selectedItem = item;
@@ -442,6 +485,9 @@
                                 selectedItem = item;
                             }}
                         >
+                            {#if selectedItem?.id === item.id}
+                                <span class="rm-item-selection-tri" aria-hidden="true"></span>
+                            {/if}
                             <span class="rm-item-row-name">{item.name}</span>
                         </button>
                     {/each}
@@ -456,7 +502,6 @@
 </section>
 
 <style>
-
     .rm-items-layout {
         display: grid;
         grid-template-columns: clamp(26rem, 42vw, 46rem) 1fr;
@@ -584,7 +629,10 @@
         z-index: 15;
         background: var(--rm-red);
         mix-blend-mode: difference;
-        clip-path: var(--cat-quad-clip, polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%));
+        clip-path: var(
+            --cat-quad-clip,
+            polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)
+        );
         pointer-events: none;
         transition:
             left 120ms ease,
@@ -593,6 +641,47 @@
             height 120ms ease,
             transform 120ms ease,
             clip-path 120ms ease;
+    }
+
+    /* ── Tangent scroll indicator (read-only) ──
+       Tangent to the white arc at viewBox (17.58, 900).
+       In screen coords: 1.758vh right of divider line, at 90vh from top.
+       Tangent angle from vertical: atan(400 / 2569) ≈ 8.85° to the right-up. */
+    .rm-items-scroll-indicator {
+        position: absolute;
+        top: 90vh;
+        left: clamp(26rem, 42vw, 46rem);
+        /* 1.758vh (tangent-point x offset) + 0.6vh (white arc stroke width).
+           translate Y by -100% so the bar's bottom edge sits at top:90vh. */
+        transform: translate(2.358vh, -100%) rotate(8.85deg);
+        transform-origin: left bottom;
+        z-index: 10;
+        pointer-events: none;
+        /* 40vh tall, 28px wide (2× achievements scrollbar size) */
+        height: 40vh;
+        width: 28px;
+    }
+
+    .rm-items-scroll-track {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        background: var(--rm-black);
+        border: 4px solid var(--rm-white);
+        box-sizing: border-box;
+    }
+
+    .rm-items-scroll-thumb {
+        position: absolute;
+        left: 0;
+        right: 0;
+        /* Height: proportion of viewport/content */
+        height: calc(var(--thumb-ratio, 1) * 100%);
+        /* Top: scroll ratio × (track height - thumb height) */
+        top: calc(
+            var(--scroll-ratio, 0) * (100% - var(--thumb-ratio, 1) * 100%)
+        );
+        background: var(--rm-white);
     }
 
     /* ── Right content: list ── */
@@ -614,10 +703,10 @@
         flex-direction: column;
         align-items: flex-start;
         /* Generous vertical padding so items can scroll through the center zone */
-        padding: 25vh 0 40vh 0;
-        padding-left: 15vw;
-        transform: rotate(-8deg);
-        transform-origin: 0% 50%;
+        padding: 5vh 0 40vh 0;
+        padding-left: 8vw;
+        transform: translate(3vw, -8vh) rotate(8.85deg);
+        transform-origin: 0% 0%;
         gap: 0;
         scrollbar-width: none;
     }
@@ -640,23 +729,45 @@
         text-align: left;
         flex-shrink: 0;
         position: relative;
-
-        /* Fan radiates from left — pin transform origin to left edge */
         transform-origin: 0% 50%;
         will-change: transform;
+        background: transparent;
+        /* Row itself is NOT clipped, so children (triangle, text) can
+           extend / stack freely. Background with clip-path lives on ::before. */
+    }
 
+    /* Row background: a clipped polygon under everything else. */
+    .rm-item-row::before {
+        content: "";
+        position: absolute;
+        inset: 0;
         background: var(--rm-black);
-        /* clip-path is set per-item via inline style */
+        clip-path: var(--row-clip);
         transition: background 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
+        z-index: 0;
     }
 
-    .rm-item-row:hover {
+    .rm-item-row:hover::before {
         background: rgba(255, 255, 255, 0.12);
-        z-index: 3;
     }
 
-    .rm-item-row.is-selected {
+    .rm-item-row.is-selected::before,
+    .rm-item-row.is-selected:hover::before {
+        background: var(--rm-black);
+    }
+
+    /* Selection triangle — sits above the row background, below the text.
+       Short slanted edge on the left (1.3× row height), tip 20% past right. */
+    .rm-item-selection-tri {
+        position: absolute;
+        top: -15%;
+        bottom: -15%;
+        left: -8%;
+        right: -20%;
         background: var(--rm-red);
+        clip-path: polygon(8% 0%, 100% 70%, 0% 100%);
+        pointer-events: none;
+        z-index: 1;
     }
 
     .rm-item-row-name {
@@ -666,6 +777,8 @@
         text-overflow: ellipsis;
         flex: 1;
         min-width: 0;
+        position: relative;
+        z-index: 2;
     }
 
     /* ── Gallery detail (reused for item detail view) ── */
