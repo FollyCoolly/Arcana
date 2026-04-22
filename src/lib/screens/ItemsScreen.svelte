@@ -957,6 +957,15 @@
         z-index: 2;
     }
 
+    /* Reserve space for the absolutely-positioned pill so the name ellipsizes
+       before running under it. Width = pill width + pill right offset + gap. */
+    .rm-item-row:has(.rm-item-pill) .rm-item-row-name {
+        padding-right: calc(
+            clamp(7.5rem, 9.5vw, 11.5rem) + clamp(1.5rem, 2vw, 3rem) +
+                clamp(0.6rem, 0.8vw, 1rem)
+        );
+    }
+
     /* ── Sort-value pill (inside right side of row quadrilateral) ── */
     .rm-item-pill {
         position: absolute;
@@ -972,10 +981,8 @@
         background: var(--rm-white);
         color: var(--rm-black);
         border-radius: 9999px;
-        font-family:
-            "方正兰亭黑_GBK", "Inter", "SF Pro Display", "Helvetica Neue",
-            Arial, sans-serif;
-        font-size: clamp(1.4rem, 1.6vw, 2rem);
+        font-family: "方正兰亭黑_GBK", inherit;
+        font-size: clamp(1.8rem, 2.1vw, 2.6rem);
         font-weight: 700;
         font-variant-numeric: tabular-nums;
         letter-spacing: 0.01em;
