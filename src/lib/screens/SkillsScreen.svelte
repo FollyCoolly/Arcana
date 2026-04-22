@@ -8,6 +8,7 @@
         SkillNode,
     } from "$lib/types/skill";
     import type { AchievementData } from "$lib/types/achievement";
+    import type { UiEvent } from "$lib/types/ui_event";
     import { formatGroupName } from "$lib/utils/format";
     import KeyHint from "$lib/KeyHint.svelte";
     import PromptWord from "$lib/PromptWord.svelte";
@@ -26,6 +27,9 @@
     let skillError = $state<string | null>(null);
     let skillData = $state<SkillData | null>(null);
     let selectedIndex = $state(0);
+
+    /** Achievement IDs that changed since last view (from ui_events) */
+    let changedAchievementIds = $state<Set<string>>(new Set());
 
     let visibleSkills = $derived(
         skillData ? skillData.skills.filter((s) => s.current_level > 0) : [],
@@ -72,6 +76,10 @@
 
     function isNodeUnlocked(achievementId: string): boolean {
         return !!achievementData?.progress[achievementId];
+    }
+
+    function isNodeNew(achievementId: string): boolean {
+        return changedAchievementIds.has(achievementId);
     }
 
     function getAchievementName(achievementId: string): string {
@@ -187,6 +195,18 @@
         selectedSkill ? sortNodes(selectedSkill.skill.nodes, achievementData) : [],
     );
 
+    /** Set of skill IDs that have newly unlocked nodes */
+    let skillsWithNewNodes = $derived.by(() => {
+        if (!skillData || changedAchievementIds.size === 0) return new Set<string>();
+        const ids = new Set<string>();
+        for (const s of skillData.skills) {
+            if (s.skill.nodes.some((n) => changedAchievementIds.has(n.achievement_id))) {
+                ids.add(s.skill.id);
+            }
+        }
+        return ids;
+    });
+
     function computeHexRows(nodes: SkillNode[], cols: number): SkillNode[][] {
         const rows: SkillNode[][] = [];
         let idx = 0;
@@ -228,8 +248,24 @@
         skillError = null;
 
         try {
-            skillData = await invoke<SkillData>("load_skills");
+            const [skills, events] = await Promise.all([
+                invoke<SkillData>("load_skills"),
+                invoke<UiEvent[]>("get_pending_events", {
+                    eventType: "achievement_status_change",
+                }),
+            ]);
+            skillData = skills;
             selectedIndex = 0;
+
+            // Extract changed achievement IDs from consumed events
+            const ids = new Set<string>();
+            for (const evt of events) {
+                const achId = evt.data?.achievement_id;
+                if (typeof achId === "string") {
+                    ids.add(achId);
+                }
+            }
+            changedAchievementIds = ids;
         } catch (error) {
             skillError =
                 typeof error === "string"
@@ -347,13 +383,18 @@
                                 {@const unlocked = isNodeUnlocked(
                                     node.achievement_id,
                                 )}
+                                {@const isNew = unlocked && isNodeNew(
+                                    node.achievement_id,
+                                )}
                                 <div
                                     class="rm-hex-border"
                                     class:rm-hex-border--unlocked={unlocked}
+                                    class:rm-hex-border--new={isNew}
                                 >
                                     <div
                                         class="rm-skill-node-hex"
                                         class:rm-skill-node-hex--unlocked={unlocked}
+                                        class:rm-skill-node-hex--new={isNew}
                                     >
                                         <span class="rm-node-name"
                                             >{getAchievementName(

@@ -232,6 +232,7 @@ pub fn run() {
             commands::missions::load_missions,
             commands::missions::load_main_menu_missions,
             commands::missions::update_mission_status,
+            commands::ui_events::get_pending_events,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

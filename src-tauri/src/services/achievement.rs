@@ -2,9 +2,10 @@ use crate::models::achievement::{
     AchievementFile, AchievementProgress, AchievementProgressFile, AchievementStatus,
     LoadedPacksFile,
 };
+use crate::services::ui_events;
 use crate::storage::date_utils::current_iso8601;
 use crate::storage::json_store::{read_json_file, write_and_validate};
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -49,6 +50,7 @@ pub fn update_achievement(data_dir: &Path, input: &Value) -> Result<String, Stri
 
     let now = current_iso8601();
 
+    let is_new = !file.achievements.contains_key(id);
     let entry = file
         .achievements
         .entry(id.to_string())
@@ -91,6 +93,18 @@ pub fn update_achievement(data_dir: &Path, input: &Value) -> Result<String, Stri
     }
 
     write_and_validate(&progress_path, &file, "achievement_progress.json")?;
+
+    // Emit UI event (best-effort, don't fail the main operation)
+    let _ = ui_events::emit_event(
+        data_dir,
+        "achievement_status_change",
+        json!({
+            "achievement_id": id,
+            "old_status": if is_new { Value::Null } else { Value::String(old_status.to_lowercase()) },
+            "new_status": new_status,
+        }),
+    );
+
     Ok(format!(
         "Updated achievement '{id}': {old_status} → {new_status}"
     ))

@@ -5,3 +5,4 @@ pub mod file_access;
 pub mod memory;
 pub mod mission;
 pub mod status;
+pub mod ui_events;
