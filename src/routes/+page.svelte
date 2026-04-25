@@ -7,6 +7,7 @@
     import MenuItem from "$lib/MenuItem.svelte";
     import PromptWord from "$lib/PromptWord.svelte";
     import KeyHint from "$lib/KeyHint.svelte";
+    import PhanSiteProgress from "$lib/PhanSiteProgress.svelte";
     import type { LetterConfig } from "$lib/MenuItem.svelte";
     import type { StatusData } from "$lib/types/status";
     import type { AchievementData } from "$lib/types/achievement";
@@ -508,25 +509,10 @@
                 </div>
             {/if}
             {#if missionMenuData?.progress}
-                <div class="rm-mission-progress" aria-label="Mission progress">
-                    <span class="rm-mission-progress-label"
-                        >{missionMenuData.progress.label}</span
-                    >
-                    <div class="rm-mission-progress-bar-row">
-                        <div class="rm-mission-progress-track">
-                            <div
-                                class="rm-mission-progress-fill"
-                                style:width="{missionMenuData.progress
-                                    .progress}%"
-                            ></div>
-                        </div>
-                        <span
-                            class="rm-mission-progress-value"
-                            class:is-high={missionMenuData.progress.progress >=
-                                80}>{missionMenuData.progress.progress}%</span
-                        >
-                    </div>
-                </div>
+                <PhanSiteProgress
+                    question={missionMenuData.progress.label}
+                    progress={missionMenuData.progress.progress}
+                />
             {/if}
             <div class="rm-star-left" aria-hidden="true">
                 <div class="rm-star-stack">
@@ -736,62 +722,6 @@
     }
 
     .rm-countdown-line strong {
-        color: var(--rm-red);
-    }
-
-    .rm-mission-progress {
-        position: absolute;
-        bottom: clamp(1.5rem, 3vh, 3.5rem);
-        right: clamp(1.5rem, 3vw, 4rem);
-        z-index: 3;
-        pointer-events: none;
-        display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.4rem;
-        transform: rotate(-1deg);
-    }
-
-    .rm-mission-progress-label {
-        font-family: "p5hatty", "Orbitron", Arial, sans-serif;
-        font-size: clamp(1.95rem, 2.7vw, 2.7rem);
-        font-weight: 800;
-        color: var(--rm-white);
-        letter-spacing: 0.04em;
-        white-space: nowrap;
-        -webkit-text-stroke: 0.03em var(--rm-black);
-        paint-order: stroke fill;
-    }
-
-    .rm-mission-progress-bar-row {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    .rm-mission-progress-track {
-        width: clamp(96px, 12vw, 192px);
-        height: 36px;
-        background: rgba(255, 255, 255, 0.1);
-        border: 6px solid var(--rm-white);
-        overflow: hidden;
-    }
-
-    .rm-mission-progress-fill {
-        height: 100%;
-        background: var(--rm-red);
-        transition: width 400ms ease;
-    }
-
-    .rm-mission-progress-value {
-        font-family: "p5hatty", "Orbitron", Arial, sans-serif;
-        font-size: clamp(1.8rem, 2.55vw, 2.55rem);
-        font-weight: 700;
-        color: var(--rm-white);
-        letter-spacing: 0.04em;
-    }
-
-    .rm-mission-progress-value.is-high {
         color: var(--rm-red);
     }
 
