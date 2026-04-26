@@ -12,15 +12,15 @@
     import { formatGroupName } from "$lib/utils/format";
     import KeyHint from "$lib/KeyHint.svelte";
     import PromptWord from "$lib/PromptWord.svelte";
-    import CardTitle from "$lib/components/CardTitle.svelte";
-    import { hashStr } from "$lib/utils/cardTitle";
 
     let {
         onBack,
         achievementData,
+        onAchievementDataLoaded,
     }: {
         onBack: () => void;
         achievementData: AchievementData | null;
+        onAchievementDataLoaded?: (data: AchievementData) => void;
     } = $props();
 
     let skillLoading = $state(false);
@@ -31,6 +31,92 @@
     /** Achievement IDs that changed since last view (from ui_events) */
     let changedAchievementIds = $state<Set<string>>(new Set());
 
+    /** Achievement currently shown in the detail modal, or null */
+    let detailAchievementId = $state<string | null>(null);
+
+    function findAchievement(id: string) {
+        if (!achievementData) return null;
+        for (const pack of achievementData.packs) {
+            for (const ach of pack.achievements) {
+                if (ach.id === id) return ach;
+            }
+        }
+        return null;
+    }
+
+    let detailAchievement = $derived(
+        detailAchievementId ? findAchievement(detailAchievementId) : null,
+    );
+
+    let detailProgress = $derived(
+        detailAchievementId
+            ? (achievementData?.progress[detailAchievementId] ?? null)
+            : null,
+    );
+
+    function openNodeDetail(achievementId: string) {
+        detailAchievementId = achievementId;
+    }
+
+    function closeNodeDetail() {
+        detailAchievementId = null;
+        toggleError = null;
+    }
+
+    function getDifficultyLabel(difficulty: string): string {
+        return difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
+    }
+
+    let toggleBusy = $state(false);
+    let toggleError = $state<string | null>(null);
+
+    /** IDs of direct prerequisites that are not yet achieved. */
+    function unmetPrereqs(achievementId: string): string[] {
+        const ach = findAchievement(achievementId);
+        if (!ach || ach.prerequisites.length === 0) return [];
+        return ach.prerequisites.filter(
+            (p) => achievementData?.progress[p]?.status !== "achieved",
+        );
+    }
+
+    let detailUnmetPrereqs = $derived(
+        detailAchievementId ? unmetPrereqs(detailAchievementId) : [],
+    );
+
+    /** True when the toggle button should be shown:
+     *  - already achieved (button locks it), OR
+     *  - not achieved and all prereqs are met (button unlocks it) */
+    let canShowToggle = $derived.by(() => {
+        if (!detailAchievementId || !detailAchievement) return false;
+        if (detailProgress?.status === "achieved") return true;
+        return detailUnmetPrereqs.length === 0;
+    });
+
+    async function toggleAchievement() {
+        if (!detailAchievementId || toggleBusy) return;
+        toggleBusy = true;
+        toggleError = null;
+        const isAchieved = detailProgress?.status === "achieved";
+        try {
+            if (isAchieved) {
+                await invoke<string>("lock_achievement", {
+                    achievementId: detailAchievementId,
+                });
+            } else {
+                await invoke<string>("set_achievement_achieved", {
+                    achievementId: detailAchievementId,
+                });
+            }
+            const fresh =
+                await invoke<AchievementData>("load_achievements");
+            onAchievementDataLoaded?.(fresh);
+        } catch (e) {
+            toggleError = typeof e === "string" ? e : "Operation failed.";
+        } finally {
+            toggleBusy = false;
+        }
+    }
+
     let visibleSkills = $derived(
         skillData ? skillData.skills.filter((s) => s.current_level > 0) : [],
     );
@@ -40,7 +126,6 @@
     );
 
     let totalSkills = $derived(visibleSkills.length);
-    let titleSeed = $derived(selectedSkill ? hashStr(selectedSkill.skill.id) : 0);
 
     let currentLevelTitle = $derived.by(() => {
         if (!selectedSkill) return null;
@@ -93,7 +178,10 @@
         return after ? formatGroupName(after) : achievementId;
     }
 
-    function sortNodes(nodes: SkillNode[], data: AchievementData | null): SkillNode[] {
+    function sortNodes(
+        nodes: SkillNode[],
+        data: AchievementData | null,
+    ): SkillNode[] {
         if (nodes.length <= 1) return [...nodes];
 
         const COLS = 8;
@@ -104,18 +192,22 @@
             for (const pack of data.packs) {
                 for (const ach of pack.achievements) {
                     if (!nodeIds.has(ach.id)) continue;
-                    const local = ach.prerequisites.filter((p) => nodeIds.has(p));
+                    const local = ach.prerequisites.filter((p) =>
+                        nodeIds.has(p),
+                    );
                     if (local.length > 0) prereqMap.set(ach.id, local);
                 }
             }
         }
 
         function hexCol(i: number): number {
-            let rem = i, row = 0;
+            let rem = i,
+                row = 0;
             while (true) {
                 const rc = row % 2 === 0 ? COLS : COLS - 1;
                 if (rem < rc) return rem;
-                rem -= rc; row++;
+                rem -= rc;
+                row++;
             }
         }
 
@@ -128,7 +220,9 @@
             let wj = wi;
             while (wj < arr.length && arr[wj].points === arr[wi].points) wj++;
             if (wj - wi > 1) {
-                const winIds = new Set(arr.slice(wi, wj).map((n) => n.achievement_id));
+                const winIds = new Set(
+                    arr.slice(wi, wj).map((n) => n.achievement_id),
+                );
                 const inDeg = new Map<string, number>();
                 const fwd = new Map<string, string[]>();
                 for (let k = wi; k < wj; k++) {
@@ -136,16 +230,24 @@
                     fwd.set(arr[k].achievement_id, []);
                 }
                 for (let k = wi; k < wj; k++) {
-                    for (const pid of prereqMap.get(arr[k].achievement_id) ?? []) {
+                    for (const pid of prereqMap.get(arr[k].achievement_id) ??
+                        []) {
                         if (winIds.has(pid)) {
                             fwd.get(pid)!.push(arr[k].achievement_id);
-                            inDeg.set(arr[k].achievement_id, inDeg.get(arr[k].achievement_id)! + 1);
+                            inDeg.set(
+                                arr[k].achievement_id,
+                                inDeg.get(arr[k].achievement_id)! + 1,
+                            );
                         }
                     }
                 }
-                const queue = [...inDeg.entries()].filter(([, d]) => d === 0).map(([id]) => id);
+                const queue = [...inDeg.entries()]
+                    .filter(([, d]) => d === 0)
+                    .map(([id]) => id);
                 const order: string[] = [];
-                const byId = new Map(arr.slice(wi, wj).map((n) => [n.achievement_id, n]));
+                const byId = new Map(
+                    arr.slice(wi, wj).map((n) => [n.achievement_id, n]),
+                );
                 while (queue.length > 0) {
                     const id = queue.shift()!;
                     order.push(id);
@@ -156,7 +258,8 @@
                     }
                 }
                 if (order.length === wj - wi) {
-                    for (let k = wi; k < wj; k++) arr[k] = byId.get(order[k - wi])!;
+                    for (let k = wi; k < wj; k++)
+                        arr[k] = byId.get(order[k - wi])!;
                 }
             }
             wi = wj;
@@ -173,7 +276,10 @@
                 let targetCol: number | null = null;
                 for (const pid of prereqMap.get(arr[k].achievement_id) ?? []) {
                     const pp = placed.get(pid);
-                    if (pp !== undefined) { targetCol = hexCol(pp); break; }
+                    if (pp !== undefined) {
+                        targetCol = hexCol(pp);
+                        break;
+                    }
                 }
                 if (targetCol !== null && hexCol(k) !== targetCol) {
                     for (let m = k + 1; m < wj; m++) {
@@ -192,15 +298,22 @@
     }
 
     let sortedNodes = $derived(
-        selectedSkill ? sortNodes(selectedSkill.skill.nodes, achievementData) : [],
+        selectedSkill
+            ? sortNodes(selectedSkill.skill.nodes, achievementData)
+            : [],
     );
 
     /** Set of skill IDs that have newly unlocked nodes */
     let skillsWithNewNodes = $derived.by(() => {
-        if (!skillData || changedAchievementIds.size === 0) return new Set<string>();
+        if (!skillData || changedAchievementIds.size === 0)
+            return new Set<string>();
         const ids = new Set<string>();
         for (const s of skillData.skills) {
-            if (s.skill.nodes.some((n) => changedAchievementIds.has(n.achievement_id))) {
+            if (
+                s.skill.nodes.some((n) =>
+                    changedAchievementIds.has(n.achievement_id),
+                )
+            ) {
                 ids.add(s.skill.id);
             }
         }
@@ -233,11 +346,17 @@
     function handleKeydown(event: KeyboardEvent) {
         if (event.key === "Escape") {
             event.preventDefault();
-            onBack();
+            if (detailAchievementId) {
+                closeNodeDetail();
+            } else {
+                onBack();
+            }
         } else if (event.key === "q" || event.key === "Q") {
+            if (detailAchievementId) return;
             event.preventDefault();
             navigatePrev();
         } else if (event.key === "e" || event.key === "E") {
+            if (detailAchievementId) return;
             event.preventDefault();
             navigateNext();
         }
@@ -354,15 +473,10 @@
 
                 <div class="rm-skill-image-card">
                     <img
-                        src={selectedSkill.skill.card_image ?? '/card_examples/fool.png'}
+                        src={selectedSkill.skill.card_image ??
+                            "/card_examples/fool.png"}
                         alt={selectedSkill.skill.name}
                     />
-                    <div class="rm-image-card-title-area">
-                        <CardTitle
-                            text={selectedSkill.skill.name}
-                            seed={titleSeed}
-                        />
-                    </div>
                 </div>
 
                 {#if selectedSkill.skill.description}
@@ -383,15 +497,20 @@
                                 {@const unlocked = isNodeUnlocked(
                                     node.achievement_id,
                                 )}
-                                {@const isNew = unlocked && isNodeNew(
-                                    node.achievement_id,
-                                )}
-                                <div
+                                {@const isNew =
+                                    unlocked && isNodeNew(node.achievement_id)}
+                                <button
+                                    type="button"
                                     class="rm-hex-border"
                                     class:rm-hex-border--unlocked={unlocked}
                                     class:rm-hex-border--new={isNew}
+                                    onclick={() =>
+                                        openNodeDetail(node.achievement_id)}
+                                    aria-label={getAchievementName(
+                                        node.achievement_id,
+                                    )}
                                 >
-                                    <div
+                                    <span
                                         class="rm-skill-node-hex"
                                         class:rm-skill-node-hex--unlocked={unlocked}
                                         class:rm-skill-node-hex--new={isNew}
@@ -404,8 +523,8 @@
                                         <span class="rm-node-points"
                                             >{node.points} pt</span
                                         >
-                                    </div>
-                                </div>
+                                    </span>
+                                </button>
                             {/each}
                         </div>
                     {/each}
@@ -416,6 +535,160 @@
         <p class="state-text" style="padding: 2rem;">
             No skills available yet.
         </p>
+    {/if}
+
+    {#if detailAchievementId}
+        {@const ach = detailAchievement}
+        {@const prog = detailProgress}
+        {@const unlocked = !!prog}
+        <div
+            class="rm-node-modal-backdrop"
+            role="presentation"
+            onclick={closeNodeDetail}
+        >
+            <div
+                class="rm-node-modal"
+                role="dialog"
+                aria-modal="true"
+                aria-label="Achievement detail"
+                tabindex="-1"
+                onclick={(e) => e.stopPropagation()}
+                onkeydown={(e) => e.stopPropagation()}
+            >
+                <header class="rm-node-modal-header">
+                    <span class="rm-node-modal-status-icon"
+                        >{unlocked ? "✓" : "○"}</span
+                    >
+                    <span class="rm-node-modal-title"
+                        >{ach?.name ??
+                            getAchievementName(detailAchievementId)}</span
+                    >
+                    {#if ach}
+                        <span
+                            class="rm-difficulty rm-difficulty--{ach.difficulty}"
+                            >{getDifficultyLabel(ach.difficulty)}</span
+                        >
+                    {/if}
+                </header>
+
+                {#if ach}
+                    <p class="rm-node-modal-desc">{ach.description}</p>
+                {:else}
+                    <p class="rm-node-modal-desc rm-node-modal-missing">
+                        Achievement metadata not found.
+                    </p>
+                {/if}
+
+                <dl class="rm-node-modal-meta">
+                    <div class="rm-node-modal-meta-row">
+                        <dt>Status</dt>
+                        <dd>
+                            {#if unlocked && prog?.status === "achieved"}
+                                <span class="rm-node-modal-badge rm-unlocked"
+                                    >Achieved</span
+                                >
+                            {:else if unlocked && prog?.status === "tracked"}
+                                <span class="rm-node-modal-badge rm-tracked"
+                                    >Tracked</span
+                                >
+                            {:else}
+                                <span class="rm-node-modal-badge rm-locked"
+                                    >Locked</span
+                                >
+                            {/if}
+                        </dd>
+                    </div>
+
+                    {#if prog?.achieved_at}
+                        <div class="rm-node-modal-meta-row">
+                            <dt>Achieved</dt>
+                            <dd>{prog.achieved_at}</dd>
+                        </div>
+                    {/if}
+
+                    {#if prog?.tracked_at}
+                        <div class="rm-node-modal-meta-row">
+                            <dt>Tracked</dt>
+                            <dd>{prog.tracked_at}</dd>
+                        </div>
+                    {/if}
+
+                    {#if ach && ach.tags.length > 0}
+                        <div class="rm-node-modal-meta-row">
+                            <dt>Tags</dt>
+                            <dd>
+                                <div class="rm-node-modal-tags">
+                                    {#each ach.tags as tag}
+                                        <span class="rm-node-modal-tag"
+                                            >{tag}</span
+                                        >
+                                    {/each}
+                                </div>
+                            </dd>
+                        </div>
+                    {/if}
+
+                    {#if ach && ach.prerequisites.length > 0}
+                        <div class="rm-node-modal-meta-row">
+                            <dt>Prereqs</dt>
+                            <dd>
+                                <div class="rm-node-modal-tags">
+                                    {#each ach.prerequisites as prereq}
+                                        <span class="rm-node-modal-tag"
+                                            >{prereq
+                                                .split("::")[1]
+                                                ?.replace(/_/g, " ") ??
+                                                prereq}</span
+                                        >
+                                    {/each}
+                                </div>
+                            </dd>
+                        </div>
+                    {/if}
+                </dl>
+
+                {#if canShowToggle}
+                    <div class="rm-node-modal-actions">
+                        <button
+                            type="button"
+                            class="rm-node-modal-action"
+                            class:rm-node-modal-action--lock={unlocked &&
+                                prog?.status === "achieved"}
+                            disabled={toggleBusy}
+                            onclick={toggleAchievement}
+                        >
+                            {#if toggleBusy}
+                                …
+                            {:else if unlocked && prog?.status === "achieved"}
+                                Lock
+                            {:else}
+                                Unlock
+                            {/if}
+                        </button>
+                        {#if toggleError}
+                            <span class="rm-node-modal-action-error"
+                                >{toggleError}</span
+                            >
+                        {/if}
+                    </div>
+                {/if}
+
+                {#if prog?.note}
+                    <p class="rm-node-modal-note">{prog.note}</p>
+                {/if}
+
+                {#if prog?.progress_detail && prog.progress_detail.length > 0}
+                    <div class="rm-node-modal-progress">
+                        <div class="rm-node-modal-progress-label">Progress</div>
+                        <ul class="rm-node-modal-progress-list">
+                            {#each prog.progress_detail as line}
+                                <li>{line}</li>
+                            {/each}
+                        </ul>
+                    </div>
+                {/if}
+            </div>
+        </div>
     {/if}
 </section>
 
@@ -590,10 +863,28 @@
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
-        transition: background 150ms ease;
+        border: none;
+        padding: 0;
+        font: inherit;
+        color: inherit;
+        cursor: pointer;
+        transition:
+            background 150ms ease,
+            transform 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
     }
 
+    .rm-hex-border:hover {
+        transform: scale(1.06);
+    }
 
+    .rm-hex-border:focus-visible {
+        outline: none;
+    }
+
+    .rm-hex-border:focus-visible .rm-skill-node-hex {
+        background: var(--rm-gold, #f5a623);
+        color: var(--rm-black);
+    }
 
     .rm-skill-node-hex {
         width: calc(100% - 10px);
@@ -646,5 +937,292 @@
 
     .rm-skill-node-hex--unlocked .rm-node-points {
         opacity: 1;
+    }
+
+    /* ── Node detail modal ── */
+    .rm-node-modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.72);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 100;
+        padding: 2rem;
+        animation: rm-node-modal-fade 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+
+    @keyframes rm-node-modal-fade {
+        from {
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
+        }
+    }
+
+    .rm-node-modal {
+        position: relative;
+        background: var(--rm-black);
+        color: var(--rm-white);
+        width: min(920px, 94vw);
+        max-height: 88vh;
+        overflow-y: auto;
+        padding: clamp(2rem, 2.8vw, 3.6rem) clamp(2.2rem, 3.2vw, 4.2rem)
+            clamp(2.2rem, 3vw, 3.8rem);
+        clip-path: polygon(0% 2%, 98% 0%, 100% 96%, 2% 100%);
+        transform: rotate(-0.6deg);
+        border: 30px solid var(--rm-white);
+        animation: rm-node-modal-pop 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+
+    @keyframes rm-node-modal-pop {
+        from {
+            opacity: 0;
+            transform: rotate(-0.6deg) scale(0.94);
+        }
+        to {
+            opacity: 1;
+            transform: rotate(-0.6deg) scale(1);
+        }
+    }
+
+    .rm-node-modal-header {
+        display: flex;
+        align-items: center;
+        gap: clamp(0.4rem, 0.6vw, 0.9rem);
+        background: var(--rm-white);
+        color: var(--rm-black);
+        padding: clamp(0.45rem, 0.6vw, 0.9rem) clamp(0.9rem, 1.2vw, 1.8rem);
+        margin: 0 0 clamp(0.8rem, 1.2vw, 1.6rem);
+        clip-path: polygon(0% 0%, 100% 0%, 98% 100%, 1% 100%);
+    }
+
+    .rm-node-modal-status-icon {
+        font-size: clamp(1rem, 1vw, 1.5rem);
+        font-weight: 800;
+        color: var(--rm-red);
+        flex-shrink: 0;
+    }
+
+    .rm-node-modal-title {
+        font-family: "p5hatty", "Orbitron", Arial, sans-serif;
+        font-size: clamp(1.3rem, 1.5vw, 2.2rem);
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        line-height: 1.2;
+        flex: 1;
+    }
+
+    .rm-node-modal-desc {
+        margin: 0 0 clamp(1rem, 1.4vw, 1.8rem);
+        padding: 0 clamp(0.4rem, 0.5vw, 0.8rem);
+        font-size: clamp(1.05rem, 1.05vw, 1.5rem);
+        color: rgba(255, 255, 255, 0.78);
+        line-height: 1.55;
+    }
+
+    .rm-node-modal-missing {
+        color: rgba(255, 255, 255, 0.4);
+        font-style: italic;
+    }
+
+    .rm-node-modal-meta {
+        margin: 0 0 clamp(0.6rem, 1vw, 1.2rem);
+        padding: 0 clamp(0.4rem, 0.5vw, 0.8rem);
+        display: flex;
+        flex-direction: column;
+        gap: clamp(0.35rem, 0.5vw, 0.7rem);
+    }
+
+    .rm-node-modal-meta-row {
+        display: grid;
+        grid-template-columns: clamp(70px, 7vw, 110px) 1fr;
+        align-items: center;
+        gap: clamp(0.6rem, 0.9vw, 1.2rem);
+    }
+
+    .rm-node-modal-meta-row dt {
+        font-family: "p5hatty", "Orbitron", Arial, sans-serif;
+        font-size: clamp(0.9rem, 0.9vw, 1.25rem);
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: rgba(255, 255, 255, 0.45);
+    }
+
+    .rm-node-modal-meta-row dd {
+        margin: 0;
+        font-size: clamp(1rem, 1vw, 1.35rem);
+        color: var(--rm-white);
+    }
+
+    .rm-node-modal-badge {
+        display: inline-block;
+        padding: 0.15em 0.6em;
+        font-family: "p5hatty", "Orbitron", Arial, sans-serif;
+        font-size: clamp(0.7rem, 0.7vw, 1rem);
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        clip-path: polygon(4% 0%, 100% 0%, 96% 100%, 0% 100%);
+    }
+
+    .rm-node-modal-badge.rm-unlocked {
+        background: var(--rm-red);
+        color: var(--rm-white);
+    }
+
+    .rm-node-modal-badge.rm-tracked {
+        background: var(--rm-gold, #f5a623);
+        color: var(--rm-black);
+    }
+
+    .rm-node-modal-badge.rm-locked {
+        background: var(--rm-gray, #2e2e2e);
+        color: var(--rm-white);
+    }
+
+    .rm-node-modal-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: clamp(0.2rem, 0.3vw, 0.45rem);
+    }
+
+    .rm-node-modal-tag {
+        font-size: clamp(0.65rem, 0.6vw, 0.9rem);
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: rgba(255, 255, 255, 0.55);
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        padding: 0.12rem 0.5rem;
+    }
+
+    .rm-node-modal-note {
+        margin: clamp(0.4rem, 0.6vw, 0.8rem) clamp(0.4rem, 0.5vw, 0.8rem)
+            clamp(0.8rem, 1vw, 1.2rem);
+        padding: clamp(0.5rem, 0.7vw, 0.9rem) clamp(0.8rem, 1vw, 1.4rem);
+        font-size: clamp(0.78rem, 0.78vw, 1.1rem);
+        font-style: italic;
+        color: rgba(255, 255, 255, 0.7);
+        background: rgba(255, 255, 255, 0.06);
+        border-left: 3px solid var(--rm-gold, #f5a623);
+    }
+
+    .rm-node-modal-progress {
+        margin-top: clamp(0.6rem, 0.9vw, 1.1rem);
+        padding: 0 clamp(0.4rem, 0.5vw, 0.8rem);
+    }
+
+    .rm-node-modal-progress-label {
+        font-family: "p5hatty", "Orbitron", Arial, sans-serif;
+        font-size: clamp(0.7rem, 0.7vw, 1rem);
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: rgba(255, 255, 255, 0.45);
+        margin-bottom: clamp(0.3rem, 0.4vw, 0.5rem);
+    }
+
+    .rm-node-modal-progress-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: clamp(0.2rem, 0.3vw, 0.4rem);
+    }
+
+    .rm-node-modal-progress-list li {
+        position: relative;
+        padding-left: clamp(0.9rem, 1vw, 1.3rem);
+        font-size: clamp(0.78rem, 0.78vw, 1.1rem);
+        color: rgba(255, 255, 255, 0.75);
+        line-height: 1.5;
+    }
+
+    .rm-node-modal-progress-list li::before {
+        content: "▶";
+        position: absolute;
+        left: 0;
+        top: 0.2em;
+        font-size: 0.6em;
+        color: var(--rm-red);
+    }
+
+    .rm-difficulty {
+        font-size: clamp(0.65rem, 0.65vw, 1rem);
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        flex-shrink: 0;
+    }
+
+    .rm-difficulty--beginner {
+        opacity: 0.5;
+    }
+    .rm-difficulty--intermediate {
+        opacity: 0.65;
+    }
+    .rm-difficulty--advanced {
+        opacity: 0.8;
+    }
+    .rm-difficulty--expert {
+        opacity: 0.9;
+    }
+    .rm-difficulty--legendary {
+        color: var(--rm-red);
+        opacity: 1;
+    }
+
+    /* ── Unlock / Lock action ── */
+    .rm-node-modal-actions {
+        display: flex;
+        align-items: center;
+        gap: clamp(0.6rem, 0.9vw, 1.2rem);
+        margin: clamp(0.4rem, 0.6vw, 0.9rem)
+            clamp(0.4rem, 0.5vw, 0.8rem)
+            clamp(0.8rem, 1.2vw, 1.6rem);
+    }
+
+    .rm-node-modal-action {
+        background: var(--rm-red);
+        color: var(--rm-white);
+        border: none;
+        font-family: "p5hatty", "Orbitron", Arial, sans-serif;
+        font-size: clamp(1rem, 1vw, 1.5rem);
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        padding: clamp(0.5rem, 0.7vw, 1rem)
+            clamp(1.4rem, 1.8vw, 2.6rem);
+        cursor: pointer;
+        clip-path: polygon(4% 0%, 100% 0%, 96% 100%, 0% 100%);
+        transform: rotate(-1deg);
+        transition:
+            transform 120ms cubic-bezier(0.2, 0.8, 0.2, 1),
+            background 120ms ease;
+    }
+
+    .rm-node-modal-action:hover:not(:disabled) {
+        transform: rotate(-1deg) scale(1.05);
+    }
+
+    .rm-node-modal-action:disabled {
+        opacity: 0.5;
+        cursor: progress;
+    }
+
+    .rm-node-modal-action--lock {
+        background: var(--rm-white);
+        color: var(--rm-black);
+    }
+
+    .rm-node-modal-action-error {
+        font-size: clamp(0.78rem, 0.78vw, 1.1rem);
+        color: var(--rm-red);
+        font-weight: 700;
     }
 </style>

@@ -1,6 +1,9 @@
 use std::collections::{HashMap, HashSet};
 
+use serde_json::json;
+
 use crate::models::achievement::*;
+use crate::services::achievement as achievement_service;
 use crate::storage::json_store::{read_json_file, resolve_data_dir};
 
 #[tauri::command]
@@ -150,4 +153,73 @@ fn detect_cycle(achievements: &[AchievementDef]) -> Option<String> {
     }
 
     None
+}
+
+/// Mark an achievement as achieved. Validates that all direct prerequisites
+/// are already achieved before updating.
+#[tauri::command]
+pub fn set_achievement_achieved(achievement_id: String) -> Result<String, String> {
+    let data_dir = resolve_data_dir()?;
+
+    // Prerequisite check: every direct prereq must be in progress with status=achieved.
+    let pack_id = achievement_id.split("::").next().unwrap_or("");
+    let ach_path = data_dir
+        .join("packs")
+        .join(pack_id)
+        .join("achievements.json");
+    if ach_path.exists() {
+        let ach_file: AchievementFile = read_json_file(&ach_path)?;
+        let def = ach_file
+            .achievements
+            .iter()
+            .find(|a| a.id == achievement_id)
+            .ok_or_else(|| format!("Achievement '{achievement_id}' not found."))?;
+
+        if !def.prerequisites.is_empty() {
+            let progress_path = data_dir.join("achievement_progress.json");
+            let progress: AchievementProgressFile = if progress_path.exists() {
+                read_json_file(&progress_path)?
+            } else {
+                AchievementProgressFile {
+                    version: 1,
+                    achievements: HashMap::new(),
+                }
+            };
+
+            let missing: Vec<String> = def
+                .prerequisites
+                .iter()
+                .filter(|p| {
+                    !matches!(
+                        progress.achievements.get(p.as_str()).map(|e| &e.status),
+                        Some(AchievementStatus::Achieved)
+                    )
+                })
+                .cloned()
+                .collect();
+
+            if !missing.is_empty() {
+                return Err(format!(
+                    "Prerequisites not met: {}",
+                    missing.join(", ")
+                ));
+            }
+        }
+    }
+
+    achievement_service::update_achievement(
+        &data_dir,
+        &json!({
+            "achievement_id": achievement_id,
+            "status": "achieved",
+        }),
+    )
+}
+
+/// Lock (un-achieve) an achievement. Preserves tracked context if any,
+/// otherwise removes the progress entry entirely.
+#[tauri::command]
+pub fn lock_achievement(achievement_id: String) -> Result<String, String> {
+    let data_dir = resolve_data_dir()?;
+    achievement_service::lock_achievement(&data_dir, &achievement_id)
 }

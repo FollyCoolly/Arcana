@@ -226,6 +226,8 @@ pub fn run() {
             commands::status::load_status_data,
             commands::weather::get_weather,
             commands::achievements::load_achievements,
+            commands::achievements::set_achievement_achieved,
+            commands::achievements::lock_achievement,
             commands::skills::load_skills,
             commands::items::load_items,
             commands::gallery::load_gallery,

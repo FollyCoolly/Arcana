@@ -69,6 +69,7 @@ echo '{
   "id": "ai_<YYYYMMDD>_<slug>",
   "title": "Gamified quest name",
   "description": "Clear completion criteria",
+  "short_desc": "5–10字简洁描述（白色文字渲染于主菜单提示板）",
   "status": "proposed",
   "deadline": "YYYY-MM-DD",
   "linked_achievement_id": "pack::id",
@@ -81,6 +82,12 @@ echo '{
   }
 }' | arcana-data mission create
 ```
+
+**`short_desc` 规则：**
+- 长度：5–15字（中文计字，英文计单词）
+- 内容：任务核心动作的精炼，不是标题的复述
+- 用途：渲染于主菜单 hints 提示板，用户扫一眼即知该做什么
+- 示例：`"title": "Borrow Checker Gauntlet"` → `"short_desc": "攻克Rust借用检查器"`
 
 Then write changelog:
 ```bash

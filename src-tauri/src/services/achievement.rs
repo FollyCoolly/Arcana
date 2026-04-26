@@ -109,3 +109,54 @@ pub fn update_achievement(data_dir: &Path, input: &Value) -> Result<String, Stri
         "Updated achievement '{id}': {old_status} → {new_status}"
     ))
 }
+
+/// Lock (un-achieve) an achievement.
+/// If the entry has user-recorded context (`progress_detail` non-empty or `note` set),
+/// downgrade its status to `tracked` and clear `achieved_at`.
+/// Otherwise remove the entry entirely, returning it to the locked/untracked state.
+pub fn lock_achievement(data_dir: &Path, id: &str) -> Result<String, String> {
+    let progress_path = data_dir.join("achievement_progress.json");
+    if !progress_path.exists() {
+        return Err(format!("Achievement '{id}' is not unlocked."));
+    }
+
+    let mut file: AchievementProgressFile = read_json_file(&progress_path)?;
+
+    let entry = file
+        .achievements
+        .get(id)
+        .ok_or_else(|| format!("Achievement '{id}' is not unlocked."))?;
+
+    let old_status = format!("{:?}", entry.status).to_lowercase();
+    let has_context = !entry.progress_detail.is_empty() || entry.note.is_some();
+    let new_status_label: &str;
+
+    if has_context {
+        let entry = file.achievements.get_mut(id).unwrap();
+        entry.status = AchievementStatus::Tracked;
+        entry.achieved_at = None;
+        if entry.tracked_at.is_none() {
+            entry.tracked_at = Some(current_iso8601());
+        }
+        new_status_label = "tracked";
+    } else {
+        file.achievements.remove(id);
+        new_status_label = "locked";
+    }
+
+    write_and_validate(&progress_path, &file, "achievement_progress.json")?;
+
+    let _ = ui_events::emit_event(
+        data_dir,
+        "achievement_status_change",
+        json!({
+            "achievement_id": id,
+            "old_status": old_status,
+            "new_status": new_status_label,
+        }),
+    );
+
+    Ok(format!(
+        "Locked achievement '{id}': {old_status} → {new_status_label}"
+    ))
+}

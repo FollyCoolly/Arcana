@@ -38,7 +38,7 @@ Mission 模块管理用户的长期目标和重要任务。日常追踪需求由
 | `status` | string | 是 | `"proposed"` / `"active"` / `"completed"` / `"archived"` / `"rejected"` |
 | `progress` | number | 否 | 进度 0–100，由 AI 写入 |
 | `deadline` | string | 否 | 截止日期，`YYYY-MM-DD` |
-| `short_desc` | string | 否 | 5–10 字简洁描述，供主菜单任务提示板直接渲染（白色文字） |
+| `short_desc` | string | 否 | 5–15 字简洁描述，供主菜单任务提示板直接渲染 |
 | `linked_achievement_id` | string | 否 | 关联的成就 ID，由 AI agent 判断是更新进度还是解锁 |
 | `created_at` | string | 否 | 创建时间，ISO 8601 |
 | `completed_at` | string | 否 | 完成时间，ISO 8601 |
