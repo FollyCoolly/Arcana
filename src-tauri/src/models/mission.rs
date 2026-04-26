@@ -24,6 +24,8 @@ pub struct Mission {
     #[serde(default)]
     pub deadline: Option<String>,
     #[serde(default)]
+    pub short_desc: Option<String>,
+    #[serde(default)]
     pub linked_achievement_id: Option<String>,
     #[serde(default)]
     pub created_at: Option<String>,
@@ -40,6 +42,8 @@ pub struct MainMenuConfig {
     #[serde(default)]
     pub countdown: Option<MainMenuRef>,
     #[serde(default)]
+    pub hints: Vec<MainMenuHintRef>,
+    #[serde(default)]
     pub progress: Option<MainMenuRef>,
 }
 
@@ -47,6 +51,11 @@ pub struct MainMenuConfig {
 pub struct MainMenuRef {
     pub mission_id: String,
     pub label: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct MainMenuHintRef {
+    pub mission_id: String,
 }
 
 // --- Response structs (sent to frontend) ---
@@ -75,6 +84,7 @@ pub struct MissionData {
 #[derive(Debug, Serialize)]
 pub struct MainMenuMissionData {
     pub countdown: Option<CountdownDisplay>,
+    pub hints: Vec<HintDisplay>,
     pub progress: Option<ProgressDisplay>,
 }
 
@@ -82,6 +92,11 @@ pub struct MainMenuMissionData {
 pub struct CountdownDisplay {
     pub label: String,
     pub days_remaining: i64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct HintDisplay {
+    pub short_desc: String,
 }
 
 #[derive(Debug, Serialize)]

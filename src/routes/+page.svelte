@@ -488,50 +488,70 @@
             <div class="rm-calendar-widget">
                 <Calendar />
             </div>
-            {#if missionMenuData?.countdown && missionMenuData.countdown.days_remaining <= 99}
-                {@const cd = missionMenuData.countdown}
-                {@const labelLen = 2}
-                {@const daysStr = String(cd.days_remaining).padStart(2, "0")}
-                {@const boardSrc =
-                    labelLen <= 2
-                        ? "/ui/board/countdown_2wc.png"
-                        : "/ui/board/countdown_4wc.png"}
-                <div
-                    class="rm-countdown"
-                    aria-label="Mission countdown"
-                    data-label-len={labelLen <= 2 ? "2" : "4"}
-                    style:background-image="url({boardSrc})"
-                >
-                    <div class="rm-cd-mission-bg">
-                        <!-- TODO: replace with cd.short_desc once missions.json adds a `short_desc` field (5-10 Chinese chars; ASCII letters/digits count as 0.5) -->
-                        <span class="rm-cd-mission-text"
-                            >完成 Arcana v0.1 的发布</span
+            <div class="rm-task-panel">
+                {#if missionMenuData?.countdown && missionMenuData.countdown.days_remaining <= 99}
+                    {@const cd = missionMenuData.countdown}
+                    {@const labelLen = cd.label.length}
+                    {@const daysStr = String(cd.days_remaining).padStart(
+                        2,
+                        "0",
+                    )}
+                    {@const boardSrc =
+                        labelLen <= 2
+                            ? "/ui/board/countdown_2wc.png"
+                            : "/ui/board/countdown_4wc.png"}
+                    <div
+                        class="rm-countdown"
+                        aria-label="Mission countdown"
+                        data-label-len={labelLen <= 2 ? "2" : "4"}
+                        style:background-image="url({boardSrc})"
+                    >
+                        <div class="rm-cd-mission-bg">
+                            <span class="rm-cd-mission-text">{cd.label}</span>
+                        </div>
+                        <span class="rm-cd-prefix">距离</span>
+                        {#if labelLen <= 2}
+                            <span class="rm-cd-label-a">{cd.label}</span>
+                        {:else}
+                            <span class="rm-cd-label-a"
+                                >{cd.label.slice(0, 2)}</span
+                            >
+                            <span class="rm-cd-label-b"
+                                >{cd.label.slice(2, 4)}</span
+                            >
+                        {/if}
+                        <span class="rm-cd-middle">还剩</span>
+                        <div class="rm-cd-days-bg-1" aria-hidden="true"></div>
+                        <div class="rm-cd-days-bg-2" aria-hidden="true"></div>
+                        <span class="rm-cd-days-1">{daysStr[0]}</span>
+                        <span class="rm-cd-days-2">{daysStr[1]}</span>
+                        <span class="rm-cd-suffix">日</span>
+                    </div>
+                {:else if statusData}
+                    <div class="rm-player-info" aria-label="Player info">
+                        <span class="rm-player-name">{statusData.username}</span
+                        >
+                        <span class="rm-player-days"
+                            >Day {statusData.game_days ?? "—"}</span
                         >
                     </div>
-                    <span class="rm-cd-prefix">距离</span>
-                    {#if labelLen <= 2}
-                        <span class="rm-cd-label-a">发布</span>
-                    {:else}
-                        {@const labelA = "正式"}
-                        {@const labelB = "发布"}
-                        <span class="rm-cd-label-a">{labelA}</span>
-                        <span class="rm-cd-label-b">{labelB}</span>
-                    {/if}
-                    <span class="rm-cd-middle">还剩</span>
-                    <div class="rm-cd-days-bg-1" aria-hidden="true"></div>
-                    <div class="rm-cd-days-bg-2" aria-hidden="true"></div>
-                    <span class="rm-cd-days-1">{daysStr[0]}</span>
-                    <span class="rm-cd-days-2">{daysStr[1]}</span>
-                    <span class="rm-cd-suffix">日</span>
-                </div>
-            {:else if statusData}
-                <div class="rm-player-info" aria-label="Player info">
-                    <span class="rm-player-name">{statusData.username}</span>
-                    <span class="rm-player-days"
-                        >Day {statusData.game_days ?? "—"}</span
-                    >
-                </div>
-            {/if}
+                {/if}
+
+                {#if missionMenuData?.hints}
+                    {#each missionMenuData.hints as hint, i}
+                        <div
+                            class="rm-hint-board"
+                            data-board={i === 0 ? "fat" : "slim"}
+                            style:background-image="url(/ui/board/{i === 0
+                                ? 'board_fat'
+                                : 'board_slim'}.png)"
+                            aria-label="Mission hint"
+                        >
+                            <span class="rm-hint-text">{hint.short_desc}</span>
+                        </div>
+                    {/each}
+                {/if}
+            </div>
             {#if missionMenuData?.progress}
                 <PhanSiteProgress
                     question={missionMenuData.progress.label}
@@ -699,16 +719,23 @@
         pointer-events: none;
     }
 
-    .rm-player-info {
+    .rm-task-panel {
         position: absolute;
-        top: 1.5rem;
-        right: 1.5rem;
+        top: 2rem;
+        right: 2rem;
         z-index: 3;
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+        align-items: flex-end;
+        pointer-events: none;
+    }
+
+    .rm-player-info {
         display: flex;
         flex-direction: column;
         align-items: flex-end;
         gap: 0.1rem;
-        pointer-events: none;
     }
 
     .rm-player-name,
@@ -724,16 +751,45 @@
     }
 
     .rm-countdown {
-        position: absolute;
-        top: 2rem;
-        right: 2rem;
-        z-index: 3;
-        pointer-events: none;
         width: min(57vw, 832px);
         height: clamp(10.4rem, 16.9vw, 16.9rem);
         background-repeat: no-repeat;
         background-size: 100% 100%;
         background-position: center;
+        position: relative;
+    }
+
+    .rm-hint-board {
+        width: min(57vw, 832px);
+        height: clamp(4rem, 8vw, 8rem);
+        background-repeat: no-repeat;
+        background-size: 100% 100%;
+        background-position: center;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .rm-task-panel > * + * {
+        margin-top: -1rem;
+    }
+
+    .rm-hint-board[data-board="slim"] {
+        width: min(57vw, 832px);
+        height: clamp(4.5rem, 7vw, 7rem);
+    }
+
+    .rm-hint-text {
+        font-family:
+            "方正兰亭黑_GB", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+        font-weight: 900;
+        color: #ffffff;
+        font-size: clamp(1rem, 1.8vw, 1.8rem);
+        white-space: nowrap;
+        line-height: 1;
+        -webkit-text-stroke: 0.03em #000000;
+        paint-order: stroke fill;
     }
 
     .rm-cd-mission-bg {

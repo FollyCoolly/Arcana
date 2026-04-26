@@ -1,4 +1,7 @@
-use crate::models::mission::*;
+use crate::models::mission::{
+    CountdownDisplay, HintDisplay, MainMenuHintRef, MainMenuMissionData, MainMenuRef, Mission,
+    MissionData, MissionFile, MissionResponse, ProgressDisplay,
+};
 use crate::storage::date_utils::{days_from_civil, parse_date, today_epoch_days};
 use crate::storage::json_store::{read_json_file, resolve_data_dir, write_json_file};
 use crate::storage::validate::validate_data_file;
@@ -56,6 +59,7 @@ pub fn load_main_menu_missions() -> Result<MainMenuMissionData, String> {
     if !missions_path.exists() {
         return Ok(MainMenuMissionData {
             countdown: None,
+            hints: vec![],
             progress: None,
         });
     }
@@ -67,6 +71,8 @@ pub fn load_main_menu_missions() -> Result<MainMenuMissionData, String> {
         .countdown
         .and_then(|ref_data| resolve_countdown(&file.missions, ref_data));
 
+    let hints = resolve_hints(&file.missions, &file.main_menu.hints);
+
     let progress = file
         .main_menu
         .progress
@@ -74,6 +80,7 @@ pub fn load_main_menu_missions() -> Result<MainMenuMissionData, String> {
 
     Ok(MainMenuMissionData {
         countdown,
+        hints,
         progress,
     })
 }
@@ -139,6 +146,24 @@ pub fn update_mission_status(id: String, new_status: String) -> Result<(), Strin
     }
 
     Ok(())
+}
+
+fn resolve_hints(missions: &[Mission], hints: &[MainMenuHintRef]) -> Vec<HintDisplay> {
+    hints
+        .iter()
+        .filter_map(|h| {
+            missions
+                .iter()
+                .find(|m| m.id == h.mission_id && m.status == "active")
+                .map(|m| HintDisplay {
+                    short_desc: m
+                        .short_desc
+                        .clone()
+                        .unwrap_or_else(|| m.title.clone()),
+                })
+        })
+        .take(2)
+        .collect()
 }
 
 fn compute_days_remaining(deadline: &str) -> Result<i64, String> {

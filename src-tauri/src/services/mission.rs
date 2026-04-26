@@ -46,6 +46,16 @@ pub fn update_mission(data_dir: &Path, input: &Value) -> Result<String, String> 
                             changes.push(format!("{id}.completed_at: set to {s}"));
                         }
                     }
+                    "short_desc" => {
+                        let old = mission.short_desc.clone();
+                        if val.is_null() {
+                            mission.short_desc = None;
+                            changes.push(format!("{id}.short_desc: {old:?} → cleared"));
+                        } else if let Some(s) = val.as_str() {
+                            mission.short_desc = Some(s.to_string());
+                            changes.push(format!("{id}.short_desc: {old:?} → {s:?}"));
+                        }
+                    }
                     "deadline" => {
                         let old = mission.deadline.clone();
                         if let Some(s) = val.as_str() {
@@ -110,6 +120,16 @@ pub fn update_mission(data_dir: &Path, input: &Value) -> Result<String, String> 
                 changes.push("main_menu.countdown: updated".into());
             }
         }
+        if menu.get("hints").is_some() {
+            if menu["hints"].is_null() {
+                file.main_menu.hints = vec![];
+                changes.push("main_menu.hints: cleared".into());
+            } else {
+                file.main_menu.hints =
+                    serde_json::from_value(menu["hints"].clone()).unwrap_or_default();
+                changes.push("main_menu.hints: updated".into());
+            }
+        }
         if menu.get("progress").is_some() {
             if menu["progress"].is_null() {
                 file.main_menu.progress = None;
@@ -169,6 +189,7 @@ pub fn create_mission(data_dir: &Path, input: &Value) -> Result<String, String> 
         status: status.to_string(),
         progress: input["progress"].as_u64().map(|v| v as u32),
         deadline: input["deadline"].as_str().map(|s| s.to_string()),
+        short_desc: input["short_desc"].as_str().map(|s| s.to_string()),
         linked_achievement_id: input["linked_achievement_id"]
             .as_str()
             .map(|s| s.to_string()),

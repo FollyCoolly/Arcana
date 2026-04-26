@@ -82,6 +82,17 @@ fn validate_missions(data: &Value) -> Result<(), String> {
                 }
             }
         }
+        if let Some(hints) = menu.get("hints").and_then(|v| v.as_array()) {
+            for (i, h) in hints.iter().enumerate() {
+                if let Some(ref_id) = h.get("mission_id").and_then(|v| v.as_str()) {
+                    if !seen_ids.contains(ref_id) {
+                        return Err(format!(
+                            "missions.json: main_menu.hints[{i}].mission_id '{ref_id}' not found in missions"
+                        ));
+                    }
+                }
+            }
+        }
     }
 
     Ok(())
@@ -301,6 +312,34 @@ mod tests {
             ]
         });
         assert!(validate_data_file("missions.json", &data).is_err());
+    }
+
+    #[test]
+    fn missions_hints_bad_ref() {
+        let data = json!({
+            "version": 1,
+            "missions": [
+                {"id": "m1", "title": "Test", "status": "active"}
+            ],
+            "main_menu": {
+                "hints": [{"mission_id": "nonexistent", "short_desc": "something"}]
+            }
+        });
+        assert!(validate_data_file("missions.json", &data).is_err());
+    }
+
+    #[test]
+    fn missions_hints_valid_ref() {
+        let data = json!({
+            "version": 1,
+            "missions": [
+                {"id": "m1", "title": "Test", "status": "active"}
+            ],
+            "main_menu": {
+                "hints": [{"mission_id": "m1", "short_desc": "Do the thing"}]
+            }
+        });
+        assert!(validate_data_file("missions.json", &data).is_ok());
     }
 
     #[test]

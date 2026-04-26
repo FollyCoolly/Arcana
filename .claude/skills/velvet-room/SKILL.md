@@ -79,12 +79,15 @@ arcana-data status update weight_kg=75.2 running_5k_min=25
 
 ### E) Main Menu Display
 ```bash
-arcana-data mission update-menu --countdown '{"mission_id":"m1","label":"v0.1 发布"}'
+arcana-data mission update-menu --countdown '{"mission_id":"m1","label":"发布"}'
+arcana-data mission update-menu --hints '[{"mission_id":"m1"},{"mission_id":"m2"}]'
 arcana-data mission update-menu --progress '{"mission_id":"m1","label":"v0.1 完成度"}'
-arcana-data mission update-menu --countdown null  # clear
+arcana-data mission update-menu --countdown null   # clear countdown
+arcana-data mission update-menu --hints null       # clear all hints
 ```
 Labels are embedded into frontend templates — verify the full sentence reads naturally:
-- **countdown**: renders as `距离{label}还有{days}天` → label should be an event noun
+- **countdown**: renders as `距离{label}还有{days}天` → label 必须恰好 **2 字或 4 字**（决定背景板版型：2wc / 4wc）
+- **hints**: 每条只需 `mission_id`，渲染文字取自 mission 的 `short_desc` 字段（无则 fallback title），第 1 条用大板（board_fat），第 2 条用小板（board_slim）；设置 short_desc 用 `arcana-data mission update <id> --short-desc "5-10字描述"`
 - **progress**: renders as `{label} {progress}%` → label should describe completion
 
 ### F) Rollback

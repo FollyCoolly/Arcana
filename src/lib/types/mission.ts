@@ -22,6 +22,10 @@ export type CountdownDisplay = {
     days_remaining: number;
 };
 
+export type HintDisplay = {
+    short_desc: string;
+};
+
 export type ProgressDisplay = {
     label: string;
     progress: number;
@@ -29,5 +33,6 @@ export type ProgressDisplay = {
 
 export type MainMenuMissionData = {
     countdown: CountdownDisplay | null;
+    hints: HintDisplay[];
     progress: ProgressDisplay | null;
 };

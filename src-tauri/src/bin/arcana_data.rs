@@ -109,6 +109,8 @@ enum MissionAction {
         #[arg(long)]
         description: Option<String>,
         #[arg(long)]
+        short_desc: Option<String>,
+        #[arg(long)]
         deadline: Option<String>,
         #[arg(long)]
         completed_at: Option<String>,
@@ -125,6 +127,9 @@ enum MissionAction {
         /// Countdown widget JSON: {"mission_id": "...", "label": "..."} or "null" to clear
         #[arg(long)]
         countdown: Option<String>,
+        /// Hints array JSON: [{"mission_id":"...","short_desc":"..."},...] or "null" to clear
+        #[arg(long)]
+        hints: Option<String>,
         /// Progress widget JSON: {"mission_id": "...", "label": "..."} or "null" to clear
         #[arg(long)]
         progress: Option<String>,
@@ -409,6 +414,7 @@ fn cmd_mission(data_dir: &Path, action: MissionAction) -> Result<String, String>
             status,
             title,
             description,
+            short_desc,
             deadline,
             completed_at,
             linked_achievement_id,
@@ -427,6 +433,9 @@ fn cmd_mission(data_dir: &Path, action: MissionAction) -> Result<String, String>
             }
             if let Some(d) = description {
                 updates.insert("description".into(), json!(d));
+            }
+            if let Some(s) = short_desc {
+                updates.insert("short_desc".into(), json!(s));
             }
             if let Some(d) = deadline {
                 updates.insert("deadline".into(), json!(d));
@@ -453,6 +462,7 @@ fn cmd_mission(data_dir: &Path, action: MissionAction) -> Result<String, String>
         }
         MissionAction::UpdateMenu {
             countdown,
+            hints,
             progress,
         } => {
             let mut menu = serde_json::Map::new();
@@ -463,6 +473,14 @@ fn cmd_mission(data_dir: &Path, action: MissionAction) -> Result<String, String>
                     serde_json::from_str(&c).map_err(|e| format!("Invalid countdown JSON: {e}"))?
                 };
                 menu.insert("countdown".into(), val);
+            }
+            if let Some(h) = hints {
+                let val: Value = if h == "null" {
+                    Value::Null
+                } else {
+                    serde_json::from_str(&h).map_err(|e| format!("Invalid hints JSON: {e}"))?
+                };
+                menu.insert("hints".into(), val);
             }
             if let Some(p) = progress {
                 let val: Value = if p == "null" {
