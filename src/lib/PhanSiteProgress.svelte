@@ -117,9 +117,15 @@
     }
 
     .phansite.phansite-missions {
-        left: clamp(2.5rem, 4vw, 4.5rem);
+        --missions-progress-left: clamp(5rem, 10vw, 10rem);
+        --missions-progress-bottom: clamp(3rem, 5vh, 6rem);
+        --missions-progress-scale: 1.5;
+        left: var(--missions-progress-left);
+        bottom: var(--missions-progress-bottom);
         right: auto;
         z-index: 4;
+        transform: rotate(-1deg) scale(var(--missions-progress-scale));
+        transform-origin: bottom left;
     }
 
     .phansite-bolts {

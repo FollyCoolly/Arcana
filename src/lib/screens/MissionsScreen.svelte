@@ -24,6 +24,9 @@
     let selectedIndex = $state(0);
     let detailMission = $state<MissionResponse | null>(null);
     let rowRefs = $state<(HTMLElement | undefined)[]>([]);
+    let scrollRef = $state<HTMLElement | undefined>(undefined);
+    let scrollRatio = $state(0);
+    let thumbRatio = $state(1);
 
     // Phan-Site panel state
     let phanSiteOpen = $state(false);
@@ -32,9 +35,9 @@
 
     type SortOption = { key: string; label: string };
     const SORT_OPTIONS: SortOption[] = [
-        { key: "newest", label: "NEW" },
-        { key: "status", label: "STATE" },
-        { key: "progress", label: "DIFFICULTY" },
+        { key: "newest", label: "Pubtime" },
+        { key: "status", label: "State" },
+        { key: "progress", label: "Diffuculty" },
     ];
 
     // Carousel: compute visible order so active is always in the center
@@ -51,6 +54,15 @@
         active: 0,
         completed: 1,
         archived: 2,
+    };
+
+    const DIFFICULTY_ORDER: Record<string, number> = {
+        S: 0,
+        A: 1,
+        B: 2,
+        C: 3,
+        D: 4,
+        E: 5,
     };
 
     let proposedMissions = $derived(
@@ -76,7 +88,9 @@
                 );
             case "progress":
                 return list.sort(
-                    (a, b) => (b.progress ?? 0) - (a.progress ?? 0),
+                    (a, b) =>
+                        (DIFFICULTY_ORDER[a.difficulty ?? ""] ?? 99) -
+                        (DIFFICULTY_ORDER[b.difficulty ?? ""] ?? 99),
                 );
             default:
                 return list;
@@ -93,11 +107,27 @@
         }
     });
 
+    // Update scroll indicator when content changes
+    $effect(() => {
+        sortedMissions;
+        requestAnimationFrame(() => updateScrollIndicator());
+    });
+
     // Auto-scroll selected row into view
     $effect(() => {
         const el = rowRefs[selectedIndex];
         if (el) el.scrollIntoView({ block: "nearest", behavior: "smooth" });
     });
+
+    function updateScrollIndicator() {
+        if (!scrollRef) return;
+        const max = scrollRef.scrollHeight - scrollRef.clientHeight;
+        scrollRatio = max > 0 ? scrollRef.scrollTop / max : 0;
+        thumbRatio =
+            scrollRef.scrollHeight > 0
+                ? Math.min(1, scrollRef.clientHeight / scrollRef.scrollHeight)
+                : 1;
+    }
 
     function cycleSort(dir: number) {
         sortIndex =
@@ -242,47 +272,60 @@
 </script>
 
 <section class="rm-stage">
+    <div class="rm-missions-bg-poly" aria-hidden="true"></div>
+
     <div class="rm-missions-panel">
-        <!-- Sort carousel: Q shifts right-to-left, E shifts left-to-right, center is active -->
+        <!-- Sort prompts: Q shifts right-to-left, E shifts left-to-right, center is active -->
         <header class="rm-missions-sort-bar">
-            <button
-                class="rm-sort-key-hint"
-                onclick={() => cycleSort(-1)}
-                aria-label="Previous sort">Q</button
-            >
-            <div class="rm-sort-carousel">
-                <button
-                    class="rm-sort-item rm-sort-side"
-                    onclick={() => cycleSort(-1)}
-                >
-                    {SORT_OPTIONS[sortCarousel[0]].label}
-                </button>
-                <span class="rm-sort-item rm-sort-center">
-                    {SORT_OPTIONS[sortCarousel[1]].label}
-                </span>
-                <button
-                    class="rm-sort-item rm-sort-side"
-                    onclick={() => cycleSort(1)}
-                >
-                    {SORT_OPTIONS[sortCarousel[2]].label}
-                </button>
+            <div class="rm-sort-side-label rm-sort-side-label--prev">
+                <PromptWord
+                    text={SORT_OPTIONS[sortCarousel[0]].label}
+                    fontSize={44}
+                />
             </div>
             <button
-                class="rm-sort-key-hint"
-                onclick={() => cycleSort(1)}
-                aria-label="Next sort">E</button
+                type="button"
+                class="rm-sort-key-btn rm-sort-key-btn--prev"
+                onclick={() => cycleSort(-1)}
+                aria-label="Previous sort"
             >
+                <KeyHint key="Q" fontSize={30} />
+            </button>
+            <div class="rm-sort-current-label">
+                <PromptWord
+                    text={`Sort by ${SORT_OPTIONS[sortCarousel[1]].label}`}
+                    fontSize={54}
+                />
+            </div>
+            <button
+                type="button"
+                class="rm-sort-key-btn rm-sort-key-btn--next"
+                onclick={() => cycleSort(1)}
+                aria-label="Next sort"
+            >
+                <KeyHint key="E" fontSize={30} />
+            </button>
+            <div class="rm-sort-side-label rm-sort-side-label--next">
+                <PromptWord
+                    text={SORT_OPTIONS[sortCarousel[2]].label}
+                    fontSize={44}
+                />
+            </div>
         </header>
 
         <!-- Column headers -->
         <div class="rm-missions-col-headers">
-            <span class="rm-col-header rm-col-status">STATUS</span>
-            <span class="rm-col-header rm-col-name">MISSION</span>
-            <span class="rm-col-header rm-col-grade">DIFFICULTY</span>
+            <span class="rm-col-header rm-col-status">State</span>
+            <span class="rm-col-header rm-col-name">Mission Name</span>
+            <span class="rm-col-header rm-col-grade">Difficulty</span>
         </div>
 
         <!-- Mission list -->
-        <div class="rm-missions-scroll">
+        <div
+            class="rm-missions-scroll"
+            bind:this={scrollRef}
+            onscroll={updateScrollIndicator}
+        >
             {#if loading}
                 <p class="state-text">Loading...</p>
             {:else if error}
@@ -301,16 +344,14 @@
                                 selectedIndex = i;
                             }}
                         >
-                            <span
+                            <img
                                 class="rm-mission-stamp"
-                                class:stamp-active={mission.status === "active"}
-                                class:stamp-clear={mission.status ===
-                                    "completed"}
-                                class:stamp-archived={mission.status ===
-                                    "archived"}
-                            >
-                                {statusLabel(mission.status)}
-                            </span>
+                                src="/ui/mission_state/{mission.status ===
+                                'completed'
+                                    ? 'clear'
+                                    : mission.status}.png"
+                                alt={mission.status}
+                            />
 
                             <span class="rm-mission-name">{mission.title}</span>
 
@@ -326,6 +367,17 @@
             {:else}
                 <p class="state-text">No missions yet.</p>
             {/if}
+        </div>
+    </div>
+
+    <!-- Scroll indicator -->
+    <div
+        class="rm-missions-scroll-indicator"
+        aria-hidden="true"
+        style="--thumb-ratio: {thumbRatio}; --scroll-ratio: {scrollRatio};"
+    >
+        <div class="rm-missions-scroll-track">
+            <div class="rm-missions-scroll-thumb"></div>
         </div>
     </div>
 
@@ -540,6 +592,27 @@
 </section>
 
 <style>
+    :global(.rm-stage) {
+        --missions-bg-clip: polygon(
+            40% 0%,
+            93% 0%,
+            100% 25%,
+            100% 90%,
+            50% 100%,
+            42% 100%,
+            20% 15%
+        );
+    }
+
+    .rm-missions-bg-poly {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+        background: #000000;
+        clip-path: var(--missions-bg-clip);
+    }
+
     /* ── Panel ── */
     .rm-missions-panel {
         position: absolute;
@@ -552,137 +625,190 @@
         display: flex;
         flex-direction: column;
         overflow: hidden;
-        background: rgba(0, 0, 0, 0.85);
-        border-left: 3px solid rgba(255, 255, 255, 0.12);
+        background: transparent;
+        z-index: 1;
     }
 
-    /* ── Sort carousel ── */
+    /* ── Sort prompts ── */
     .rm-missions-sort-bar {
+        --sort-side-slot: clamp(8rem, 10vw, 13rem);
+        --sort-current-slot: clamp(18rem, 24vw, 30rem);
         flex-shrink: 0;
+        display: grid;
+        grid-template-columns:
+            var(--sort-side-slot) auto var(--sort-current-slot) auto
+            var(--sort-side-slot);
+        align-items: center;
+        justify-content: center;
+        background: transparent;
+        font-family: "方正兰亭黑_GB", Arial, sans-serif;
+        padding: clamp(0.25rem, 0.4vw, 0.6rem) clamp(1rem, 1.2vw, 2rem);
+        column-gap: clamp(0.2rem, 0.45vw, 0.7rem);
+        transform: translate(-30rem, 2rem) rotate(-2deg);
+    }
+
+    .rm-sort-side-label,
+    .rm-sort-current-label {
         display: flex;
         align-items: center;
         justify-content: center;
-        background: #000000;
-        border-bottom: 2px solid rgba(255, 255, 255, 0.12);
-        font-family: "p5hatty", "Orbitron", Arial, sans-serif;
-        padding: clamp(0.4rem, 0.5vw, 0.7rem) 0;
-        gap: 0;
+        min-width: 0;
+        pointer-events: none;
     }
 
-    .rm-sort-carousel {
+    .rm-sort-side-label--prev {
+        justify-content: flex-end;
+    }
+
+    .rm-sort-side-label--next {
+        justify-content: flex-start;
+    }
+
+    .rm-sort-key-btn {
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: clamp(0.8rem, 1.2vw, 2rem);
-        flex: 1;
-        overflow: hidden;
-    }
-
-    .rm-sort-item {
-        font-family: "p5hatty", "Orbitron", Arial, sans-serif;
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        white-space: nowrap;
-        transition:
-            font-size 180ms ease,
-            color 180ms ease,
-            transform 180ms ease,
-            opacity 180ms ease;
-    }
-
-    .rm-sort-center {
-        font-size: clamp(1.1rem, 1.5vw, 2rem);
-        color: #e5191c;
-        transform: scale(1);
-        padding: clamp(0.15rem, 0.2vw, 0.3rem) clamp(0.6rem, 0.8vw, 1.2rem);
-        background: rgba(229, 25, 28, 0.12);
-        clip-path: polygon(3% 0%, 100% 5%, 97% 100%, 0% 95%);
-    }
-
-    .rm-sort-side {
-        font-size: clamp(0.65rem, 0.7vw, 1rem);
-        color: rgba(255, 255, 255, 0.3);
         border: none;
-        background: none;
-        cursor: pointer;
         padding: 0;
-    }
-
-    .rm-sort-side:hover {
-        color: rgba(255, 255, 255, 0.6);
-    }
-
-    .rm-sort-key-hint {
-        flex-shrink: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: clamp(1.6rem, 2vw, 2.4rem);
-        height: clamp(1.6rem, 2vw, 2.4rem);
-        font-family: "p5hatty", "Orbitron", Arial, sans-serif;
-        font-size: clamp(0.6rem, 0.6vw, 0.9rem);
-        font-weight: 800;
-        color: rgba(255, 255, 255, 0.35);
-        background: rgba(255, 255, 255, 0.06);
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: transparent;
         cursor: pointer;
-        margin: 0 clamp(0.3rem, 0.4vw, 0.6rem);
-        transition:
-            background 120ms ease,
-            color 120ms ease;
+        transition: transform 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
     }
 
-    .rm-sort-key-hint:hover {
-        background: rgba(255, 255, 255, 0.12);
-        color: rgba(255, 255, 255, 0.6);
+    .rm-sort-key-btn:hover {
+        transform: scale(1.08) rotate(-2deg);
+    }
+
+    .rm-sort-key-btn:focus-visible {
+        outline: 0.16rem solid #ffffff;
+        outline-offset: 0.16rem;
+    }
+
+    .rm-sort-side-label :global(.p5-prompt-word) {
+        max-width: 100%;
+        height: auto;
+    }
+
+    .rm-sort-current-label :global(.p5-prompt-word) {
+        max-width: 100%;
+        height: auto;
     }
 
     /* ── Column headers ── */
     .rm-missions-col-headers {
         flex-shrink: 0;
-        display: flex;
-        align-items: center;
-        padding: clamp(0.3rem, 0.4vw, 0.6rem) clamp(1rem, 1.2vw, 2rem);
-        border-bottom: 2px solid rgba(255, 255, 255, 0.15);
-        background: rgba(255, 255, 255, 0.03);
-        font-family: "p5hatty", "Orbitron", Arial, sans-serif;
+        position: relative;
+        height: clamp(2.5rem, 3.2vw, 4rem);
+        padding: 0;
+        background: transparent;
+        font-family: "方正兰亭黑_GB", Arial, sans-serif;
     }
 
     .rm-col-header {
-        font-size: clamp(0.55rem, 0.5vw, 0.8rem);
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 0.12em;
-        color: rgba(255, 255, 255, 0.35);
+        position: absolute;
+        left: var(--col-x);
+        top: var(--col-y);
+        width: var(--col-w);
+        height: var(--col-h);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+        padding: 0 var(--col-pad-x);
+        background: #ffffff;
+        color: #000000;
+        font-size: var(--col-font-size);
+        font-weight: 900;
+        letter-spacing: 0;
+        line-height: 1;
+        white-space: nowrap;
+        transform: rotate(var(--col-rot));
+        transform-origin: center;
     }
 
     .rm-col-status {
-        width: clamp(5rem, 8vw, 9rem);
-        flex-shrink: 0;
+        --col-x: clamp(16rem, 32vw, 32rem);
+        --col-y: clamp(2rem, 4vw, 4rem);
+        --col-w: clamp(12rem, 24vw, 24rem);
+        --col-h: clamp(3.5rem, 7vw, 7rem);
+        --col-rot: -1deg;
+        --col-font-size: clamp(2.5rem, 5vw, 5rem);
+        --col-pad-x: clamp(0.5rem, 0.7vw, 1rem);
     }
 
     .rm-col-name {
-        flex: 1;
+        --col-x: clamp(28.5rem, 57vw, 57rem);
+        --col-y: clamp(1rem, 2vw, 2rem);
+        --col-w: clamp(41rem, 82vw, 82rem);
+        --col-h: clamp(3.5rem, 7vw, 7rem);
+        --col-rot: -2deg;
+        --col-font-size: clamp(2.5rem, 5vw, 5rem);
+        --col-pad-x: clamp(0.7rem, 0.9vw, 1.2rem);
     }
 
     .rm-col-grade {
-        width: clamp(3rem, 5vw, 6rem);
-        flex-shrink: 0;
+        --col-x: clamp(70rem, 140vw, 140rem);
+        --col-y: clamp(1rem, 2vw, 2rem);
+        --col-w: clamp(14rem, 28vw, 28rem);
+        --col-h: clamp(3.5rem, 7vw, 7rem);
+        --col-rot: -3deg;
+        --col-font-size: clamp(2.5rem, 5vw, 5rem);
+        --col-pad-x: clamp(0.5rem, 0.7vw, 1rem);
         text-align: center;
     }
 
     /* ── Scroll area ── */
     .rm-missions-scroll {
         flex: 1;
+        overflow-x: visible;
         overflow-y: auto;
-        padding: 0 0 4rem 0;
+        scrollbar-width: none;
+    }
+
+    .rm-missions-scroll::-webkit-scrollbar {
+        display: none;
+    }
+
+    /* ── Custom scroll indicator ── */
+    .rm-missions-scroll-indicator {
+        position: absolute;
+        top: 20vh;
+        right: clamp(10rem, 20vw, 20rem);
+        transform: translate(0, 0) rotate(-10deg);
+        transform-origin: left top;
+        z-index: 10;
+        pointer-events: none;
+        height: 30vh;
+        width: 28px;
+    }
+
+    .rm-missions-scroll-track {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        background: var(--rm-black);
+        border: 4px solid var(--rm-white);
+        box-sizing: border-box;
+    }
+
+    .rm-missions-scroll-thumb {
+        position: absolute;
+        left: 0;
+        right: 0;
+        height: calc(var(--thumb-ratio, 1) * 100%);
+        top: calc(
+            var(--scroll-ratio, 0) * (100% - var(--thumb-ratio, 1) * 100%)
+        );
+        background: var(--rm-white);
     }
 
     .rm-missions-list {
         list-style: none;
         margin: 0;
+        margin-left: 40rem;
         padding: 0;
+        padding-bottom: 4rem;
+        transform: translateY(10rem);
         display: flex;
         flex-direction: column;
         gap: 0;
@@ -690,27 +816,43 @@
 
     /* ── Mission rows ── */
     .rm-mission-row {
-        display: flex;
+        display: grid;
+        grid-template-columns: 20rem 80rem 15rem;
+        width: fit-content;
+        column-gap: 0;
         align-items: center;
-        padding: clamp(0.6rem, 0.8vw, 1.2rem) clamp(1rem, 1.2vw, 2rem);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        height: 7rem;
+        padding: 0;
         cursor: pointer;
         transition:
-            background 100ms ease,
+            color 100ms ease,
             transform 100ms ease;
         clip-path: polygon(0% 4%, 100% 0%, 100% 96%, 0% 100%);
         position: relative;
     }
 
-    .rm-mission-row:hover {
-        background: rgba(255, 255, 255, 0.06);
+    .rm-mission-row::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        left: -3rem;
+        right: -5rem;
+        background: transparent;
+        clip-path: polygon(1% 30%, 100% 10%, 95% 100%, 3% 90%);
+        pointer-events: none;
+        z-index: -1;
+        transition: background 100ms ease;
     }
 
     .rm-mission-row.is-selected {
-        background: #e5191c;
+        background: transparent;
         transform: scaleY(1.08);
-        clip-path: polygon(0% 0%, 100% 3%, 100% 97%, 0% 100%);
+        clip-path: none;
         z-index: 2;
+    }
+
+    .rm-mission-row.is-selected::before {
+        background: #e5191c;
     }
 
     .rm-mission-row.is-completed {
@@ -728,37 +870,25 @@
 
     /* ── Status stamp ── */
     .rm-mission-stamp {
-        width: clamp(5rem, 8vw, 9rem);
-        flex-shrink: 0;
-        font-family: "p5hatty", "Orbitron", Arial, sans-serif;
-        font-size: clamp(0.7rem, 0.75vw, 1.1rem);
-        font-weight: 900;
-        font-style: italic;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-        color: rgba(255, 255, 255, 0.3);
+        display: block;
+        width: 80%;
+        height: 80%;
+        object-fit: contain;
     }
 
-    .rm-mission-stamp.stamp-active {
-        color: #e5191c;
-        transform: rotate(-2deg);
-        text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.5);
-    }
-
-    .rm-mission-stamp.stamp-clear {
-        color: rgba(255, 255, 255, 0.7);
-        transform: rotate(-1deg);
+    .rm-mission-row.is-completed .rm-mission-stamp {
+        opacity: 0.9;
     }
 
     .rm-mission-row.is-selected .rm-mission-stamp {
-        color: #ffffff;
+        opacity: 1;
     }
 
     /* ── Mission name ── */
     .rm-mission-name {
-        flex: 1;
-        font-family: "p5hatty", "Orbitron", Arial, sans-serif;
-        font-size: clamp(0.85rem, 0.9vw, 1.4rem);
+        min-width: 0;
+        font-family: "方正兰亭黑_GB", Arial, sans-serif;
+        font-size: clamp(1.5rem, 1.6vw, 3rem);
         font-weight: 800;
         color: #ffffff;
         letter-spacing: 0.03em;
@@ -769,25 +899,20 @@
 
     /* ── Grade letter ── */
     .rm-mission-grade {
-        width: clamp(3rem, 5vw, 6rem);
-        flex-shrink: 0;
         text-align: center;
-        font-family: "p5hatty", "Orbitron", Arial, sans-serif;
-        font-size: clamp(1.4rem, 1.8vw, 2.5rem);
+        font-family: "方正兰亭黑_GB", Arial, sans-serif;
+        font-size: clamp(4rem, 6vw, 8rem);
         font-weight: 900;
-        color: #000000;
-        background: #ffffff;
-        padding: clamp(0.1rem, 0.15vw, 0.25rem) 0;
-        clip-path: polygon(5% 0%, 100% 4%, 95% 100%, 0% 96%);
-        line-height: 1.2;
+        color: #ffffff;
+        background: none;
+        padding: 0;
+        clip-path: none;
+        line-height: 1;
+        overflow: hidden;
     }
 
     .rm-mission-grade[data-grade="S"] {
         color: #e5191c;
-    }
-
-    .rm-mission-grade[data-grade="D"] {
-        opacity: 0.5;
     }
 
     .rm-mission-grade[data-grade="--"] {
@@ -796,8 +921,7 @@
     }
 
     .rm-mission-row.is-selected .rm-mission-grade {
-        background: #ffffff;
-        color: #e5191c;
+        color: #ffffff;
     }
 
     /* ── Detail card overlay ── */
@@ -820,7 +944,7 @@
         clip-path: polygon(0% 2%, 100% 0%, 100% 98%, 0% 100%);
         display: flex;
         flex-direction: column;
-        font-family: "p5hatty", "Orbitron", Arial, sans-serif;
+        font-family: "方正兰亭黑_GB", Arial, sans-serif;
         animation: rm-detail-pop 180ms ease-out;
     }
 
@@ -951,7 +1075,7 @@
 
     .rm-action-btn {
         flex: 1;
-        font-family: "p5hatty", "Orbitron", Arial, sans-serif;
+        font-family: "方正兰亭黑_GB", Arial, sans-serif;
         font-size: clamp(0.75rem, 0.8vw, 1.1rem);
         font-weight: 900;
         text-transform: uppercase;
@@ -1033,7 +1157,7 @@
     }
 
     .rm-phansite-badge {
-        font-family: "p5hatty", "Orbitron", Arial, sans-serif;
+        font-family: "方正兰亭黑_GB", Arial, sans-serif;
         font-size: clamp(1rem, 1.2vw, 1.6rem);
         font-weight: 900;
         color: #e5191c;
@@ -1125,7 +1249,7 @@
     }
 
     .rm-phan-phone-title {
-        font-family: "p5hatty", "Orbitron", Arial, sans-serif;
+        font-family: "方正兰亭黑_GB", Arial, sans-serif;
         font-size: clamp(1.1rem, 1.3vw, 1.8rem);
         font-weight: 900;
         color: #ffffff;
@@ -1134,7 +1258,7 @@
     }
 
     .rm-phan-phone-subtitle {
-        font-family: "p5hatty", "Orbitron", Arial, sans-serif;
+        font-family: "方正兰亭黑_GB", Arial, sans-serif;
         font-size: clamp(0.5rem, 0.5vw, 0.7rem);
         font-weight: 700;
         color: rgba(255, 255, 255, 0.6);
@@ -1159,14 +1283,14 @@
     }
 
     .rm-phan-empty-icon {
-        font-family: "p5hatty", "Orbitron", Arial, sans-serif;
+        font-family: "方正兰亭黑_GB", Arial, sans-serif;
         font-size: clamp(2rem, 2.5vw, 3rem);
         color: rgba(255, 255, 255, 0.1);
         font-weight: 900;
     }
 
     .rm-phan-empty-text {
-        font-family: "p5hatty", "Orbitron", Arial, sans-serif;
+        font-family: "方正兰亭黑_GB", Arial, sans-serif;
         font-size: clamp(0.65rem, 0.6vw, 0.9rem);
         color: rgba(255, 255, 255, 0.25);
         font-weight: 700;
@@ -1201,7 +1325,7 @@
         flex-shrink: 0;
         width: clamp(2rem, 2.5vw, 3rem);
         text-align: center;
-        font-family: "p5hatty", "Orbitron", Arial, sans-serif;
+        font-family: "方正兰亭黑_GB", Arial, sans-serif;
         font-size: clamp(0.6rem, 0.6vw, 0.85rem);
         font-weight: 800;
         color: rgba(255, 255, 255, 0.4);
@@ -1213,7 +1337,7 @@
 
     .rm-phan-item-title {
         flex: 1;
-        font-family: "p5hatty", "Orbitron", Arial, sans-serif;
+        font-family: "方正兰亭黑_GB", Arial, sans-serif;
         font-size: clamp(0.7rem, 0.7vw, 1rem);
         font-weight: 800;
         color: #ffffff;
@@ -1238,14 +1362,14 @@
         display: flex;
         flex-direction: column;
         gap: clamp(0.5rem, 0.6vw, 0.8rem);
-        font-family: "p5hatty", "Orbitron", Arial, sans-serif;
+        font-family: "方正兰亭黑_GB", Arial, sans-serif;
         animation: rm-phone-slide 200ms ease-out;
         box-shadow: 0 0 30px rgba(0, 0, 0, 0.9);
     }
 
     .rm-phan-detail-back {
         align-self: flex-start;
-        font-family: "p5hatty", "Orbitron", Arial, sans-serif;
+        font-family: "方正兰亭黑_GB", Arial, sans-serif;
         font-size: clamp(0.55rem, 0.5vw, 0.75rem);
         font-weight: 800;
         color: rgba(255, 255, 255, 0.4);
@@ -1308,5 +1432,4 @@
         background: rgba(255, 255, 255, 0.15);
         border-radius: 2px;
     }
-
 </style>
