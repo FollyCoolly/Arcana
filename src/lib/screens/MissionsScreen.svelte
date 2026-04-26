@@ -1,7 +1,6 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { invoke } from "@tauri-apps/api/core";
-    import CallingCardText from "$lib/CallingCardText.svelte";
     import KeyHint from "$lib/KeyHint.svelte";
     import PhanSiteProgress from "$lib/PhanSiteProgress.svelte";
     import PromptWord from "$lib/PromptWord.svelte";
@@ -28,8 +27,8 @@
     let scrollRatio = $state(0);
     let thumbRatio = $state(1);
 
-    // Phan-Site panel state
-    let phanSiteOpen = $state(false);
+    // Phan-Site mode state
+    let phanMode = $state(false);
     let phanSelectedIndex = $state(0);
     let phanDetailMission = $state<MissionResponse | null>(null);
 
@@ -192,13 +191,20 @@
         }
     }
 
+    function togglePhanMode() {
+        phanMode = !phanMode;
+        phanSelectedIndex = 0;
+        phanDetailMission = null;
+        detailMission = null;
+    }
+
     function handleKeydown(event: KeyboardEvent) {
         if (event.key === "Escape") {
             event.preventDefault();
             if (phanDetailMission) {
                 phanDetailMission = null;
-            } else if (phanSiteOpen) {
-                phanSiteOpen = false;
+            } else if (phanMode) {
+                phanMode = false;
             } else if (detailMission) {
                 closeDetail();
             } else {
@@ -206,9 +212,19 @@
             }
             return;
         }
+        if (event.key === "p" || event.key === "P") {
+            event.preventDefault();
+            togglePhanMode();
+            return;
+        }
         if (event.key === "Enter") {
             event.preventDefault();
-            if (detailMission) {
+            if (phanMode) {
+                if (proposedMissions.length > 0) {
+                    phanDetailMission =
+                        proposedMissions[phanSelectedIndex] ?? null;
+                }
+            } else if (detailMission) {
                 closeDetail();
             } else if (sortedMissions.length > 0) {
                 openDetail(selectedIndex);
@@ -217,12 +233,12 @@
         }
         if (event.key === "q" || event.key === "Q") {
             event.preventDefault();
-            cycleSort(-1);
+            if (!phanMode) cycleSort(-1);
             return;
         }
         if (event.key === "e" || event.key === "E") {
             event.preventDefault();
-            cycleSort(1);
+            if (!phanMode) cycleSort(1);
             return;
         }
         if (event.key === "r" || event.key === "R") {
@@ -232,19 +248,32 @@
         }
         if (event.key === "ArrowDown") {
             event.preventDefault();
-            detailMission = null;
-            if (sortedMissions.length > 0) {
-                selectedIndex = Math.min(
-                    selectedIndex + 1,
-                    sortedMissions.length - 1,
+            if (phanMode) {
+                phanDetailMission = null;
+                phanSelectedIndex = Math.min(
+                    phanSelectedIndex + 1,
+                    proposedMissions.length - 1,
                 );
+            } else {
+                detailMission = null;
+                if (sortedMissions.length > 0) {
+                    selectedIndex = Math.min(
+                        selectedIndex + 1,
+                        sortedMissions.length - 1,
+                    );
+                }
             }
             return;
         }
         if (event.key === "ArrowUp") {
             event.preventDefault();
-            detailMission = null;
-            selectedIndex = Math.max(selectedIndex - 1, 0);
+            if (phanMode) {
+                phanDetailMission = null;
+                phanSelectedIndex = Math.max(phanSelectedIndex - 1, 0);
+            } else {
+                detailMission = null;
+                selectedIndex = Math.max(selectedIndex - 1, 0);
+            }
         }
     }
 
@@ -330,6 +359,44 @@
                 <p class="state-text">Loading...</p>
             {:else if error}
                 <p class="state-text error">{error}</p>
+            {:else if phanMode}
+                {#if proposedMissions.length > 0}
+                    <ul class="rm-missions-list">
+                        {#each proposedMissions as mission, i (mission.id)}
+                            <li
+                                class="rm-mission-row"
+                                class:is-selected={phanSelectedIndex === i}
+                                bind:this={rowRefs[i]}
+                                onclick={() => {
+                                    phanSelectedIndex = i;
+                                    phanDetailMission = mission;
+                                }}
+                                onmouseenter={() => {
+                                    phanSelectedIndex = i;
+                                }}
+                            >
+                                <img
+                                    class="rm-mission-stamp"
+                                    src="/ui/mission_state/proposed.png"
+                                    alt="proposed"
+                                />
+                                <span class="rm-mission-name"
+                                    >{mission.title}</span
+                                >
+                                <span
+                                    class="rm-mission-grade"
+                                    data-grade={difficultyGrade(
+                                        mission.difficulty,
+                                    )}
+                                >
+                                    {difficultyGrade(mission.difficulty)}
+                                </span>
+                            </li>
+                        {/each}
+                    </ul>
+                {:else}
+                    <p class="state-text">No new requests.</p>
+                {/if}
             {:else if sortedMissions.length > 0}
                 <ul class="rm-missions-list">
                     {#each sortedMissions as mission, i (mission.id)}
@@ -434,144 +501,66 @@
         </article>
     {/if}
 
-    <!-- Phan-Site button (top-left) -->
-    <button
-        class="rm-phansite-btn"
-        class:has-new={proposedMissions.length > 0}
-        onclick={() => {
-            phanSiteOpen = true;
-            phanSelectedIndex = 0;
-            phanDetailMission = null;
-        }}
-    >
-        <div class="rm-phansite-phone-icon">
-            <div class="rm-phansite-phone-screen">
-                {#if proposedMissions.length > 0}
-                    <span class="rm-phansite-badge"
-                        >{proposedMissions.length}</span
-                    >
-                {/if}
-            </div>
-        </div>
-        <div class="rm-phansite-label">
-            <CallingCardText text="PHAN SiTE" fontSize={28} />
-        </div>
-    </button>
-
-    <!-- Phan-Site phone panel overlay -->
-    {#if phanSiteOpen}
+    <!-- Phan detail card overlay (when in phan mode and a mission is selected) -->
+    {#if phanDetailMission}
         <div
-            class="rm-phan-backdrop"
+            class="rm-detail-backdrop"
             onclick={() => {
-                phanSiteOpen = false;
                 phanDetailMission = null;
             }}
         ></div>
-        <div class="rm-phan-phone">
-            <!-- Phone notch / header -->
-            <div class="rm-phan-phone-header">
-                <div class="rm-phan-phone-notch"></div>
-                <span class="rm-phan-phone-title">PHAN-SITE</span>
-                <span class="rm-phan-phone-subtitle">New Requests</span>
-            </div>
-
-            <!-- Request list -->
-            <div class="rm-phan-phone-body">
-                {#if proposedMissions.length === 0}
-                    <div class="rm-phan-empty">
-                        <span class="rm-phan-empty-icon">--</span>
-                        <span class="rm-phan-empty-text">No new requests.</span>
-                    </div>
-                {:else}
-                    <ul class="rm-phan-list">
-                        {#each proposedMissions as mission, i (mission.id)}
-                            <li
-                                class="rm-phan-item"
-                                class:is-selected={phanSelectedIndex === i}
-                                onclick={() => {
-                                    phanSelectedIndex = i;
-                                    phanDetailMission = mission;
-                                }}
-                                onmouseenter={() => {
-                                    phanSelectedIndex = i;
-                                }}
-                            >
-                                <span
-                                    class="rm-phan-item-tier"
-                                    data-tier={mission.progress != null
-                                        ? difficultyGrade(mission.difficulty)
-                                        : "--"}
-                                >
-                                    {#if mission.deadline && mission.days_remaining != null}
-                                        {mission.days_remaining}d
-                                    {:else}
-                                        --
-                                    {/if}
-                                </span>
-                                <span class="rm-phan-item-title"
-                                    >{mission.title}</span
-                                >
-                            </li>
-                        {/each}
-                    </ul>
-                {/if}
-            </div>
-
-            <!-- Phone home bar -->
-            <div class="rm-phan-phone-footer">
-                <div class="rm-phan-home-bar"></div>
-            </div>
-        </div>
-
-        <!-- Phan-Site detail card (slides over phone) -->
-        {#if phanDetailMission}
-            <div class="rm-phan-detail">
-                <button
-                    class="rm-phan-detail-back"
-                    onclick={() => {
-                        phanDetailMission = null;
-                    }}>BACK</button
+        <article class="rm-detail-card">
+            <div class="rm-detail-top">
+                <span class="rm-detail-stamp">NEW!</span>
+                <span
+                    class="rm-detail-grade"
+                    data-grade={difficultyGrade(phanDetailMission.difficulty)}
                 >
-                <h2 class="rm-phan-detail-title">{phanDetailMission.title}</h2>
-                {#if phanDetailMission.description}
-                    <p class="rm-phan-detail-desc">
-                        {phanDetailMission.description}
-                    </p>
-                {/if}
-                <div class="rm-phan-detail-meta">
-                    {#if phanDetailMission.days_remaining != null}
-                        <span class="rm-phan-detail-deadline">
-                            {phanDetailMission.days_remaining > 0
-                                ? `${phanDetailMission.days_remaining} DAYS`
-                                : phanDetailMission.days_remaining === 0
-                                  ? "TODAY"
-                                  : "OVERDUE"}
-                        </span>
-                    {/if}
-                </div>
-                <div class="rm-phan-detail-actions">
-                    <button
-                        class="rm-action-btn rm-action-accept"
-                        disabled={updating}
-                        onclick={() =>
-                            updateMissionStatus(
-                                phanDetailMission!.id,
-                                "active",
-                            )}>ACCEPT</button
-                    >
-                    <button
-                        class="rm-action-btn rm-action-reject"
-                        disabled={updating}
-                        onclick={() =>
-                            updateMissionStatus(
-                                phanDetailMission!.id,
-                                "rejected",
-                            )}>REJECT</button
-                    >
-                </div>
+                    {difficultyGrade(phanDetailMission.difficulty)}
+                </span>
             </div>
-        {/if}
+            <h2 class="rm-detail-title">{phanDetailMission.title}</h2>
+            {#if phanDetailMission.description}
+                <p class="rm-detail-desc">{phanDetailMission.description}</p>
+            {/if}
+            <div class="rm-detail-meta">
+                {#if phanDetailMission.days_remaining != null}
+                    <span
+                        class="rm-detail-deadline"
+                        class:is-overdue={phanDetailMission.days_remaining < 0}
+                    >
+                        {phanDetailMission.days_remaining > 0
+                            ? `${phanDetailMission.days_remaining} DAYS LEFT`
+                            : phanDetailMission.days_remaining === 0
+                              ? "DUE TODAY"
+                              : "OVERDUE"}
+                    </span>
+                {/if}
+            </div>
+            <div class="rm-detail-actions">
+                <button
+                    class="rm-action-btn rm-action-accept"
+                    disabled={updating}
+                    onclick={() =>
+                        updateMissionStatus(phanDetailMission!.id, "active")}
+                    >ACCEPT</button
+                >
+                <button
+                    class="rm-action-btn rm-action-reject"
+                    disabled={updating}
+                    onclick={() =>
+                        updateMissionStatus(phanDetailMission!.id, "rejected")}
+                    >REJECT</button
+                >
+            </div>
+        </article>
     {/if}
+
+    <!-- P key: toggle phan mode -->
+    <button type="button" class="rm-phan-mode-btn" onclick={togglePhanMode}>
+        <KeyHint key="P" fontSize={36} />
+        <PromptWord text={phanMode ? "tracked" : "phansite"} fontSize={72} />
+    </button>
 
     {#if missionProgress}
         <PhanSiteProgress
@@ -1114,322 +1103,33 @@
         color: rgba(255, 255, 255, 0.7);
     }
 
-    /* ── Phan-Site button ── */
-    .rm-phansite-btn {
-        position: absolute;
-        left: clamp(1rem, 2vw, 2.5rem);
-        top: clamp(1rem, 2vw, 2.5rem);
-        z-index: 5;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: clamp(0.3rem, 0.4vw, 0.6rem);
-        background: none;
-        border: none;
-        cursor: pointer;
-        transition: transform 150ms ease;
-    }
-
-    .rm-phansite-btn:hover {
-        transform: scale(1.06) rotate(-2deg);
-    }
-
-    .rm-phansite-phone-icon {
-        width: clamp(2.8rem, 3.5vw, 4.5rem);
-        height: clamp(4.5rem, 5.5vw, 7rem);
-        background: #1a1a1a;
-        border: 2px solid rgba(255, 255, 255, 0.2);
-        border-radius: clamp(6px, 0.5vw, 10px);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        position: relative;
-    }
-
-    .rm-phansite-phone-screen {
-        width: 80%;
-        height: 75%;
-        background: #111111;
-        border-radius: 2px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .rm-phansite-badge {
-        font-family: "方正兰亭黑_GB", Arial, sans-serif;
-        font-size: clamp(1rem, 1.2vw, 1.6rem);
-        font-weight: 900;
-        color: #e5191c;
-        animation: rm-badge-pulse 1.5s ease-in-out infinite;
-    }
-
-    @keyframes rm-badge-pulse {
-        0%,
-        100% {
-            opacity: 1;
-            transform: scale(1);
-        }
-        50% {
-            opacity: 0.7;
-            transform: scale(0.9);
-        }
-    }
-
-    .rm-phansite-btn.has-new .rm-phansite-phone-icon {
-        border-color: #e5191c;
-        box-shadow: 0 0 12px rgba(229, 25, 28, 0.4);
-    }
-
-    .rm-phansite-label {
-        pointer-events: none;
-    }
-
     .rm-back-btn--missions {
         left: auto;
         right: clamp(1.5rem, 3vw, 4rem);
     }
 
-    /* ── Phan-Site phone panel ── */
-    .rm-phan-backdrop {
-        position: absolute;
-        inset: 0;
-        z-index: 30;
-        background: rgba(0, 0, 0, 0.6);
-    }
-
-    .rm-phan-phone {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        z-index: 31;
-        width: clamp(260px, 22vw, 380px);
-        height: clamp(440px, 52vh, 640px);
-        background: #0a0a0a;
-        border: 3px solid rgba(255, 255, 255, 0.15);
-        border-radius: clamp(16px, 1.5vw, 28px);
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-        box-shadow:
-            0 0 40px rgba(0, 0, 0, 0.8),
-            0 0 8px rgba(229, 25, 28, 0.15);
-        animation: rm-phone-slide 250ms ease-out;
-    }
-
-    @keyframes rm-phone-slide {
-        from {
-            opacity: 0;
-            transform: translate(-50%, -44%) scale(0.9);
-        }
-        to {
-            opacity: 1;
-            transform: translate(-50%, -50%) scale(1);
-        }
-    }
-
-    .rm-phan-phone-header {
-        flex-shrink: 0;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        padding: clamp(0.8rem, 1vw, 1.4rem) clamp(0.8rem, 1vw, 1.2rem)
-            clamp(0.4rem, 0.5vw, 0.7rem);
-        background: #e5191c;
-        position: relative;
-    }
-
-    .rm-phan-phone-notch {
-        width: clamp(3rem, 4vw, 5rem);
-        height: 4px;
-        background: rgba(0, 0, 0, 0.4);
-        border-radius: 2px;
-        margin-bottom: clamp(0.4rem, 0.5vw, 0.7rem);
-    }
-
-    .rm-phan-phone-title {
-        font-family: "方正兰亭黑_GB", Arial, sans-serif;
-        font-size: clamp(1.1rem, 1.3vw, 1.8rem);
-        font-weight: 900;
-        color: #ffffff;
-        letter-spacing: 0.1em;
-        text-transform: uppercase;
-    }
-
-    .rm-phan-phone-subtitle {
-        font-family: "方正兰亭黑_GB", Arial, sans-serif;
-        font-size: clamp(0.5rem, 0.5vw, 0.7rem);
-        font-weight: 700;
-        color: rgba(255, 255, 255, 0.6);
-        letter-spacing: 0.15em;
-        text-transform: uppercase;
-        margin-top: 2px;
-    }
-
-    .rm-phan-phone-body {
-        flex: 1;
-        overflow-y: auto;
-        padding: clamp(0.4rem, 0.5vw, 0.8rem) 0;
-    }
-
-    .rm-phan-empty {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        height: 100%;
-        gap: 0.5rem;
-    }
-
-    .rm-phan-empty-icon {
-        font-family: "方正兰亭黑_GB", Arial, sans-serif;
-        font-size: clamp(2rem, 2.5vw, 3rem);
-        color: rgba(255, 255, 255, 0.1);
-        font-weight: 900;
-    }
-
-    .rm-phan-empty-text {
-        font-family: "方正兰亭黑_GB", Arial, sans-serif;
-        font-size: clamp(0.65rem, 0.6vw, 0.9rem);
-        color: rgba(255, 255, 255, 0.25);
-        font-weight: 700;
-    }
-
-    /* ── Phan-Site list items ── */
-    .rm-phan-list {
-        list-style: none;
-        margin: 0;
-        padding: 0;
-    }
-
-    .rm-phan-item {
+    /* ── P key: phan mode toggle button ── */
+    .rm-phan-mode-btn {
+        position: fixed;
+        top: clamp(0rem, 0vh, 0rem);
+        right: clamp(10rem, 18vw, 20rem);
+        z-index: 10;
         display: flex;
         align-items: center;
-        gap: clamp(0.5rem, 0.6vw, 0.8rem);
-        padding: clamp(0.6rem, 0.7vw, 1rem) clamp(0.8rem, 1vw, 1.2rem);
-        cursor: pointer;
-        transition: background 100ms ease;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-    }
-
-    .rm-phan-item:hover {
-        background: rgba(255, 255, 255, 0.04);
-    }
-
-    .rm-phan-item.is-selected {
-        background: #e5191c;
-    }
-
-    .rm-phan-item-tier {
-        flex-shrink: 0;
-        width: clamp(2rem, 2.5vw, 3rem);
-        text-align: center;
-        font-family: "方正兰亭黑_GB", Arial, sans-serif;
-        font-size: clamp(0.6rem, 0.6vw, 0.85rem);
-        font-weight: 800;
-        color: rgba(255, 255, 255, 0.4);
-    }
-
-    .rm-phan-item.is-selected .rm-phan-item-tier {
-        color: rgba(255, 255, 255, 0.8);
-    }
-
-    .rm-phan-item-title {
-        flex: 1;
-        font-family: "方正兰亭黑_GB", Arial, sans-serif;
-        font-size: clamp(0.7rem, 0.7vw, 1rem);
-        font-weight: 800;
-        color: #ffffff;
-        letter-spacing: 0.02em;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    /* ── Phan-Site detail card ── */
-    .rm-phan-detail {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        z-index: 32;
-        width: clamp(240px, 20vw, 350px);
-        background: #0a0a0a;
-        border: 2px solid rgba(229, 25, 28, 0.4);
-        border-radius: clamp(12px, 1vw, 20px);
-        padding: clamp(0.8rem, 1vw, 1.4rem);
-        display: flex;
-        flex-direction: column;
-        gap: clamp(0.5rem, 0.6vw, 0.8rem);
-        font-family: "方正兰亭黑_GB", Arial, sans-serif;
-        animation: rm-phone-slide 200ms ease-out;
-        box-shadow: 0 0 30px rgba(0, 0, 0, 0.9);
-    }
-
-    .rm-phan-detail-back {
-        align-self: flex-start;
-        font-family: "方正兰亭黑_GB", Arial, sans-serif;
-        font-size: clamp(0.55rem, 0.5vw, 0.75rem);
-        font-weight: 800;
-        color: rgba(255, 255, 255, 0.4);
+        gap: 0;
         background: none;
         border: none;
         cursor: pointer;
         padding: 0;
-        letter-spacing: 0.08em;
+        transform: rotate(-4deg);
+        transition: transform 120ms ease;
     }
 
-    .rm-phan-detail-back:hover {
-        color: rgba(255, 255, 255, 0.7);
+    .rm-phan-mode-btn:hover {
+        transform: rotate(-5deg) scale(1.06);
     }
 
-    .rm-phan-detail-title {
-        margin: 0;
-        font-size: clamp(0.95rem, 1.1vw, 1.5rem);
-        font-weight: 900;
-        color: #ffffff;
-        letter-spacing: 0.02em;
-        line-height: 1.3;
-    }
-
-    .rm-phan-detail-desc {
-        margin: 0;
-        font-size: clamp(0.6rem, 0.55vw, 0.85rem);
-        font-weight: 600;
-        color: rgba(255, 255, 255, 0.55);
-        line-height: 1.6;
-    }
-
-    .rm-phan-detail-meta {
-        display: flex;
-        gap: 0.5rem;
-    }
-
-    .rm-phan-detail-deadline {
-        font-size: clamp(0.55rem, 0.55vw, 0.8rem);
-        font-weight: 800;
-        color: #e5191c;
-        letter-spacing: 0.06em;
-    }
-
-    .rm-phan-detail-actions {
-        display: flex;
-        gap: clamp(0.4rem, 0.5vw, 0.8rem);
-        margin-top: clamp(0.3rem, 0.4vw, 0.5rem);
-    }
-
-    .rm-phan-phone-footer {
-        flex-shrink: 0;
-        display: flex;
-        justify-content: center;
-        padding: clamp(0.4rem, 0.5vw, 0.7rem);
-    }
-
-    .rm-phan-home-bar {
-        width: clamp(3rem, 4vw, 5rem);
-        height: 4px;
-        background: rgba(255, 255, 255, 0.15);
-        border-radius: 2px;
+    .rm-phan-mode-btn :global(.p5-prompt-word) {
+        margin-left: -1rem;
     }
 </style>
