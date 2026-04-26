@@ -19,6 +19,7 @@ export type MissionData = {
 
 export type CountdownDisplay = {
     label: string;
+    short_desc: string;
     days_remaining: number;
 };
 

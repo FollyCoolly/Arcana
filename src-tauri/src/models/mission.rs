@@ -91,6 +91,7 @@ pub struct MainMenuMissionData {
 #[derive(Debug, Serialize)]
 pub struct CountdownDisplay {
     pub label: String,
+    pub short_desc: String,
     pub days_remaining: i64,
 }
 

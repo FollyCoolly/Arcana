@@ -507,7 +507,7 @@
                         style:background-image="url({boardSrc})"
                     >
                         <div class="rm-cd-mission-bg">
-                            <span class="rm-cd-mission-text">{cd.label}</span>
+                            <span class="rm-cd-mission-text">{cd.short_desc}</span>
                         </div>
                         <span class="rm-cd-prefix">距离</span>
                         {#if labelLen <= 2}

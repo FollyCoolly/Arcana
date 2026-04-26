@@ -99,6 +99,10 @@ fn resolve_countdown(missions: &[Mission], ref_data: MainMenuRef) -> Option<Coun
 
     Some(CountdownDisplay {
         label: ref_data.label,
+        short_desc: mission
+            .short_desc
+            .clone()
+            .unwrap_or_else(|| mission.title.clone()),
         days_remaining,
     })
 }
@@ -156,10 +160,7 @@ fn resolve_hints(missions: &[Mission], hints: &[MainMenuHintRef]) -> Vec<HintDis
                 .iter()
                 .find(|m| m.id == h.mission_id && m.status == "active")
                 .map(|m| HintDisplay {
-                    short_desc: m
-                        .short_desc
-                        .clone()
-                        .unwrap_or_else(|| m.title.clone()),
+                    short_desc: m.short_desc.clone().unwrap_or_else(|| m.title.clone()),
                 })
         })
         .take(2)
