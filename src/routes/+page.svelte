@@ -488,17 +488,41 @@
             <div class="rm-calendar-widget">
                 <Calendar />
             </div>
-            {#if missionMenuData?.countdown}
-                <div class="rm-countdown" aria-label="Mission countdown">
-                    <span class="rm-countdown-line"
-                        >距离<strong>{missionMenuData.countdown.label}</strong
-                        ></span
-                    >
-                    <span class="rm-countdown-line"
-                        >还有<strong
-                            >{missionMenuData.countdown.days_remaining}</strong
-                        >天</span
-                    >
+            {#if missionMenuData?.countdown && missionMenuData.countdown.days_remaining <= 99}
+                {@const cd = missionMenuData.countdown}
+                {@const labelLen = 2}
+                {@const daysStr = String(cd.days_remaining).padStart(2, "0")}
+                {@const boardSrc =
+                    labelLen <= 2
+                        ? "/ui/board/countdown_2wc.png"
+                        : "/ui/board/countdown_4wc.png"}
+                <div
+                    class="rm-countdown"
+                    aria-label="Mission countdown"
+                    data-label-len={labelLen <= 2 ? "2" : "4"}
+                    style:background-image="url({boardSrc})"
+                >
+                    <div class="rm-cd-mission-bg">
+                        <!-- TODO: replace with cd.short_desc once missions.json adds a `short_desc` field (5-10 Chinese chars; ASCII letters/digits count as 0.5) -->
+                        <span class="rm-cd-mission-text"
+                            >完成 Arcana v0.1 的发布</span
+                        >
+                    </div>
+                    <span class="rm-cd-prefix">距离</span>
+                    {#if labelLen <= 2}
+                        <span class="rm-cd-label-a">发布</span>
+                    {:else}
+                        {@const labelA = "正式"}
+                        {@const labelB = "发布"}
+                        <span class="rm-cd-label-a">{labelA}</span>
+                        <span class="rm-cd-label-b">{labelB}</span>
+                    {/if}
+                    <span class="rm-cd-middle">还剩</span>
+                    <div class="rm-cd-days-bg-1" aria-hidden="true"></div>
+                    <div class="rm-cd-days-bg-2" aria-hidden="true"></div>
+                    <span class="rm-cd-days-1">{daysStr[0]}</span>
+                    <span class="rm-cd-days-2">{daysStr[1]}</span>
+                    <span class="rm-cd-suffix">日</span>
                 </div>
             {:else if statusData}
                 <div class="rm-player-info" aria-label="Player info">
@@ -628,7 +652,10 @@
         {/if}
 
         {#if currentScreen === "missions"}
-            <MissionsScreen onBack={goBack} />
+            <MissionsScreen
+                onBack={goBack}
+                missionProgress={missionMenuData?.progress ?? null}
+            />
         {/if}
     </section>
 </main>
@@ -698,31 +725,197 @@
 
     .rm-countdown {
         position: absolute;
-        top: 1.5rem;
-        right: 1.5rem;
+        top: 2rem;
+        right: 2rem;
         z-index: 3;
         pointer-events: none;
+        width: min(57vw, 832px);
+        height: clamp(10.4rem, 16.9vw, 16.9rem);
+        background-repeat: no-repeat;
+        background-size: 100% 100%;
+        background-position: center;
+    }
+
+    .rm-cd-mission-bg {
+        position: absolute;
+        top: 61%; /* ← 位置 */
+        left: 10%; /* ← 位置 */
+        width: 80%; /* ← 宽度 */
+        height: 27%; /* ← 高度 */
+        background: var(--rm-red);
         display: flex;
-        flex-direction: column;
-        align-items: flex-end;
-        gap: 0.15rem;
-        transform: rotate(-1.5deg);
+        align-items: center;
+        justify-content: center;
+        z-index: 1;
     }
 
-    .rm-countdown-line {
-        display: inline-block;
-        background: var(--rm-black);
-        color: var(--rm-white);
-        font-family: "p5hatty", "Orbitron", Arial, sans-serif;
-        font-size: clamp(2.1rem, 3vw, 3rem);
-        font-weight: 700;
-        letter-spacing: 0.04em;
-        padding: 0.15em 0.5em;
-        clip-path: polygon(1% 8%, 99% 0%, 100% 92%, 0% 100%);
+    .rm-cd-mission-text {
+        font-family:
+            "方正兰亭黑_GB", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+        font-weight: 900;
+        color: #000000;
+        font-size: clamp(1rem, 2vw, 2rem);
+        white-space: nowrap;
+        line-height: 1;
     }
 
-    .rm-countdown-line strong {
+    .rm-cd-prefix,
+    .rm-cd-middle,
+    .rm-cd-label-a,
+    .rm-cd-label-b,
+    .rm-cd-days-1,
+    .rm-cd-days-2,
+    .rm-cd-suffix {
+        position: absolute;
+        font-family:
+            "方正兰亭黑_GB", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+        font-weight: 900;
         color: var(--rm-red);
+        letter-spacing: 0.02em;
+        line-height: 1;
+        white-space: nowrap;
+        display: inline-block;
+    }
+
+    /* ── 2字 布局 ── */
+    .rm-countdown[data-label-len="2"] .rm-cd-prefix {
+        top: 8%;
+        left: 30%;
+        font-size: clamp(1.4rem, 2.8vw, 2.8rem);
+        transform: rotate(-14deg);
+        z-index: 1;
+    }
+    .rm-countdown[data-label-len="2"] .rm-cd-label-a {
+        top: 14%;
+        left: 38%;
+        font-size: clamp(3rem, 6vw, 6rem);
+        transform: rotate(-14deg);
+        z-index: 2;
+    }
+    .rm-countdown[data-label-len="2"] .rm-cd-middle {
+        top: 42%;
+        left: 61%;
+        font-size: clamp(1.2rem, 2.4vw, 2.4rem);
+        font-weight: 400;
+        transform: rotate(-12deg);
+        z-index: 1;
+    }
+    .rm-countdown[data-label-len="2"] .rm-cd-days-bg-1 {
+        position: absolute;
+        top: 20%;
+        right: 16%;
+        width: 12%;
+        height: 40%;
+        background: var(--rm-red);
+        transform: rotate(-14deg);
+        z-index: 1;
+    }
+    .rm-countdown[data-label-len="2"] .rm-cd-days-bg-2 {
+        position: absolute;
+        top: 20%;
+        right: 7%;
+        width: 15%;
+        height: 38%;
+        background: var(--rm-red);
+        transform: rotate(-14deg);
+        z-index: 1;
+    }
+    .rm-countdown[data-label-len="2"] .rm-cd-days-1 {
+        top: 14%;
+        right: 17%;
+        font-size: clamp(4rem, 8vw, 8rem);
+        color: #000000;
+        transform: rotate(-14deg);
+        z-index: 2;
+    }
+    .rm-countdown[data-label-len="2"] .rm-cd-days-2 {
+        top: 12%;
+        right: 8%;
+        font-size: clamp(4rem, 8vw, 8rem);
+        color: #000000;
+        transform: rotate(-14deg);
+        z-index: 2;
+    }
+    .rm-countdown[data-label-len="2"] .rm-cd-suffix {
+        top: 33%;
+        right: 1%;
+        font-size: clamp(1.4rem, 2.8vw, 2.8rem);
+        transform: rotate(-8deg);
+        z-index: 1;
+    }
+
+    /* ── 4字 布局 ── */
+    .rm-countdown[data-label-len="4"] .rm-cd-prefix {
+        top: 7%;
+        left: 8.5%;
+        font-size: clamp(1.4rem, 2.8vw, 2.8rem);
+        transform: rotate(-14deg);
+        z-index: 1;
+    }
+    .rm-countdown[data-label-len="4"] .rm-cd-label-a {
+        top: 15%;
+        left: 13%;
+        font-size: clamp(3rem, 6vw, 6rem);
+        transform: rotate(-14deg);
+        z-index: 2;
+    }
+    .rm-countdown[data-label-len="4"] .rm-cd-label-b {
+        top: 15%;
+        left: 38%;
+        font-size: clamp(3rem, 6vw, 6rem);
+        transform: rotate(-14deg);
+        z-index: 2;
+    }
+    .rm-countdown[data-label-len="4"] .rm-cd-middle {
+        top: 43%;
+        left: 60%;
+        font-size: clamp(1.2rem, 2.4vw, 2.4rem);
+        font-weight: 400;
+        transform: rotate(-12deg);
+        z-index: 1;
+    }
+    .rm-countdown[data-label-len="4"] .rm-cd-days-bg-1 {
+        position: absolute;
+        top: 20%; /* ← 位置 */
+        right: 18%; /* ← 位置 */
+        width: 12%; /* ← 宽度 */
+        height: 40%; /* ← 高度 */
+        background: var(--rm-red);
+        transform: rotate(-14deg); /* ← 角度 */
+        z-index: 1;
+    }
+    .rm-countdown[data-label-len="4"] .rm-cd-days-bg-2 {
+        position: absolute;
+        top: 20%; /* ← 位置 */
+        right: 9%; /* ← 位置 */
+        width: 15%; /* ← 宽度 */
+        height: 38%; /* ← 高度 */
+        background: var(--rm-red);
+        transform: rotate(-14deg); /* ← 角度 */
+        z-index: 1;
+    }
+    .rm-countdown[data-label-len="4"] .rm-cd-days-1 {
+        top: 14%;
+        right: 19%;
+        font-size: clamp(4rem, 8vw, 8rem);
+        color: #000000;
+        transform: rotate(-14deg);
+        z-index: 2;
+    }
+    .rm-countdown[data-label-len="4"] .rm-cd-days-2 {
+        top: 12%;
+        right: 10%;
+        font-size: clamp(4rem, 8vw, 8rem);
+        color: #000000;
+        transform: rotate(-14deg);
+        z-index: 2;
+    }
+    .rm-countdown[data-label-len="4"] .rm-cd-suffix {
+        top: 36%;
+        right: 2%;
+        font-size: clamp(1.4rem, 2.8vw, 2.8rem);
+        transform: rotate(-13deg);
+        z-index: 1;
     }
 
     .rm-star-stack {

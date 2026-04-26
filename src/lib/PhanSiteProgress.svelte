@@ -2,9 +2,10 @@
     type Props = {
         question: string;
         progress: number;
+        placement?: "menu" | "missions";
     };
 
-    let { question, progress }: Props = $props();
+    let { question, progress, placement = "menu" }: Props = $props();
 
     const clamped = $derived(Math.max(0, Math.min(100, progress)));
     const intPart = $derived(Math.floor(clamped).toString());
@@ -26,7 +27,11 @@
     );
 </script>
 
-<div class="phansite" aria-label="Mission progress">
+<div
+    class="phansite"
+    class:phansite-missions={placement === "missions"}
+    aria-label="Mission progress"
+>
     <div class="phansite-bolts" aria-hidden="true">
         <img src="/ui/phansite/bolt.png" alt="" class="bolt bolt-a" />
         <img src="/ui/phansite/bolt.png" alt="" class="bolt bolt-b" />
@@ -109,6 +114,12 @@
         align-items: flex-start;
         gap: 0.35rem;
         transform: rotate(-1deg);
+    }
+
+    .phansite.phansite-missions {
+        left: clamp(2.5rem, 4vw, 4.5rem);
+        right: auto;
+        z-index: 4;
     }
 
     .phansite-bolts {

@@ -86,7 +86,7 @@ fn resolve_countdown(missions: &[Mission], ref_data: MainMenuRef) -> Option<Coun
     let deadline = mission.deadline.as_ref()?;
     let days_remaining = compute_days_remaining(deadline).ok()?;
 
-    if days_remaining < 0 {
+    if !(0..=99).contains(&days_remaining) {
         return None;
     }
 

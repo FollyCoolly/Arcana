@@ -3,10 +3,19 @@
     import { invoke } from "@tauri-apps/api/core";
     import CallingCardText from "$lib/CallingCardText.svelte";
     import KeyHint from "$lib/KeyHint.svelte";
+    import PhanSiteProgress from "$lib/PhanSiteProgress.svelte";
     import PromptWord from "$lib/PromptWord.svelte";
-    import type { MissionData, MissionResponse } from "$lib/types/mission";
+    import type {
+        MissionData,
+        MissionResponse,
+        ProgressDisplay,
+    } from "$lib/types/mission";
 
-    let { onBack }: { onBack: () => void } = $props();
+    let {
+        onBack,
+        missionProgress = null,
+    }: { onBack: () => void; missionProgress?: ProgressDisplay | null } =
+        $props();
 
     let loading = $state(false);
     let error = $state<string | null>(null);
@@ -373,7 +382,7 @@
         </article>
     {/if}
 
-    <!-- Phan-Site button (left side) -->
+    <!-- Phan-Site button (top-left) -->
     <button
         class="rm-phansite-btn"
         class:has-new={proposedMissions.length > 0}
@@ -512,11 +521,19 @@
         {/if}
     {/if}
 
-    <div class="rm-missions-title">
-        <CallingCardText text="MiSSiONS" />
-    </div>
+    {#if missionProgress}
+        <PhanSiteProgress
+            question={missionProgress.label}
+            progress={missionProgress.progress}
+            placement="missions"
+        />
+    {/if}
 
-    <button type="button" class="rm-back-btn" onclick={() => onBack()}>
+    <button
+        type="button"
+        class="rm-back-btn rm-back-btn--missions"
+        onclick={() => onBack()}
+    >
         <KeyHint key="Esc" fontSize={36} />
         <PromptWord text="Back" fontSize={72} />
     </button>
@@ -977,7 +994,7 @@
     .rm-phansite-btn {
         position: absolute;
         left: clamp(1rem, 2vw, 2.5rem);
-        bottom: clamp(6rem, 14vh, 10rem);
+        top: clamp(1rem, 2vw, 2.5rem);
         z-index: 5;
         display: flex;
         flex-direction: column;
@@ -1042,6 +1059,11 @@
 
     .rm-phansite-label {
         pointer-events: none;
+    }
+
+    .rm-back-btn--missions {
+        left: auto;
+        right: clamp(1.5rem, 3vw, 4rem);
     }
 
     /* ── Phan-Site phone panel ── */
@@ -1287,12 +1309,4 @@
         border-radius: 2px;
     }
 
-    /* ── Title position ── */
-    .rm-missions-title {
-        position: absolute;
-        top: 2rem;
-        left: 1.5rem;
-        z-index: 2;
-        pointer-events: none;
-    }
 </style>
