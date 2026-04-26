@@ -12,6 +12,26 @@ Arcana is **not** another habit-tracking app with streaks and checkboxes. As a d
 
 ---
 
+## Screenshots
+
+| Main Menu |
+|-----------|
+| ![Arcana main menu](docs/screenshots/main-menu.jpg) |
+
+| Status | Missions |
+|--------|----------|
+| ![Arcana status screen](docs/screenshots/status.jpg) | ![Arcana missions screen](docs/screenshots/missions.jpg) |
+
+| Achievements | Skills |
+|--------------|--------|
+| ![Arcana achievements screen](docs/screenshots/achievements.jpg) | ![Arcana skills screen](docs/screenshots/skills.jpg) |
+
+| Items | Gallery |
+|-------|---------|
+| ![Arcana items screen](docs/screenshots/items.jpg) | ![Arcana gallery screen](docs/screenshots/gallery.jpg) |
+
+---
+
 ## Features
 
 ### Status
