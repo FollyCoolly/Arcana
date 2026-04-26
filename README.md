@@ -224,12 +224,12 @@ cargo fmt --manifest-path src-tauri/Cargo.toml --check
 ## Roadmap to v0.1
 
 - [ ] Provide example data configuration
-- [ ] Polish main menu — countdown and progress bar widgets
-- [ ] Polish Skills screen
-- [ ] Polish Achievements screen
-- [ ] Polish Items screen
-- [ ] Polish Gallery screen
-- [ ] Polish Missions screen
+- [x] Polish main menu — countdown and progress bar widgets
+- [x] Polish Skills screen
+- [x] Polish Achievements screen
+- [x] Polish Items screen
+- [x] Polish Gallery screen
+- [x] Polish Missions screen
 - [ ] Test skill tree functionality end-to-end
 
 ---
