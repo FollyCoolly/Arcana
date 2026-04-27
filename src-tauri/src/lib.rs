@@ -188,6 +188,27 @@ pub fn run() {
             let _ = window.set_decorations(false);
             let _ = window.set_shadow(false);
 
+            // 填满主显示器（伪全屏，不触发 OS 全屏动画）
+            let fit_to_primary = |w: &tauri::WebviewWindow| {
+                if let Ok(Some(monitor)) = w.primary_monitor() {
+                    let size = monitor.size();
+                    let pos = monitor.position();
+                    let _ = w.set_position(tauri::PhysicalPosition::new(pos.x, pos.y));
+                    let _ = w.set_size(tauri::PhysicalSize::new(size.width, size.height));
+                }
+            };
+
+            // 启动时就贴合主屏，避免第一次召唤前尺寸是 1200x800
+            fit_to_primary(&window);
+
+            // 分辨率/DPI 变化时重新贴合（不监听 Moved，避免自调用循环）
+            let window_for_events = window.clone();
+            window.on_window_event(move |event| {
+                if let tauri::WindowEvent::ScaleFactorChanged { .. } = event {
+                    fit_to_primary(&window_for_events);
+                }
+            });
+
             // 注册全局快捷键 Cmd+Shift+R (macOS) 或 Ctrl+Shift+R (Windows/Linux)
             #[cfg(target_os = "macos")]
             let shortcut = "Command+Shift+R";
@@ -203,15 +224,7 @@ pub fn run() {
                             let _ = window.set_always_on_top(false);
                             let _ = window.hide();
                         } else {
-                            // 展开到主显示器全屏
-                            if let Ok(Some(monitor)) = window.primary_monitor() {
-                                let size = monitor.size();
-                                let pos = monitor.position();
-                                let _ =
-                                    window.set_position(tauri::PhysicalPosition::new(pos.x, pos.y));
-                                let _ = window
-                                    .set_size(tauri::PhysicalSize::new(size.width, size.height));
-                            }
+                            fit_to_primary(&window);
                             let _ = window.set_always_on_top(true);
                             let _ = window.show();
                             let _ = window.set_focus();

@@ -192,8 +192,8 @@
 
     .phansite-question {
         color: var(--rm-white);
-        font-family: "方正兰亭黑_GBK", Arial, sans-serif;
-        font-weight: 700;
+        font-family: "Source Han Sans SC", "Noto Sans SC", "方正兰亭黑_GBK", Arial, sans-serif;
+        font-weight: 900;
         font-size: clamp(1.1rem, 1.5vw, 1.5rem);
         letter-spacing: 0.01em;
         -webkit-text-stroke: 0.5em var(--rm-black);
@@ -249,7 +249,7 @@
 
     .phansite-percent {
         color: var(--rm-white);
-        font-family: "方正兰亭黑_GBK", Arial, sans-serif;
+        font-family: "Source Han Sans SC", "Noto Sans SC", "方正兰亭黑_GBK", Arial, sans-serif;
         font-weight: 900;
         font-style: italic;
         font-size: clamp(4.8rem, 7.2vw, 7.2rem);

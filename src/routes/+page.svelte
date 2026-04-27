@@ -788,7 +788,7 @@
 
     .rm-hint-text {
         font-family:
-            "方正兰亭黑_GBK", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+            "Source Han Sans SC", "Noto Sans SC", "方正兰亭黑_GBK", "Microsoft YaHei", sans-serif;
         font-weight: 900;
         color: #ffffff;
         font-size: clamp(1rem, 1.8vw, 1.8rem);
@@ -813,7 +813,7 @@
 
     .rm-cd-mission-text {
         font-family:
-            "方正兰亭黑_GBK", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+            "Source Han Sans SC", "Noto Sans SC", "方正兰亭黑_GBK", "Microsoft YaHei", sans-serif;
         font-weight: 900;
         color: #000000;
         font-size: clamp(1rem, 2vw, 2rem);
@@ -830,7 +830,7 @@
     .rm-cd-suffix {
         position: absolute;
         font-family:
-            "方正兰亭黑_GBK", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+            "Source Han Sans SC", "Noto Sans SC", "方正兰亭黑_GBK", "Microsoft YaHei", sans-serif;
         font-weight: 900;
         color: var(--rm-red);
         letter-spacing: 0.02em;

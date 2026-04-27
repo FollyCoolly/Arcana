@@ -945,7 +945,8 @@
     }
 
     .rm-item-row-name {
-        font-family: "方正兰亭黑_GBK", inherit;
+        font-family: "Source Han Sans SC", "Noto Sans SC", "方正兰亭黑_GBK", inherit;
+        font-weight: 600;
         font-size: clamp(1.3rem, 1.5vw, 2.2rem);
         letter-spacing: 0.02em;
         white-space: nowrap;
@@ -981,9 +982,9 @@
         background: var(--rm-white);
         color: var(--rm-black);
         border-radius: 9999px;
-        font-family: "方正兰亭黑_GBK", inherit;
+        font-family: "Source Han Sans SC", "Noto Sans SC", "方正兰亭黑_GBK", inherit;
         font-size: clamp(1.8rem, 2.1vw, 2.6rem);
-        font-weight: 700;
+        font-weight: 900;
         font-variant-numeric: tabular-nums;
         letter-spacing: 0.01em;
         white-space: nowrap;
