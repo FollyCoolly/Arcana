@@ -94,7 +94,7 @@ export function buildCardTitleSvg(text: string, seed = 0, opts: CardTitleOptions
 
         return `<text x="${cx.toFixed(2)}" y="${cy.toFixed(2)}" `
             + `text-anchor="middle" dominant-baseline="central" `
-            + `font-family="'Badaboom BB', Impact, sans-serif" `
+            + `font-family="'方正兰亭黑_GBK', Arial, sans-serif" `
             + `font-size="${afs.toFixed(2)}" `
             + `fill="#ffffff" stroke="#000000" stroke-width="${sw}" `
             + `paint-order="stroke fill" `

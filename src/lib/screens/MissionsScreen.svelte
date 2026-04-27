@@ -630,7 +630,7 @@
         align-items: center;
         justify-content: center;
         background: transparent;
-        font-family: "方正兰亭黑_GB", Arial, sans-serif;
+        font-family: "方正兰亭黑_GBK", Arial, sans-serif;
         padding: clamp(0.25rem, 0.4vw, 0.6rem) clamp(1rem, 1.2vw, 2rem);
         column-gap: clamp(0.2rem, 0.45vw, 0.7rem);
         transform: translate(-30rem, 2rem) rotate(-2deg);
@@ -690,7 +690,7 @@
         height: clamp(2.5rem, 3.2vw, 4rem);
         padding: 0;
         background: transparent;
-        font-family: "方正兰亭黑_GB", Arial, sans-serif;
+        font-family: "方正兰亭黑_GBK", Arial, sans-serif;
     }
 
     .rm-col-header {
@@ -876,7 +876,7 @@
     /* ── Mission name ── */
     .rm-mission-name {
         min-width: 0;
-        font-family: "方正兰亭黑_GB", Arial, sans-serif;
+        font-family: "方正兰亭黑_GBK", Arial, sans-serif;
         font-size: clamp(1.5rem, 1.6vw, 3rem);
         font-weight: 800;
         color: #ffffff;
@@ -889,7 +889,7 @@
     /* ── Grade letter ── */
     .rm-mission-grade {
         text-align: center;
-        font-family: "方正兰亭黑_GB", Arial, sans-serif;
+        font-family: "方正兰亭黑_GBK", Arial, sans-serif;
         font-size: clamp(4rem, 6vw, 8rem);
         font-weight: 900;
         color: #ffffff;
@@ -933,7 +933,7 @@
         clip-path: polygon(0% 2%, 100% 0%, 100% 98%, 0% 100%);
         display: flex;
         flex-direction: column;
-        font-family: "方正兰亭黑_GB", Arial, sans-serif;
+        font-family: "方正兰亭黑_GBK", Arial, sans-serif;
         animation: rm-detail-pop 180ms ease-out;
     }
 
@@ -1064,7 +1064,7 @@
 
     .rm-action-btn {
         flex: 1;
-        font-family: "方正兰亭黑_GB", Arial, sans-serif;
+        font-family: "方正兰亭黑_GBK", Arial, sans-serif;
         font-size: clamp(0.75rem, 0.8vw, 1.1rem);
         font-weight: 900;
         text-transform: uppercase;

@@ -192,7 +192,7 @@
 
     .phansite-question {
         color: var(--rm-white);
-        font-family: "方正兰亭黑_GB", Arial, sans-serif;
+        font-family: "方正兰亭黑_GBK", Arial, sans-serif;
         font-weight: 700;
         font-size: clamp(1.1rem, 1.5vw, 1.5rem);
         letter-spacing: 0.01em;
@@ -249,7 +249,7 @@
 
     .phansite-percent {
         color: var(--rm-white);
-        font-family: "方正兰亭黑_GB", Arial, sans-serif;
+        font-family: "方正兰亭黑_GBK", Arial, sans-serif;
         font-weight: 900;
         font-style: italic;
         font-size: clamp(4.8rem, 7.2vw, 7.2rem);

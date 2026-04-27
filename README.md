@@ -161,6 +161,16 @@ static/                 # Static assets (icons, images)
 - **Node.js**: v18+
 - **Platform**: Windows / macOS / Linux
 
+### Font Requirements
+
+Arcana's visual style depends on a few system fonts. These font files are **not bundled with this repository or release builds**; users need to install them locally for the intended Persona 5-inspired look:
+
+- `p5hatty` — primary display font for menus, labels, cards, and collage-style text
+- `方正兰亭黑_GBK` — Chinese UI and card-title text
+- `Bebas Neue` — key hint badges
+
+If these fonts are missing, the app will still run, but the UI will fall back to system fonts such as `Arial`, `Microsoft YaHei`, or generic `sans-serif`, and some title/card layouts may look different.
+
 ### Development
 
 ```bash
