@@ -131,7 +131,8 @@ impl AgentConfig {
                 "API key not configured. Set it in:\n\
                  \x20 1. ~/.arcana/agent_config.json  (recommended)\n\
                  \x20 2. data/agent_config.json\n\
-                 \x20 3. ANTHROPIC_API_KEY or ANTHROPIC_AUTH_TOKEN env var"
+                 \x20 3. ANTHROPIC_API_KEY / ANTHROPIC_AUTH_TOKEN env var (Anthropic)\n\
+                 \x20    or set api_key directly for other providers (e.g. DeepSeek)"
             ));
         }
 

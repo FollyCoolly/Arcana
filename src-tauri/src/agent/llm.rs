@@ -173,13 +173,21 @@ impl LlmClient {
 
         let url = format!("{}/v1/messages", self.base_url);
 
-        let resp = self
+        let mut req = self
             .client
             .post(&url)
-            .header("x-api-key", &self.api_key)
-            .header("anthropic-version", "2023-06-01")
             .header("content-type", "application/json")
-            .json(&request)
+            .json(&request);
+
+        if self.base_url.contains("anthropic.com") {
+            req = req
+                .header("x-api-key", &self.api_key)
+                .header("anthropic-version", "2023-06-01");
+        } else {
+            req = req.header("authorization", format!("Bearer {}", self.api_key));
+        }
+
+        let resp = req
             .send()
             .await
             .map_err(|e| format!("HTTP error: {e}"))?;
