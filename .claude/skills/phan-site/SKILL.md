@@ -15,9 +15,9 @@ The CLI binary is at `./src-tauri/target/debug/arcana-data`. All commands output
 | `arcana-data context` | Read missions, status, achievements, memory — **call this first** |
 | `arcana-data read <path>` | Read pack achievement/skill definitions |
 | `arcana-data mission update <id> [flags]` | Update existing mission status |
-| `arcana-data mission create < stdin` | Insert new proposed missions |
-| `arcana-data changelog write --skill phan-site --summary "..." < changes.json` | **MANDATORY** after data modifications |
-| `arcana-data memory update < memory.json` | Update generation history, patterns, context |
+| `arcana-data mission create [--file <path>]` | Insert new proposed missions (prefer `--file`) |
+| `arcana-data changelog write --skill phan-site --summary "..." --file changes.json` | **MANDATORY** after data modifications |
+| `arcana-data memory update --file memory.json` | Update generation history, patterns, context |
 
 # Workflow
 
@@ -63,24 +63,12 @@ BAD: "攻克 Rust Book 第 12-15 章", "调一杯 Old Fashioned"
 
 ## Phase 5: Write Data
 
-For each new mission:
+For each new mission, write the JSON to a temp file and use `--file` (avoids PowerShell encoding issues with stdin piping):
+
 ```bash
-echo '{
-  "id": "ai_<YYYYMMDD>_<slug>",
-  "title": "Gamified quest name",
-  "description": "Clear completion criteria",
-  "short_desc": "5–10字简洁描述（白色文字渲染于主菜单提示板）",
-  "status": "proposed",
-  "deadline": "YYYY-MM-DD",
-  "linked_achievement_id": "pack::id",
-  "created_at": "<ISO 8601>",
-  "parent_id": "parent mission ID or null",
-  "ai_metadata": {
-    "generation_id": "<today YYYY-MM-DD>",
-    "difficulty_tier": "D|C|B|A|S",
-    "generation_reason": "Why this was generated"
-  }
-}' | arcana-data mission create
+# Write mission JSON to file, then create:
+arcana-data mission create --file tmp_mission.json
+# stdin still works if preferred: echo '{...}' | arcana-data mission create
 ```
 
 **`short_desc` 规则：**
@@ -89,20 +77,15 @@ echo '{
 - 用途：渲染于主菜单 hints 提示板，用户扫一眼即知该做什么
 - 示例：`"title": "Borrow Checker Gauntlet"` → `"short_desc": "攻克Rust借用检查器"`
 
-Then write changelog:
+Then write changelog (prefer `--file`):
 ```bash
-echo '[{"type":"add","file":"missions.json","target":"ai_20260420_slug","summary":"Created new mission proposal"}]' | arcana-data changelog write --skill phan-site --summary "Generated 3 mission proposals"
+arcana-data changelog write --skill phan-site --summary "Generated 3 mission proposals" --file tmp_changelog.json
 ```
 
 ## Phase 6: Update Memory (MANDATORY)
 
 ```bash
-echo '{
-  "last_generation": {"date": "<today>", "generation_id": "<today>", "proposed_count": 3, "schedule": "daily"},
-  "append_conversation_context": [{"date": "<today>", "summary": "...", "source": "phan-site"}],
-  "focus_areas": ["current project TODO status..."],
-  "patterns": {"accepted_tags": [], "rejected_tags": [], "notes": ""}
-}' | arcana-data memory update
+arcana-data memory update --file tmp_memory.json
 ```
 
 - Set `last_generation` with today's date

@@ -70,6 +70,7 @@ data/packs/<pack_id>/
       "description": "What proficiency in this skill means.",
       "max_level": 5,
       "level_thresholds": [
+        { "level": 1, "points_required": 10 },
         { "level": 2, "points_required": 25 },
         { "level": 3, "points_required": 50, "required_key_achievements": ["<pack_id>::<key_ach>"] },
         { "level": 4, "points_required": 80 },
@@ -95,7 +96,7 @@ These rules are enforced by the Rust backend. Violating them causes load failure
 2. **ID uniqueness**: No duplicate achievement IDs within a pack. No duplicate node_ids within a skill.
 3. **Difficulty enum**: Must be exactly one of: `beginner`, `intermediate`, `advanced`, `expert`, `legendary`.
 4. **Prerequisites DAG**: `prerequisites` can only reference achievements within the same pack. The prerequisite graph must be acyclic (DAG).
-5. **Level thresholds count**: `level_thresholds` array length MUST equal `max_level - 1`. Lv.1 is implicit (`points >= 1` grants Lv.1 automatically) and MUST NOT appear in the array.
+5. **Level thresholds count**: `level_thresholds` array length MUST equal `max_level`.
 6. **Points monotonically increasing**: Each level's `points_required` must be strictly greater than the previous level's.
 7. **Key achievements valid**: Every ID in `required_key_achievements` must be a valid achievement ID in the same pack.
 8. **Node achievement valid**: Every `nodes[].achievement_id` must reference a valid achievement in the same pack.
@@ -152,8 +153,6 @@ Think carefully: "Use a keyboard shortcut" is beginner, not expert. "Write a TCP
 
 ## Level Thresholds
 - Typically use max_level 5
-- Lv.1 is implicit: any points > 0 automatically grants Lv.1. Do NOT include a Lv.1 entry in `level_thresholds`.
-- `level_thresholds` only contains entries for Lv.2 through Lv.max_level (so `max_level - 1` entries).
 - Points curve should be achievable but progressive (not linear — exponential-ish)
 - **Critical design principle**: Reaching max level should NOT require unlocking every achievement in the skill. A skill may have many relevant achievements, but a practitioner doesn't need to complete all of them to be considered max level. Think of it as: there are many possible paths to mastery.
 - When setting a level's points_required, mentally check: "What combination of achievements would add up to this threshold? Does completing those feel right for this level — not too easy, not too demanding?"
@@ -211,8 +210,7 @@ Before writing any file, verify:
 - [ ] No cycles in prerequisite graph
 - [ ] Difficulty values are valid enum values
 - [ ] All skill IDs follow `<pack_id>::<name>` format
-- [ ] level_thresholds count == max_level - 1 for each skill (Lv.1 is implicit, not in JSON)
-- [ ] level_thresholds entries start from level 2 (no level 1 entry)
+- [ ] level_thresholds count == max_level for each skill
 - [ ] points_required is monotonically increasing for each skill
 - [ ] All node achievement_ids reference valid achievements
 - [ ] No duplicate node_ids within a skill

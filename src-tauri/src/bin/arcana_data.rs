@@ -4,12 +4,12 @@
 //!   arcana-data context [--missions] [--status] [--achievements] [--memory]
 //!   arcana-data read <path>
 //!   arcana-data mission update <id> [--progress N] [--status S] ...
-//!   arcana-data mission create < stdin
+//!   arcana-data mission create [--file <path>]
 //!   arcana-data mission update-menu [--countdown JSON] [--progress JSON]
 //!   arcana-data status update <key=value>...
 //!   arcana-data achievement update <id> --status <s> [--progress-detail "..."]...
-//!   arcana-data changelog write --skill <s> --summary "..." < stdin
-//!   arcana-data memory update < stdin
+//!   arcana-data changelog write --skill <s> --summary "..." [--file <path>]
+//!   arcana-data memory update [--file <path>]
 
 use arcana_lib::models::achievement::AchievementProgressFile;
 use arcana_lib::models::mission::MissionFile;
@@ -134,8 +134,12 @@ enum MissionAction {
         #[arg(long)]
         progress: Option<String>,
     },
-    /// Create a new mission (reads JSON from stdin)
-    Create,
+    /// Create a new mission (reads JSON from stdin or --file)
+    Create {
+        /// Read JSON from file instead of stdin
+        #[arg(long)]
+        file: Option<String>,
+    },
 }
 
 #[derive(Subcommand)]
@@ -170,7 +174,7 @@ enum AchievementAction {
 
 #[derive(Subcommand)]
 enum ChangelogAction {
-    /// Write a changelog entry (reads changes JSON array from stdin)
+    /// Write a changelog entry (reads changes JSON array from stdin or --file)
     Write {
         /// Skill name: "velvet-room", "phan-site", or "agent"
         #[arg(long)]
@@ -178,13 +182,20 @@ enum ChangelogAction {
         /// Human-readable summary
         #[arg(long)]
         summary: String,
+        /// Read changes JSON from file instead of stdin
+        #[arg(long)]
+        file: Option<String>,
     },
 }
 
 #[derive(Subcommand)]
 enum MemoryAction {
-    /// Update mission memory (reads JSON from stdin)
-    Update,
+    /// Update mission memory (reads JSON from stdin or --file)
+    Update {
+        /// Read JSON from file instead of stdin
+        #[arg(long)]
+        file: Option<String>,
+    },
 }
 
 // ---------------------------------------------------------------------------
@@ -266,12 +277,19 @@ where
     result
 }
 
-fn read_stdin() -> Result<String, String> {
-    let mut buf = String::new();
-    std::io::stdin()
-        .read_to_string(&mut buf)
-        .map_err(|e| format!("Failed to read stdin: {e}"))?;
-    Ok(buf)
+fn read_input(file: Option<&str>) -> Result<String, String> {
+    if let Some(path) = file {
+        if !Path::new(path).exists() {
+            return Err(format!("File not found: {path}"));
+        }
+        std::fs::read_to_string(path).map_err(|e| format!("Failed to read {path}: {e}"))
+    } else {
+        let mut buf = String::new();
+        std::io::stdin()
+            .read_to_string(&mut buf)
+            .map_err(|e| format!("Failed to read stdin: {e}"))?;
+        Ok(buf)
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -496,10 +514,10 @@ fn cmd_mission(data_dir: &Path, action: MissionAction) -> Result<String, String>
                 services::mission::update_mission(data_dir, &input)
             })
         }
-        MissionAction::Create => {
-            let stdin = read_stdin()?;
+        MissionAction::Create { file } => {
+            let input_str = read_input(file.as_deref())?;
             let input: Value =
-                serde_json::from_str(&stdin).map_err(|e| format!("Invalid JSON on stdin: {e}"))?;
+                serde_json::from_str(&input_str).map_err(|e| format!("Invalid JSON: {e}"))?;
             with_write_lock(data_dir, || {
                 services::mission::create_mission(data_dir, &input)
             })
@@ -572,10 +590,10 @@ fn cmd_achievement(data_dir: &Path, action: AchievementAction) -> Result<String,
 
 fn cmd_changelog(data_dir: &Path, action: ChangelogAction) -> Result<String, String> {
     match action {
-        ChangelogAction::Write { skill, summary } => {
-            let stdin = read_stdin()?;
-            let changes: Value = serde_json::from_str(&stdin)
-                .map_err(|e| format!("Invalid changes JSON on stdin: {e}"))?;
+        ChangelogAction::Write { skill, summary, file } => {
+            let changes_str = read_input(file.as_deref())?;
+            let changes: Value = serde_json::from_str(&changes_str)
+                .map_err(|e| format!("Invalid changes JSON: {e}"))?;
             let input = json!({"summary": summary, "changes": changes});
             with_write_lock(data_dir, || {
                 services::changelog::write_changelog(data_dir, &skill, &input)
@@ -590,10 +608,10 @@ fn cmd_changelog(data_dir: &Path, action: ChangelogAction) -> Result<String, Str
 
 fn cmd_memory(data_dir: &Path, action: MemoryAction) -> Result<String, String> {
     match action {
-        MemoryAction::Update => {
-            let stdin = read_stdin()?;
+        MemoryAction::Update { file } => {
+            let input_str = read_input(file.as_deref())?;
             let input: Value =
-                serde_json::from_str(&stdin).map_err(|e| format!("Invalid JSON on stdin: {e}"))?;
+                serde_json::from_str(&input_str).map_err(|e| format!("Invalid JSON: {e}"))?;
             services::memory::update_mission_memory(data_dir, &input)
         }
     }
