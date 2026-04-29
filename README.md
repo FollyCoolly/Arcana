@@ -1,14 +1,19 @@
 # Arcana
 
-A HUD for gamified life management, Persona 5-styled.
+[English](README.md) | [简体中文](README.zh-CN.md)
+
+An AI-guided, Persona 5-inspired HUD for gamified life management.
+
+> [!IMPORTANT]
+> Arcana is designed to work best as an AI-assisted life management tool: the AI agent helps interpret updates, propose missions, and keep local JSON data coherent. For the intended visual experience, install the required fonts locally from legitimate sources; font files are not bundled with this repository or release builds. See [Font Requirements](#font-requirements).
 
 ---
 
 ## Project Overview
 
-Arcana is a comprehensive personal information management and visualization tool that applies game design thinking to real life, with a built-in AI agent that helps track progress, propose missions, and keep your journey moving forward.
+Arcana is an AI-guided desktop HUD for turning real-life progress into structured game-like systems: status dimensions, missions, achievements, skills, inventory, and media history. It stores your data locally as JSON and uses an AI agent to help interpret updates, propose missions, track progress, and keep the system coherent over time.
 
-Arcana is **not** another habit-tracking app with streaks and checkboxes. As a desktop application, it emphasizes data organization, synthesis, and meaningful presentation. While it borrows the language of games, the data it presents carries real significance — no arbitrary "+5 STR for doing push-ups" mechanics. Instead, Arcana finds the genuine intersections between real life and game systems and surfaces them without forcing reality into a game framework.
+Arcana is **not** a streak-based habit tracker or a toy stat sheet. It borrows the visual language and motivation loops of games, but the underlying data is real: personal milestones, ongoing goals, owned items, consumed media, and measurable status signals. The goal is not to pretend life is a game, but to give real life a sharper interface.
 
 ---
 
@@ -18,17 +23,32 @@ Arcana is **not** another habit-tracking app with streaks and checkboxes. As a d
 |-----------|
 | ![Arcana main menu](docs/screenshots/main-menu.jpg) |
 
-| Status | Missions |
-|--------|----------|
-| ![Arcana status screen](docs/screenshots/status.jpg) | ![Arcana missions screen](docs/screenshots/missions.jpg) |
-
-| Achievements | Skills |
-|--------------|--------|
-| ![Arcana achievements screen](docs/screenshots/achievements.jpg) | ![Arcana skills screen](docs/screenshots/skills.jpg) |
-
-| Items | Gallery |
-|-------|---------|
-| ![Arcana items screen](docs/screenshots/items.jpg) | ![Arcana gallery screen](docs/screenshots/gallery.jpg) |
+<table>
+  <tr>
+    <th width="50%">Status</th>
+    <th width="50%">Missions</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/status.jpg" alt="Arcana status screen" width="100%"></td>
+    <td><img src="docs/screenshots/missions.jpg" alt="Arcana missions screen" width="100%"></td>
+  </tr>
+  <tr>
+    <th width="50%">Achievements</th>
+    <th width="50%">Skills</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/achievements.jpg" alt="Arcana achievements screen" width="100%"></td>
+    <td><img src="docs/screenshots/skills.jpg" alt="Arcana skills screen" width="100%"></td>
+  </tr>
+  <tr>
+    <th width="50%">Items</th>
+    <th width="50%">Gallery</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/items.jpg" alt="Arcana items screen" width="100%"></td>
+    <td><img src="docs/screenshots/gallery.jpg" alt="Arcana gallery screen" width="100%"></td>
+  </tr>
+</table>
 
 ---
 
@@ -36,59 +56,62 @@ Arcana is **not** another habit-tracking app with streaks and checkboxes. As a d
 
 ### Status
 
-Multi-dimensional life radar powered by real data.
+Multi-dimensional life radar computed from real metrics.
 
-- A three-layer model: **metrics** (raw data like weight, lift PRs, run pace), **dimensions** (scored axes on a radar chart), and **level titles** (P5-style ranks per dimension).
-- Dimension scores are computed from weighted metric contributions — not manually assigned.
-- System metrics (`sys_` prefix) are derived automatically from other modules (gallery counts, skill levels, achievement stats).
-- Radar chart visualization with drill-down into individual dimension details.
+- Status uses a three-layer model: raw **metrics**, scored **dimensions**, and Persona-style **level titles**.
+- Dimension scores are calculated from weighted metric contributions, targets, ranges, or scoring brackets.
+- System metrics (`sys_` prefix) are derived automatically from other modules, such as gallery counts, skill levels, achievement stats, BMI, and game days.
+- Radar chart overview with drill-down into each dimension's contributing metrics.
 
 ### Achievements
 
 Milestone tracking with content pack support.
 
 - Record life milestones with unlock timestamps and difficulty grades (`beginner` through `legendary`).
-- Achievements can have prerequisites, forming a DAG of dependencies.
-- Content packs allow loading achievement sets tailored to your interests (e.g., programmer, fitness).
-- AI agent can track partial progress and mark completions.
+- Achievements can have prerequisites, forming validated DAGs of dependencies.
+- Content packs load achievement sets tailored to different interests, disciplines, and life domains.
+- Pack navigation, difficulty filters, unlock sorting, and locked/unlocked visual states.
+- AI agent can track partial progress, append progress notes, and mark completions.
 
 ### Skills
 
-Skill tree system tightly coupled with achievements.
+Honeycomb-style skill progression tightly coupled with achievements.
 
-- Each skill tree node maps to an achievement; unlocking achievements lights up the tree.
-- Skill levels are computed from accumulated node points and key achievement requirements.
-- Interactive skill tree visualization with prerequisite-based layout.
-- Loaded via content packs alongside achievements.
+- Each skill node maps to an achievement; unlocking achievements lights up the corresponding tree nodes.
+- Skill levels are computed from accumulated node points and required key achievements.
+- Interactive skill overview and honeycomb node map with achievement details, prerequisite status, and progress history.
+- Loaded via content packs alongside achievements, so new packs can add both milestones and skill progression.
 
 ### Missions
 
-AI-driven quest system (replaced the former Crafting module).
+AI-driven quest system for current goals and next actions.
 
 - Missions are proposed by the AI agent based on current goals and context, styled as Persona 5 "Phan-Site" requests.
 - Lifecycle: `proposed` → `active` → `completed` / `archived` / `rejected`.
-- Progress tracked as 0–100 by the AI agent.
-- Main menu integration: pin a countdown mission and a progress mission for at-a-glance tracking.
-- Can link to achievements for cross-system progression.
+- AI-maintained 0–100 progress, deadlines, and completion timestamps.
+- Main menu integration for countdowns, progress prompts, and rotating mission hints.
+- Missions can link to achievements for cross-system progression.
 
 ### Items
 
-Personal inventory management.
+Personal inventory with cost-over-time awareness.
 
-- Track clothing, electronics, and other possessions.
-- Record purchase dates, prices, and categories.
-- A data-driven reminder to consume mindfully.
+- Track clothing, shoes, electronics, furniture, books, collectibles, and other possessions.
+- Record purchase dates, prices, purchase channels, categories, images, and notes from local item files.
+- Sort and compare by name, days owned, purchase price, and daily cost.
+- Category summaries and item detail views turn ownership into a more mindful data surface.
 
 ### Gallery
 
-Aggregated media consumption hub.
+Aggregated media consumption and play history hub.
 
-- Unified view of books, anime, movies, and games.
-- Cover wall display with filtering and sorting.
+- Unified view of anime, games, TV, movies, and books.
+- Waterfall cover wall with category filters, rating/date/playtime sorting, and detail views.
+- Tracks community ratings, personal ratings, tags, dates, episodes, playtime, and Steam achievement metadata where available.
 - Import scripts for external sources:
-  - Bangumi (anime/books)
+  - Bangumi (anime)
   - Steam (games)
-  - Douban (movies/books)
+  - Douban (movies/TV/books)
 
 ---
 
@@ -211,13 +234,40 @@ cargo fmt --manifest-path src-tauri/Cargo.toml --check
 
 ---
 
+## Tooling Scripts
+
+Arcana includes Python scripts for importing personal data, generating content packs, processing UI assets, and validating local JSON files.
+
+Some data import scripts read credentials or user IDs from `scripts/config.json`. Use `scripts/config.example.json` as the template and keep real values local.
+
+| Script | Purpose |
+|--------|---------|
+| `scripts/fetch_bangumi.py` | Fetch watched anime from Bangumi and write Gallery data. |
+| `scripts/fetch_steam.py` | Fetch owned Steam games; `--detailed` also fetches achievements and store metadata. |
+| `scripts/fetch_douban.py` | Fetch Douban movies, TV, and books; supports `--status all`. |
+| `scripts/extract_maker_trees.py` | Extract maker skill-tree source data into intermediate JSON. |
+| `scripts/generate_packs.py` | Generate Arcana achievement and skill packs from decoded tree data. |
+| `scripts/process_assets.py` | Resize and prepare UI assets under `static/ui/`. |
+| `scripts/remove_bg.py` | Remove backgrounds from image files or folders. |
+| `scripts/validate_data.py` | Validate runtime JSON data and content pack schema rules. |
+
+```bash
+python scripts/fetch_bangumi.py
+python scripts/fetch_steam.py --detailed
+python scripts/fetch_douban.py --status all
+python scripts/validate_data.py data/missions.json
+```
+
+---
+
 ## Documentation
 
-- [Architecture](docs/architecture.md) — system architecture overview
-- [Visual Style Guide](docs/visual_style_guide.md) — Persona 5-inspired design tokens and visual language
-- [UI Design Spec](docs/ui_design_spec.md) — main menu and sub-screen interaction spec
-- [Schema Reference](docs/schema/README.md) — data structure documentation
-- [AI Agent Integration](docs/ai_agent_integration.md) — agent platform survey and integration plan
+- [Architecture](docs/architecture.md) — Tauri, data layer, frontend, and agent architecture.
+- [Directory Structure](docs/directory_structure.md) — project layout and historical structure notes.
+- [Schema Reference](docs/schema/README.md) — detailed JSON schemas for missions, achievements, skills, status, items, gallery, changelog, memory, and UI events.
+- [Visual Style Guide](docs/visual_style_guide.md) — Persona 5-inspired design principles, palette, typography, and interaction rules.
+- [UI Design Spec](docs/ui_design_spec.md) — main menu and sub-screen layout/interaction spec.
+- [AI Agent Integration](docs/ai_agent_integration.md) — MCP/Nanobot integration proposal and agent platform research notes.
 
 ---
 
@@ -226,7 +276,7 @@ cargo fmt --manifest-path src-tauri/Cargo.toml --check
 - **Tauri + JSON over Electron + SQLite**: Smaller binary, better performance, human-readable and version-controllable data files.
 - **Content Pack system**: Achievements and skills are loaded via pluggable packs, supporting community extension.
 - **Agent decoupled from UI**: The AI agent runs independently of the desktop GUI (CLI / Telegram), sharing the same data layer.
-- **DAG skill trees**: Frontend derives edges and layout from `prerequisites` automatically — no redundant edge data stored.
+- **Prerequisite-driven progression**: Achievement prerequisites remain a validated DAG in the data model, while skills present that progression as a compact honeycomb-style node map rather than a traditional edge graph.
 - **Shared services layer**: `services/` contains all business logic, consumed by Tauri commands, arcana-data CLI, and the Rust agent alike.
 
 ---
@@ -240,7 +290,7 @@ cargo fmt --manifest-path src-tauri/Cargo.toml --check
 - [x] Polish Items screen
 - [x] Polish Gallery screen
 - [x] Polish Missions screen
-- [ ] Test skill tree functionality end-to-end
+- [ ] Test agent skills functionality
 
 ---
 
