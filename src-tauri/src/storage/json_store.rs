@@ -40,15 +40,51 @@ pub fn write_and_validate<T: Serialize>(
     Ok(())
 }
 
+/// Resolve the data directory with the following priority:
+///   1. `ARCANA_DATA_DIR` environment variable
+///   2. `data_dir` field in `~/.arcana/settings.json`
+///   3. Default: `~/.arcana/data` (auto-created if missing)
 pub fn resolve_data_dir() -> Result<PathBuf, String> {
-    let cwd = std::env::current_dir().map_err(|e| format!("Cannot resolve current dir: {}", e))?;
-    let candidates = [cwd.join("data"), cwd.join("..").join("data")];
+    use super::settings;
 
-    for candidate in candidates {
-        if candidate.is_dir() {
-            return Ok(candidate);
+    // 1. Environment variable override
+    if let Ok(v) = std::env::var("ARCANA_DATA_DIR") {
+        if !v.is_empty() {
+            let dir = settings::expand_tilde(&v);
+            if dir.is_dir() {
+                return Ok(dir);
+            }
+            return Err(format!(
+                "ARCANA_DATA_DIR points to '{}' which does not exist",
+                dir.display()
+            ));
         }
     }
 
-    Err("Cannot find data directory. Checked ./data and ../data".to_string())
+    // 2. ~/.arcana/settings.json → data_dir
+    let s = settings::load_settings();
+    if let Some(ref configured) = s.data_dir {
+        let dir = settings::expand_tilde(configured);
+        if dir.is_dir() {
+            return Ok(dir);
+        }
+        return Err(format!(
+            "data_dir in settings.json points to '{}' which does not exist",
+            dir.display()
+        ));
+    }
+
+    // 3. Default: ~/.arcana/data (auto-create)
+    let default = settings::default_data_dir()
+        .ok_or("Cannot determine home directory for default data path")?;
+    if !default.exists() {
+        fs::create_dir_all(&default).map_err(|e| {
+            format!(
+                "Failed to create default data directory '{}': {}",
+                default.display(),
+                e
+            )
+        })?;
+    }
+    Ok(default)
 }

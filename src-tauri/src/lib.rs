@@ -16,25 +16,22 @@ use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
 #[cfg(target_os = "macos")]
 mod macos {
-    use objc2_app_kit::NSApplication;
-    use objc2_app_kit::NSApplicationPresentationOptions;
-    use objc2_foundation::MainThreadMarker;
+    use objc2_app_kit::{NSNormalWindowLevel, NSStatusWindowLevel};
 
-    /// Hide the menu bar and dock (auto-hide mode) so the window can fill the entire screen.
-    pub fn hide_menu_bar() {
-        let mtm = MainThreadMarker::new().expect("must be called on the main thread");
-        let app = NSApplication::sharedApplication(mtm);
-        app.setPresentationOptions(
-            NSApplicationPresentationOptions::AutoHideMenuBar
-                | NSApplicationPresentationOptions::AutoHideDock,
-        );
+    /// Raise the window above the macOS menu bar (level 25 = NSStatusWindowLevel).
+    pub fn raise_above_menu_bar(window: &tauri::WebviewWindow) {
+        if let Ok(ns_ptr) = window.ns_window() {
+            let ns_window = ns_ptr as *const objc2_app_kit::NSWindow;
+            unsafe { &*ns_window }.setLevel(NSStatusWindowLevel);
+        }
     }
 
-    /// Restore the default menu bar and dock visibility.
-    pub fn restore_menu_bar() {
-        let mtm = MainThreadMarker::new().expect("must be called on the main thread");
-        let app = NSApplication::sharedApplication(mtm);
-        app.setPresentationOptions(NSApplicationPresentationOptions::empty());
+    /// Restore the window to normal level.
+    pub fn restore_window_level(window: &tauri::WebviewWindow) {
+        if let Ok(ns_ptr) = window.ns_window() {
+            let ns_window = ns_ptr as *const objc2_app_kit::NSWindow;
+            unsafe { &*ns_window }.setLevel(NSNormalWindowLevel);
+        }
     }
 }
 
@@ -246,13 +243,15 @@ pub fn run() {
                     if event.state == ShortcutState::Pressed {
                         if window.is_visible().unwrap_or(false) {
                             #[cfg(target_os = "macos")]
-                            macos::restore_menu_bar();
+                            macos::restore_window_level(&window);
+                            #[cfg(not(target_os = "macos"))]
                             let _ = window.set_always_on_top(false);
                             let _ = window.hide();
                         } else {
                             fit_to_primary(&window);
                             #[cfg(target_os = "macos")]
-                            macos::hide_menu_bar();
+                            macos::raise_above_menu_bar(&window);
+                            #[cfg(not(target_os = "macos"))]
                             let _ = window.set_always_on_top(true);
                             let _ = window.show();
                             let _ = window.set_focus();

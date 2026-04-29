@@ -226,12 +226,5 @@ impl AgentConfig {
 
 /// Resolve ~/.arcana/agent_config.json path.
 fn user_config_path() -> Option<PathBuf> {
-    home_dir().map(|h| h.join(".arcana").join("agent_config.json"))
-}
-
-/// Get user home directory without external crates.
-fn home_dir() -> Option<PathBuf> {
-    std::env::var_os("HOME")
-        .or_else(|| std::env::var_os("USERPROFILE"))
-        .map(PathBuf::from)
+    crate::storage::settings::home_dir().map(|h| h.join(".arcana").join("agent_config.json"))
 }
