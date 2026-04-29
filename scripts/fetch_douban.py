@@ -154,11 +154,7 @@ def fetch_interests(uid: str, interest_type: str, statuses: list[str]) -> list[d
 
             if resp_status == 403 or resp_status == 401:
                 print(f"ERROR: HTTP {resp_status} — authentication required.")
-                print("  Your Douban profile may not be public, or the API requires a cookie.")
-                print("  Set douban_cookie in config.json:")
-                print("  1. Login to douban.com in your browser")
-                print("  2. F12 → Network → copy Cookie header value")
-                print('  3. Paste into config.json: "douban_cookie": "bid=xxx; ..."')
+                print("  Your Douban profile may not be public.")
                 sys.exit(1)
 
             if resp_status != 200:

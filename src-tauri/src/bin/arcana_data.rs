@@ -21,7 +21,7 @@ use fs2::FileExt;
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::fs::File;
-use std::io::Read;
+use std::io::{BufRead, Read, Write};
 use std::path::Path;
 
 // ---------------------------------------------------------------------------
@@ -91,6 +91,12 @@ enum Commands {
     Memory {
         #[command(subcommand)]
         action: MemoryAction,
+    },
+    /// Initialize a fresh Arcana data directory from data-example/
+    Init {
+        /// Skip interactive prompts, use default values
+        #[arg(long)]
+        non_interactive: bool,
     },
 }
 
@@ -236,6 +242,7 @@ fn main() {
         Commands::Achievement { action } => cmd_achievement(&data_dir, action),
         Commands::Changelog { action } => cmd_changelog(&data_dir, action),
         Commands::Memory { action } => cmd_memory(&data_dir, action),
+        Commands::Init { non_interactive } => cmd_init(&data_dir, non_interactive),
     };
 
     match result {
@@ -615,4 +622,116 @@ fn cmd_memory(data_dir: &Path, action: MemoryAction) -> Result<String, String> {
             services::memory::update_mission_memory(data_dir, &input)
         }
     }
+}
+
+// ---------------------------------------------------------------------------
+// init
+// ---------------------------------------------------------------------------
+
+fn prompt_line(prompt: &str, default: &str) -> String {
+    print!("{prompt} [{default}]: ");
+    let _ = std::io::stdout().flush();
+    let stdin = std::io::stdin();
+    let line = stdin.lock().lines().next();
+    match line {
+        Some(Ok(s)) if !s.trim().is_empty() => s.trim().to_string(),
+        _ => default.to_string(),
+    }
+}
+
+fn cmd_init(data_dir: &Path, non_interactive: bool) -> Result<String, String> {
+    // Locate data-example/ relative to the binary's location or working directory.
+    // Try a few candidate paths to work both from repo root and from target/
+    let candidates = [
+        std::env::current_dir()
+            .unwrap_or_default()
+            .join("data-example"),
+        std::env::current_exe()
+            .unwrap_or_default()
+            .parent()
+            .unwrap_or(Path::new("."))
+            .join("../../../data-example"),
+    ];
+    let example_dir = candidates
+        .iter()
+        .find(|p| p.exists())
+        .map(|p| p.canonicalize().unwrap_or_else(|_| p.clone()))
+        .ok_or_else(|| {
+            "Cannot find data-example/ directory. Run this command from the repo root.".to_string()
+        })?;
+
+    // Collect user info
+    let (username, birth_date) = if non_interactive {
+        ("Trickster".to_string(), "2000-01-01".to_string())
+    } else {
+        println!("=== Arcana Init ===");
+        println!("Setting up your data directory at: {}", data_dir.display());
+        println!();
+        let u = prompt_line("Username", "Trickster");
+        let b = prompt_line("Birth date (YYYY-MM-DD)", "2000-01-01");
+        (u, b)
+    };
+
+    // Copy flat files from data-example/, skipping any that already exist
+    let flat_files = [
+        "status.json",
+        "status_metric_definitions.json",
+        "loaded_packs.json",
+        "achievement_progress.json",
+        "gallery_sources.json",
+        "item_sources.json",
+        "missions.json",
+        "weather.json",
+    ];
+    for name in &flat_files {
+        let dest = data_dir.join(name);
+        if dest.exists() {
+            println!("  skip  {name} (already exists)");
+            continue;
+        }
+        let src = example_dir.join(name);
+        std::fs::copy(&src, &dest)
+            .map_err(|e| format!("Failed to copy {name}: {e}"))?;
+        println!("  wrote {name}");
+    }
+
+    // Write user_profile.json with provided values
+    let profile_path = data_dir.join("user_profile.json");
+    if profile_path.exists() {
+        println!("  skip  user_profile.json (already exists)");
+    } else {
+        let profile = json!({ "username": username, "birth_date": birth_date });
+        let content = serde_json::to_string_pretty(&profile).unwrap();
+        std::fs::write(&profile_path, content)
+            .map_err(|e| format!("Failed to write user_profile.json: {e}"))?;
+        println!("  wrote user_profile.json");
+    }
+
+    // Copy arcana pack
+    let pack_dest = data_dir.join("packs").join("arcana");
+    if pack_dest.exists() {
+        println!("  skip  packs/arcana/ (already exists)");
+    } else {
+        std::fs::create_dir_all(&pack_dest)
+            .map_err(|e| format!("Failed to create packs/arcana/: {e}"))?;
+        let pack_src = example_dir.join("packs").join("arcana");
+        for entry in std::fs::read_dir(&pack_src)
+            .map_err(|e| format!("Cannot read data-example/packs/arcana/: {e}"))?
+        {
+            let entry = entry.map_err(|e| e.to_string())?;
+            let file_name = entry.file_name();
+            std::fs::copy(entry.path(), pack_dest.join(&file_name))
+                .map_err(|e| format!("Failed to copy packs/arcana/{}: {e}", file_name.to_string_lossy()))?;
+        }
+        println!("  wrote packs/arcana/");
+    }
+
+    println!();
+    println!("Done! Data directory initialized at: {}", data_dir.display());
+    println!();
+    println!("Next step: configure your AI provider, then run the app.");
+    println!("  Recommended: set ANTHROPIC_API_KEY or equivalent in your agent config.");
+    println!("  See docs/architecture.md for agent setup instructions.");
+
+    Ok("Init complete.".to_string())
 }

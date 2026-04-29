@@ -1,0 +1,8 @@
+{
+  "id": "arcana",
+  "name": "Arcana",
+  "description": "Onboarding achievements for Arcana — explore the app's core systems guided by the Velvet Room.",
+  "version": "1.0.0",
+  "author": "Arcana",
+  "tags": ["onboarding", "meta"]
+}

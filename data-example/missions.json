@@ -1,0 +1,149 @@
+{
+  "version": 1,
+  "missions": [
+    {
+      "id": "ai_20260430_arcana_guide",
+      "title": "Arcana Awakening",
+      "description": "Complete all onboarding modules to fully master Arcana. Each module unlocks a new layer of the system — from status tracking to AI integration and remote access.",
+      "status": "active",
+      "progress": 0,
+      "short_desc": "全教程",
+      "created_at": "2026-04-30T00:00:00Z",
+      "ai_metadata": {
+        "generation_id": "onboarding_v1",
+        "difficulty_tier": "B",
+        "generation_reason": "onboarding"
+      }
+    },
+    {
+      "id": "ai_20260430_status_calibration",
+      "title": "Status Calibration",
+      "description": "Set up your user profile and configure the status panel. Start by editing user_profile.json with your username and birth date, then define at least one metric in status_metric_definitions.json and record its value.",
+      "status": "active",
+      "progress": 0,
+      "short_desc": "状态面板",
+      "created_at": "2026-04-30T00:00:00Z",
+      "parent_id": "ai_20260430_arcana_guide",
+      "ai_metadata": {
+        "generation_id": "onboarding_v1",
+        "difficulty_tier": "D",
+        "generation_reason": "onboarding"
+      }
+    },
+    {
+      "id": "ai_20260430_mission_control",
+      "title": "Mission Control Online",
+      "description": "Activate the mission system. Accept your first mission by setting its status to 'active', then configure a main menu widget so your most urgent objective is always visible on the home screen.",
+      "status": "active",
+      "progress": 0,
+      "short_desc": "任务系统",
+      "created_at": "2026-04-30T00:00:00Z",
+      "parent_id": "ai_20260430_arcana_guide",
+      "ai_metadata": {
+        "generation_id": "onboarding_v1",
+        "difficulty_tier": "D",
+        "generation_reason": "onboarding"
+      }
+    },
+    {
+      "id": "ai_20260430_persona_awakening",
+      "title": "Persona Awakening",
+      "description": "Explore the achievement and skill tree system. Load a content pack that matches your interests, then unlock your first achievement. The skill tree grows as you accumulate achievements.",
+      "status": "active",
+      "progress": 0,
+      "short_desc": "成就系统",
+      "created_at": "2026-04-30T00:00:00Z",
+      "parent_id": "ai_20260430_arcana_guide",
+      "ai_metadata": {
+        "generation_id": "onboarding_v1",
+        "difficulty_tier": "D",
+        "generation_reason": "onboarding"
+      }
+    },
+    {
+      "id": "ai_20260430_gallery_online",
+      "title": "Gallery Online",
+      "description": "Set up the Gallery module. The Gallery aggregates media history from JSON source files — each source is a file produced by an import script or written manually.\n\nQuickstart with import scripts:\n  1. cp scripts/config.example.json scripts/config.json\n  2. Fill in your IDs: bangumi_uid (Bangumi profile URL), steam_api_key + steam_id (steamcommunity.com/dev/apikey), douban_id (Douban profile URL)\n  3. Run one or more scripts:\n       python scripts/fetch_bangumi.py\n       python scripts/fetch_steam.py --detailed\n       python scripts/fetch_douban.py --status all\n  4. Register the output in gallery_sources.json:\n       { \"id\": \"bangumi\", \"name\": \"Anime\", \"path\": \"gallery/bangumi_anime.json\", \"media_type\": \"anime\", \"icon\": \"🎌\" }\n\nObjective: complete the arcana::setup_gallery_source achievement (register at least one source).",
+      "status": "active",
+      "progress": 0,
+      "short_desc": "媒体库",
+      "created_at": "2026-04-30T00:00:00Z",
+      "parent_id": "ai_20260430_arcana_guide",
+      "ai_metadata": {
+        "generation_id": "onboarding_v1",
+        "difficulty_tier": "D",
+        "generation_reason": "onboarding"
+      }
+    },
+    {
+      "id": "ai_20260430_inventory_log",
+      "title": "Inventory Log",
+      "description": "Connect an item directory to the Items module. The Items module was built around the author's Obsidian vault — it reads plain .md files with YAML frontmatter, so Obsidian users can point it at an existing note directory and get started immediately. If you don't use Obsidian, just create a folder of .md files in any text editor; the format is plain Markdown.\n\nEach Markdown file in a registered directory becomes a tracked item — Arcana reads the YAML frontmatter and computes derived fields automatically.\n\nSetup:\n  1. Edit item_sources.json and add a source entry:\n       { \"id\": \"electronics\", \"name\": \"Electronics\", \"path\": \"/absolute/path/to/Obsidian/Items/Electronics\" }\n  2. Each .md file in that directory is one item. Frontmatter fields: 名称, 品牌, 价格, 购入日期, 购入方式, 类别, 颜色. Any other fields are stored as extras.\n  3. Example item file (MacBook Pro.md):\n       ---\n       品牌: Apple\n       价格: 14999\n       购入日期: 2023-11-01\n       购入方式: Apple 官网\n       类别: 电子产品\n       ---\n\nArcana auto-computes: days_owned (today − purchase date) and daily_cost (price ÷ days owned).\n\nObjective: complete the arcana::setup_item_source achievement (register at least one source).",
+      "status": "active",
+      "progress": 0,
+      "short_desc": "物品清单",
+      "created_at": "2026-04-30T00:00:00Z",
+      "parent_id": "ai_20260430_arcana_guide",
+      "ai_metadata": {
+        "generation_id": "onboarding_v1",
+        "difficulty_tier": "D",
+        "generation_reason": "onboarding"
+      }
+    },
+    {
+      "id": "ai_20260430_velvet_room_access",
+      "title": "Velvet Room Access",
+      "description": "Configure the AI provider so the agent can read and update your data. This is the most important setup step — once working, the AI guides all further progress.\n\nSetup:\n  1. Create ~/.arcana/agent_config.json:\n       {\n         \"api_key\": \"your-key\",\n         \"base_url\": \"https://api.deepseek.com\",\n         \"model\": \"deepseek-chat\"\n       }\n  2. Recommended provider: DeepSeek V4 (cost-effective, Anthropic-API-compatible). For Anthropic: base_url https://api.anthropic.com, model claude-sonnet-4-5-20251001. You can also set ANTHROPIC_API_KEY as an environment variable.\n  3. Run /velvet-room in any AI coding agent that supports slash commands (Claude Code, OpenCode, Codex, or even openclaw (untested)) to verify: tell it what you've set up so far and let it update your achievements.\n\nObjective: complete arcana::setup_ai_provider, then arcana::first_velvet_room.",
+      "status": "active",
+      "progress": 0,
+      "short_desc": "AI配置",
+      "created_at": "2026-04-30T00:00:00Z",
+      "parent_id": "ai_20260430_arcana_guide",
+      "ai_metadata": {
+        "generation_id": "onboarding_v1",
+        "difficulty_tier": "C",
+        "generation_reason": "onboarding"
+      }
+    },
+    {
+      "id": "ai_20260430_phantom_thieves_hq",
+      "title": "Phantom Thieves HQ",
+      "description": "Master the AI skill system. Use /velvet-room to report progress, /phan-site to generate mission proposals, and /pack-manager to create or customize an achievement pack. These three skills form the core AI workflow.",
+      "status": "active",
+      "progress": 0,
+      "short_desc": "AI技能",
+      "created_at": "2026-04-30T00:00:00Z",
+      "parent_id": "ai_20260430_arcana_guide",
+      "ai_metadata": {
+        "generation_id": "onboarding_v1",
+        "difficulty_tier": "C",
+        "generation_reason": "onboarding"
+      }
+    },
+    {
+      "id": "ai_20260430_navigator_online",
+      "title": "Navigator Online",
+      "description": "Deploy the Telegram bot so you can update Arcana from anywhere via your phone.\n\nStep-by-step:\n  1. Create a bot: open Telegram → search @BotFather → /newbot → follow prompts → copy the token\n  2. Get your Telegram user ID: message @userinfobot on Telegram\n  3. Add to ~/.arcana/agent_config.json:\n       {\n         \"api_key\": \"...\",\n         \"telegram\": {\n           \"token\": \"123456789:ABCdef...\",\n           \"allow_from\": [\"YOUR_NUMERIC_ID\"]\n         }\n       }\n  4. Build the bot:\n       cargo build --manifest-path src-tauri/Cargo.toml --bin agent-telegram --release\n  5. Run it (keep it running on your desktop):\n       ./src-tauri/target/release/agent-telegram\n  6. Message the bot on Telegram — describe something to update, e.g. '刚完成了 Navigator Online 的配置'\n\nThe bot uses long-polling — no server or webhook required. Messages go: Telegram → bot → agent loop → arcana-data CLI → local JSON files.\n\nObjective: complete arcana::setup_telegram_bot, then arcana::remote_update_via_im.",
+      "status": "active",
+      "progress": 0,
+      "short_desc": "远程接入",
+      "created_at": "2026-04-30T00:00:00Z",
+      "parent_id": "ai_20260430_arcana_guide",
+      "ai_metadata": {
+        "generation_id": "onboarding_v1",
+        "difficulty_tier": "B",
+        "generation_reason": "onboarding"
+      }
+    }
+  ],
+  "main_menu": {
+    "countdown": {
+      "mission_id": "ai_20260430_arcana_guide",
+      "label": "指引"
+    },
+    "progress": {
+      "mission_id": "ai_20260430_arcana_guide",
+      "label": "完成进度"
+    }
+  }
+}

@@ -1,0 +1,607 @@
+{
+  "version": 1,
+  "metrics": [
+    {
+      "id": "height_cm",
+      "name": "Height",
+      "group": "body",
+      "unit": "cm",
+      "value_type": "number"
+    },
+    {
+      "id": "weight_kg",
+      "name": "Weight",
+      "group": "body",
+      "unit": "kg",
+      "value_type": "number"
+    },
+    {
+      "id": "body_fat_pct",
+      "name": "Body Fat",
+      "group": "body",
+      "unit": "percent",
+      "value_type": "number"
+    },
+    {
+      "id": "bmi",
+      "name": "BMI",
+      "group": "body",
+      "unit": "",
+      "value_type": "number",
+      "description": "Body Mass Index"
+    },
+    {
+      "id": "resting_heart_rate_bpm",
+      "name": "Resting Heart Rate",
+      "group": "vitals",
+      "unit": "bpm",
+      "value_type": "number"
+    },
+    {
+      "id": "blood_pressure_sys",
+      "name": "Blood Pressure SYS",
+      "group": "vitals",
+      "unit": "mmHg",
+      "value_type": "number"
+    },
+    {
+      "id": "blood_pressure_dia",
+      "name": "Blood Pressure DIA",
+      "group": "vitals",
+      "unit": "mmHg",
+      "value_type": "number"
+    },
+    {
+      "id": "waist_cm",
+      "name": "Waist Circumference",
+      "group": "circumference",
+      "unit": "cm",
+      "value_type": "number"
+    },
+    {
+      "id": "hip_cm",
+      "name": "Hip Circumference",
+      "group": "circumference",
+      "unit": "cm",
+      "value_type": "number"
+    },
+    {
+      "id": "chest_cm",
+      "name": "Chest Circumference",
+      "group": "circumference",
+      "unit": "cm",
+      "value_type": "number"
+    },
+    {
+      "id": "upper_arm_cm",
+      "name": "Upper Arm Circumference",
+      "group": "circumference",
+      "unit": "cm",
+      "value_type": "number"
+    },
+    {
+      "id": "forearm_cm",
+      "name": "Forearm Circumference",
+      "group": "circumference",
+      "unit": "cm",
+      "value_type": "number"
+    },
+    {
+      "id": "thigh_cm",
+      "name": "Thigh Circumference",
+      "group": "circumference",
+      "unit": "cm",
+      "value_type": "number"
+    },
+    {
+      "id": "calf_cm",
+      "name": "Calf Circumference",
+      "group": "circumference",
+      "unit": "cm",
+      "value_type": "number"
+    },
+    {
+      "id": "neck_cm",
+      "name": "Neck Circumference",
+      "group": "circumference",
+      "unit": "cm",
+      "value_type": "number"
+    },
+    {
+      "id": "squat_5rm_kg",
+      "name": "Squat 5RM",
+      "group": "legs",
+      "unit": "kg",
+      "value_type": "number"
+    },
+    {
+      "id": "bench_press_5rm_kg",
+      "name": "Bench Press 5RM",
+      "group": "chest",
+      "unit": "kg",
+      "value_type": "number"
+    },
+    {
+      "id": "deadlift_5rm_kg",
+      "name": "Deadlift 5RM",
+      "group": "back",
+      "unit": "kg",
+      "value_type": "number"
+    },
+    {
+      "id": "pull_up_max_reps",
+      "name": "Pull-up Max Reps",
+      "group": "back",
+      "unit": "reps",
+      "value_type": "number"
+    },
+    {
+      "id": "push_up_max_reps",
+      "name": "Push-up Max Reps",
+      "group": "chest",
+      "unit": "reps",
+      "value_type": "number"
+    },
+    {
+      "id": "lat_pulldown_5rm_kg",
+      "name": "Lat Pulldown 5RM",
+      "group": "back",
+      "unit": "kg",
+      "value_type": "number"
+    },
+    {
+      "id": "seated_row_5rm_kg",
+      "name": "Seated Row 5RM",
+      "group": "back",
+      "unit": "kg",
+      "value_type": "number"
+    },
+    {
+      "id": "pec_fly_5rm_kg",
+      "name": "Pec Fly 5RM",
+      "group": "chest",
+      "unit": "kg",
+      "value_type": "number"
+    },
+    {
+      "id": "hip_adduction_5rm_kg",
+      "name": "Hip Adduction 5RM",
+      "group": "legs",
+      "unit": "kg",
+      "value_type": "number"
+    },
+    {
+      "id": "hip_abduction_5rm_kg",
+      "name": "Hip Abduction 5RM",
+      "group": "legs",
+      "unit": "kg",
+      "value_type": "number"
+    },
+    {
+      "id": "leg_press_5rm_kg",
+      "name": "Leg Press 5RM",
+      "group": "legs",
+      "unit": "kg",
+      "value_type": "number"
+    },
+    {
+      "id": "machine_chest_press_5rm_kg",
+      "name": "Machine Chest Press 5RM",
+      "group": "chest",
+      "unit": "kg",
+      "value_type": "number"
+    },
+    {
+      "id": "machine_shoulder_press_5rm_kg",
+      "name": "Machine Shoulder Press 5RM",
+      "group": "shoulders",
+      "unit": "kg",
+      "value_type": "number"
+    },
+    {
+      "id": "seated_crunch_5rm_kg",
+      "name": "Seated Crunch 5RM",
+      "group": "core",
+      "unit": "kg",
+      "value_type": "number"
+    },
+    {
+      "id": "leg_extension_5rm_kg",
+      "name": "Leg Extension 5RM",
+      "group": "legs",
+      "unit": "kg",
+      "value_type": "number"
+    },
+    {
+      "id": "leg_curl_5rm_kg",
+      "name": "Leg Curl 5RM",
+      "group": "legs",
+      "unit": "kg",
+      "value_type": "number"
+    },
+    {
+      "id": "dumbbell_bench_press_8rm_kg_each",
+      "name": "Dumbbell Bench Press 8RM",
+      "group": "chest",
+      "unit": "kg_each",
+      "value_type": "number"
+    },
+    {
+      "id": "dumbbell_shoulder_press_8rm_kg_each",
+      "name": "Dumbbell Shoulder Press 8RM",
+      "group": "shoulders",
+      "unit": "kg_each",
+      "value_type": "number"
+    },
+    {
+      "id": "dumbbell_fly_12rm_kg_each",
+      "name": "Dumbbell Fly 12RM",
+      "group": "chest",
+      "unit": "kg_each",
+      "value_type": "number"
+    },
+    {
+      "id": "incline_bench_press_5rm_kg",
+      "name": "Incline Bench Press 5RM",
+      "group": "chest",
+      "unit": "kg",
+      "value_type": "number"
+    },
+    {
+      "id": "incline_dumbbell_bench_press_8rm_kg_each",
+      "name": "Incline Dumbbell Bench Press 8RM",
+      "group": "chest",
+      "unit": "kg_each",
+      "value_type": "number"
+    },
+    {
+      "id": "cable_crossover_12rm_kg_each",
+      "name": "Cable Crossover 12RM",
+      "group": "chest",
+      "unit": "kg_each",
+      "value_type": "number"
+    },
+    {
+      "id": "barbell_row_5rm_kg",
+      "name": "Barbell Row 5RM",
+      "group": "back",
+      "unit": "kg",
+      "value_type": "number"
+    },
+    {
+      "id": "dumbbell_row_8rm_kg_each",
+      "name": "Dumbbell Row 8RM",
+      "group": "back",
+      "unit": "kg_each",
+      "value_type": "number"
+    },
+    {
+      "id": "t_bar_row_5rm_kg",
+      "name": "T-Bar Row 5RM",
+      "group": "back",
+      "unit": "kg",
+      "value_type": "number"
+    },
+    {
+      "id": "back_extension_12rm_kg",
+      "name": "Back Extension 12RM",
+      "group": "back",
+      "unit": "kg",
+      "value_type": "number"
+    },
+    {
+      "id": "barbell_shrug_5rm_kg",
+      "name": "Barbell Shrug 5RM",
+      "group": "back",
+      "unit": "kg",
+      "value_type": "number"
+    },
+    {
+      "id": "dumbbell_shrug_12rm_kg_each",
+      "name": "Dumbbell Shrug 12RM",
+      "group": "back",
+      "unit": "kg_each",
+      "value_type": "number"
+    },
+    {
+      "id": "face_pull_12rm_kg",
+      "name": "Face Pull 12RM",
+      "group": "back",
+      "unit": "kg",
+      "value_type": "number"
+    },
+    {
+      "id": "overhead_press_5rm_kg",
+      "name": "Overhead Press 5RM",
+      "group": "shoulders",
+      "unit": "kg",
+      "value_type": "number"
+    },
+    {
+      "id": "lateral_raise_12rm_kg_each",
+      "name": "Lateral Raise 12RM",
+      "group": "shoulders",
+      "unit": "kg_each",
+      "value_type": "number"
+    },
+    {
+      "id": "front_raise_12rm_kg_each",
+      "name": "Front Raise 12RM",
+      "group": "shoulders",
+      "unit": "kg_each",
+      "value_type": "number"
+    },
+    {
+      "id": "reverse_fly_12rm_kg_each",
+      "name": "Reverse Fly 12RM",
+      "group": "shoulders",
+      "unit": "kg_each",
+      "value_type": "number"
+    },
+    {
+      "id": "barbell_curl_8rm_kg",
+      "name": "Barbell Curl 8RM",
+      "group": "biceps",
+      "unit": "kg",
+      "value_type": "number"
+    },
+    {
+      "id": "dumbbell_curl_12rm_kg_each",
+      "name": "Dumbbell Curl 12RM",
+      "group": "biceps",
+      "unit": "kg_each",
+      "value_type": "number"
+    },
+    {
+      "id": "hammer_curl_12rm_kg_each",
+      "name": "Hammer Curl 12RM",
+      "group": "biceps",
+      "unit": "kg_each",
+      "value_type": "number"
+    },
+    {
+      "id": "preacher_curl_8rm_kg",
+      "name": "Preacher Curl 8RM",
+      "group": "biceps",
+      "unit": "kg",
+      "value_type": "number"
+    },
+    {
+      "id": "tricep_pushdown_12rm_kg",
+      "name": "Tricep Pushdown 12RM",
+      "group": "triceps",
+      "unit": "kg",
+      "value_type": "number"
+    },
+    {
+      "id": "skull_crusher_8rm_kg",
+      "name": "Skull Crusher 8RM",
+      "group": "triceps",
+      "unit": "kg",
+      "value_type": "number"
+    },
+    {
+      "id": "overhead_tricep_ext_12rm_kg_each",
+      "name": "Overhead Tricep Extension 12RM",
+      "group": "triceps",
+      "unit": "kg_each",
+      "value_type": "number"
+    },
+    {
+      "id": "close_grip_bench_press_5rm_kg",
+      "name": "Close Grip Bench Press 5RM",
+      "group": "triceps",
+      "unit": "kg",
+      "value_type": "number"
+    },
+    {
+      "id": "romanian_deadlift_5rm_kg",
+      "name": "Romanian Deadlift 5RM",
+      "group": "legs",
+      "unit": "kg",
+      "value_type": "number"
+    },
+    {
+      "id": "bulgarian_split_squat_8rm_kg_each",
+      "name": "Bulgarian Split Squat 8RM",
+      "group": "legs",
+      "unit": "kg_each",
+      "value_type": "number"
+    },
+    {
+      "id": "dumbbell_lunge_12rm_kg_each",
+      "name": "Dumbbell Lunge 12RM",
+      "group": "legs",
+      "unit": "kg_each",
+      "value_type": "number"
+    },
+    {
+      "id": "hip_thrust_5rm_kg",
+      "name": "Hip Thrust 5RM",
+      "group": "legs",
+      "unit": "kg",
+      "value_type": "number"
+    },
+    {
+      "id": "standing_calf_raise_12rm_kg",
+      "name": "Standing Calf Raise 12RM",
+      "group": "legs",
+      "unit": "kg",
+      "value_type": "number"
+    },
+    {
+      "id": "seated_calf_raise_12rm_kg",
+      "name": "Seated Calf Raise 12RM",
+      "group": "legs",
+      "unit": "kg",
+      "value_type": "number"
+    },
+    {
+      "id": "hanging_leg_raise_max_reps",
+      "name": "Hanging Leg Raise Max Reps",
+      "group": "core",
+      "unit": "reps",
+      "value_type": "number"
+    },
+    {
+      "id": "cable_crunch_12rm_kg",
+      "name": "Cable Crunch 12RM",
+      "group": "core",
+      "unit": "kg",
+      "value_type": "number"
+    },
+    {
+      "id": "russian_twist_max_reps",
+      "name": "Russian Twist Max Reps",
+      "group": "core",
+      "unit": "reps",
+      "value_type": "number"
+    },
+    {
+      "id": "ab_wheel_max_reps",
+      "name": "Ab Wheel Max Reps",
+      "group": "core",
+      "unit": "reps",
+      "value_type": "number"
+    },
+    {
+      "id": "plank_hold_sec",
+      "name": "Plank Hold",
+      "group": "core",
+      "unit": "sec",
+      "value_type": "number"
+    },
+    {
+      "id": "wall_sit_sec",
+      "name": "Wall Sit",
+      "group": "legs",
+      "unit": "sec",
+      "value_type": "number"
+    },
+    {
+      "id": "run_1k_time_sec",
+      "name": "Run 1K Time",
+      "group": "cardio",
+      "unit": "sec",
+      "value_type": "number"
+    },
+    {
+      "id": "run_5k_pace_sec_per_km",
+      "name": "Run 5K Pace",
+      "group": "cardio",
+      "unit": "sec_per_km",
+      "value_type": "number"
+    }
+  ],
+  "dimensions": [
+    {
+      "id": "strength",
+      "name": "Strength",
+      "level_titles": ["手无缚鸡", "初具力量", "小有所成", "力大无穷", "人形兵器"],
+      "level_thresholds": [3.1, 6.1, 9.2, 12.0],
+      "metrics": {
+        "squat_5rm_kg": { "weight": 1.0, "target_max": 130 },
+        "bench_press_5rm_kg": { "weight": 1.0, "target_max": 95 },
+        "deadlift_5rm_kg": { "weight": 1.0, "target_max": 150 },
+        "overhead_press_5rm_kg": { "weight": 0.8, "target_max": 70 },
+        "pull_up_max_reps": { "weight": 0.7, "target_max": 15 },
+        "barbell_row_5rm_kg": { "weight": 0.6, "target_max": 100 },
+        "leg_press_5rm_kg": { "weight": 0.5, "target_max": 260 },
+        "romanian_deadlift_5rm_kg": { "weight": 0.5, "target_max": 110 },
+        "push_up_max_reps": { "weight": 0.4, "target_max": 50 },
+        "incline_bench_press_5rm_kg": { "weight": 0.4, "target_max": 80 },
+        "pec_fly_5rm_kg": { "weight": 0.2, "target_max": 50 },
+        "machine_chest_press_5rm_kg": { "weight": 0.2, "target_max": 90 },
+        "dumbbell_bench_press_8rm_kg_each": { "weight": 0.2, "target_max": 32 },
+        "dumbbell_fly_12rm_kg_each": { "weight": 0.2, "target_max": 18 },
+        "incline_dumbbell_bench_press_8rm_kg_each": { "weight": 0.2, "target_max": 28 },
+        "cable_crossover_12rm_kg_each": { "weight": 0.2, "target_max": 18 },
+        "lat_pulldown_5rm_kg": { "weight": 0.2, "target_max": 75 },
+        "seated_row_5rm_kg": { "weight": 0.2, "target_max": 80 },
+        "dumbbell_row_8rm_kg_each": { "weight": 0.2, "target_max": 35 },
+        "t_bar_row_5rm_kg": { "weight": 0.2, "target_max": 80 },
+        "back_extension_12rm_kg": { "weight": 0.2, "target_max": 25 },
+        "barbell_shrug_5rm_kg": { "weight": 0.2, "target_max": 100 },
+        "dumbbell_shrug_12rm_kg_each": { "weight": 0.2, "target_max": 35 },
+        "face_pull_12rm_kg": { "weight": 0.2, "target_max": 30 },
+        "machine_shoulder_press_5rm_kg": { "weight": 0.2, "target_max": 60 },
+        "dumbbell_shoulder_press_8rm_kg_each": { "weight": 0.2, "target_max": 25 },
+        "lateral_raise_12rm_kg_each": { "weight": 0.2, "target_max": 12 },
+        "front_raise_12rm_kg_each": { "weight": 0.2, "target_max": 12 },
+        "reverse_fly_12rm_kg_each": { "weight": 0.2, "target_max": 10 },
+        "hip_adduction_5rm_kg": { "weight": 0.2, "target_max": 80 },
+        "hip_abduction_5rm_kg": { "weight": 0.2, "target_max": 70 },
+        "leg_extension_5rm_kg": { "weight": 0.2, "target_max": 70 },
+        "leg_curl_5rm_kg": { "weight": 0.2, "target_max": 55 },
+        "bulgarian_split_squat_8rm_kg_each": { "weight": 0.2, "target_max": 28 },
+        "dumbbell_lunge_12rm_kg_each": { "weight": 0.2, "target_max": 20 },
+        "hip_thrust_5rm_kg": { "weight": 0.2, "target_max": 140 },
+        "standing_calf_raise_12rm_kg": { "weight": 0.2, "target_max": 80 },
+        "seated_calf_raise_12rm_kg": { "weight": 0.2, "target_max": 50 },
+        "barbell_curl_8rm_kg": { "weight": 0.2, "target_max": 35 },
+        "dumbbell_curl_12rm_kg_each": { "weight": 0.2, "target_max": 14 },
+        "hammer_curl_12rm_kg_each": { "weight": 0.2, "target_max": 16 },
+        "preacher_curl_8rm_kg": { "weight": 0.2, "target_max": 30 },
+        "tricep_pushdown_12rm_kg": { "weight": 0.2, "target_max": 35 },
+        "skull_crusher_8rm_kg": { "weight": 0.2, "target_max": 30 },
+        "overhead_tricep_ext_12rm_kg_each": { "weight": 0.2, "target_max": 14 },
+        "close_grip_bench_press_5rm_kg": { "weight": 0.2, "target_max": 80 },
+        "seated_crunch_5rm_kg": { "weight": 0.2, "target_max": 60 },
+        "hanging_leg_raise_max_reps": { "weight": 0.2, "target_max": 20 },
+        "cable_crunch_12rm_kg": { "weight": 0.2, "target_max": 50 },
+        "russian_twist_max_reps": { "weight": 0.2, "target_max": 30 },
+        "ab_wheel_max_reps": { "weight": 0.2, "target_max": 20 }
+      }
+    },
+    {
+      "id": "endurance",
+      "name": "Endurance",
+      "level_titles": ["气喘吁吁", "能跑能跳", "持久作战", "铁打的肺", "永动机"],
+      "level_thresholds": [0.6, 1.2, 1.8, 2.4],
+      "metrics": {
+        "run_1k_time_sec": { "weight": 1.0, "target_min": 240 },
+        "run_5k_pace_sec_per_km": { "weight": 1.0, "target_min": 280 },
+        "plank_hold_sec": { "weight": 0.6, "target_max": 180 },
+        "wall_sit_sec": { "weight": 0.4, "target_max": 120 }
+      }
+    },
+    {
+      "id": "health",
+      "name": "Health",
+      "level_titles": ["亚健康", "马马虎虎", "身体不错", "健康达人", "生命巅峰"],
+      "level_thresholds": [0.7, 1.5, 2.2, 3.0],
+      "metrics": {
+        "bmi": { "weight": 1.0, "target_min": 18.5, "target_max": 24.9 },
+        "body_fat_pct": { "weight": 0.8, "target_min": 8, "target_max": 20 },
+        "resting_heart_rate_bpm": { "weight": 0.7, "target_min": 40, "target_max": 75 },
+        "blood_pressure_sys": { "weight": 0.6, "target_min": 90, "target_max": 130 },
+        "blood_pressure_dia": { "weight": 0.6, "target_min": 60, "target_max": 85 }
+      }
+    },
+    {
+      "id": "culture",
+      "name": "Culture",
+      "level_titles": ["孤陋寡闻", "略有涉猎", "鉴赏有道", "博闻强识", "行走百科"],
+      "level_thresholds": [0.8, 1.5, 2.3, 3.0],
+      "metrics": {
+        "sys_anime_watched": { "weight": 1.0, "target_max": 200 },
+        "sys_movies_watched": { "weight": 1.0, "target_max": 100 },
+        "sys_books_read": { "weight": 1.0, "target_max": 50 },
+        "sys_games_played": { "weight": 0.8, "target_max": 100 }
+      }
+    },
+    {
+      "id": "mastery",
+      "name": "Mastery",
+      "level_titles": ["初出茅庐", "学有所成", "融会贯通", "出类拔萃", "一代宗师"],
+      "level_thresholds": [3, 15, 40, 80],
+      "metrics": {
+        "sys_skills_lv1": { "weight": 1 },
+        "sys_skills_lv2": { "weight": 2 },
+        "sys_skills_lv3": { "weight": 4 },
+        "sys_skills_lv4": { "weight": 8 },
+        "sys_skills_lv5": { "weight": 16 }
+      }
+    }
+  ]
+}

@@ -176,6 +176,30 @@ static/                 # Static assets (icons, images)
 
 ---
 
+## Quick Start
+
+```bash
+# 1. Install dependencies
+npm install
+
+# 2. Build the data CLI
+cargo build --manifest-path src-tauri/Cargo.toml --bin arcana-data
+
+# 3. Initialize your data directory (interactive — asks for username and birth date)
+./src-tauri/target/debug/arcana-data init
+
+# 4. Configure your AI provider (recommended: DeepSeek V4)
+#    Create ~/.arcana/agent_config.json:
+#    { "api_key": "your-key", "base_url": "https://api.deepseek.com", "model": "deepseek-chat" }
+
+# 5. Run the app
+npm run tauri dev
+```
+
+After the app opens, the onboarding missions will already be active in the Missions screen. Run `/velvet-room` in any AI coding agent that supports slash commands (Claude Code, OpenCode, Codex, or even openclaw (untested)) to let the AI guide you through the rest of the setup.
+
+---
+
 ## Getting Started
 
 ### Prerequisites
@@ -245,10 +269,8 @@ Some data import scripts read credentials or user IDs from `scripts/config.json`
 | `scripts/fetch_bangumi.py` | Fetch watched anime from Bangumi and write Gallery data. |
 | `scripts/fetch_steam.py` | Fetch owned Steam games; `--detailed` also fetches achievements and store metadata. |
 | `scripts/fetch_douban.py` | Fetch Douban movies, TV, and books; supports `--status all`. |
-| `scripts/extract_maker_trees.py` | Extract maker skill-tree source data into intermediate JSON. |
-| `scripts/generate_packs.py` | Generate Arcana achievement and skill packs from decoded tree data. |
-| `scripts/process_assets.py` | Resize and prepare UI assets under `static/ui/`. |
-| `scripts/remove_bg.py` | Remove backgrounds from image files or folders. |
+| `scripts/dev/process_assets.py` | Resize and prepare UI assets under `static/ui/`. |
+| `scripts/dev/remove_bg.py` | Remove backgrounds from image files or folders. |
 | `scripts/validate_data.py` | Validate runtime JSON data and content pack schema rules. |
 
 ```bash

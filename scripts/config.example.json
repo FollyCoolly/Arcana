@@ -3,7 +3,6 @@
   "steam_api_key": "",
   "steam_id": "",
   "douban_id": "",
-  "douban_cookie": "",
   "top_tags_count": 5,
   "user_agent": "Arcana/gallery-fetcher"
 }

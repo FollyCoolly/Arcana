@@ -1,0 +1,220 @@
+{
+  "version": 1,
+  "achievements": [
+    {
+      "id": "arcana::setup_user_profile",
+      "name": "Identity Registered",
+      "description": "Set your username and birth date in user_profile.json. This is the foundation of your status panel — your game days counter starts here.",
+      "difficulty": "beginner",
+      "tags": ["onboarding", "status"]
+    },
+    {
+      "id": "arcana::record_first_metric",
+      "name": "First Data Point",
+      "description": "Add at least one metric definition to status_metric_definitions.json and record its value in status.json. Any domain counts — fitness, study hours, whatever you track.",
+      "difficulty": "beginner",
+      "tags": ["onboarding", "status"],
+      "prerequisites": ["arcana::setup_user_profile"]
+    },
+    {
+      "id": "arcana::setup_5_metrics",
+      "name": "Dashboard Initialized",
+      "description": "Define 5 or more metrics across at least 2 groups. A well-populated status panel gives the radar chart meaningful data to display.",
+      "difficulty": "intermediate",
+      "tags": ["status"],
+      "prerequisites": ["arcana::record_first_metric"]
+    },
+    {
+      "id": "arcana::understand_radar",
+      "name": "Radar Calibrated",
+      "description": "Configure at least one dimension in status_metric_definitions.json with proper level_thresholds and level_titles, so the radar chart shows a real score.",
+      "difficulty": "intermediate",
+      "tags": ["status"],
+      "prerequisites": ["arcana::record_first_metric"]
+    },
+    {
+      "id": "arcana::reach_dimension_level2",
+      "name": "Awakening",
+      "description": "Reach Lv.2 in any radar dimension. This requires both enough metric data and a properly configured dimension scoring rule.",
+      "difficulty": "advanced",
+      "tags": ["status"],
+      "prerequisites": ["arcana::understand_radar"]
+    },
+    {
+      "id": "arcana::setup_weather",
+      "name": "Weather Station Online",
+      "description": "Create data/weather.json with your city name or coordinates. The weather widget on the main screen requires this — set {\"city\": \"Tokyo\"} or {\"latitude\": 35.68, \"longitude\": 139.69}.",
+      "difficulty": "beginner",
+      "tags": ["onboarding", "config"]
+    },
+    {
+      "id": "arcana::activate_first_mission",
+      "name": "Mission Accepted",
+      "description": "Set a mission's status to 'active'. Proposed missions sit dormant — accepting one commits you to the objective.",
+      "difficulty": "beginner",
+      "tags": ["onboarding", "missions"]
+    },
+    {
+      "id": "arcana::complete_first_mission",
+      "name": "First Victory",
+      "description": "Mark a mission as 'completed'. The first completion proves the system works end-to-end.",
+      "difficulty": "intermediate",
+      "tags": ["missions"],
+      "prerequisites": ["arcana::activate_first_mission"]
+    },
+    {
+      "id": "arcana::use_main_menu_widget",
+      "name": "HQ Display Online",
+      "description": "Configure a countdown or progress widget on the main menu via mission update-menu. The main menu should reflect your most urgent active mission.",
+      "difficulty": "beginner",
+      "tags": ["onboarding", "missions"]
+    },
+    {
+      "id": "arcana::mission_with_deadline",
+      "name": "Deadline Set",
+      "description": "Create or update a mission with a deadline field. Time pressure changes how you prioritize.",
+      "difficulty": "intermediate",
+      "tags": ["missions"],
+      "prerequisites": ["arcana::activate_first_mission"]
+    },
+    {
+      "id": "arcana::load_first_pack",
+      "name": "Pack Installed",
+      "description": "Add a pack ID to loaded_packs.json (besides 'arcana'). Achievement packs are the content layer — browse the packs/ directory and load one that matches your interests.",
+      "difficulty": "beginner",
+      "tags": ["onboarding", "achievements"]
+    },
+    {
+      "id": "arcana::unlock_first_achievement",
+      "name": "Persona Awakened",
+      "description": "Mark any achievement as 'achieved' in achievement_progress.json. The first unlock makes the system real.",
+      "difficulty": "beginner",
+      "tags": ["onboarding", "achievements"],
+      "prerequisites": ["arcana::load_first_pack"]
+    },
+    {
+      "id": "arcana::track_5_achievements",
+      "name": "Active Pursuit",
+      "description": "Have 5 achievements simultaneously in 'tracked' status. Tracking signals intent — the AI uses this to suggest relevant missions.",
+      "difficulty": "intermediate",
+      "tags": ["achievements"],
+      "prerequisites": ["arcana::unlock_first_achievement"]
+    },
+    {
+      "id": "arcana::reach_skill_level2",
+      "name": "Growing Strength",
+      "description": "Reach Lv.2 in any skill tree. Skills level up as you unlock achievements — check which achievements feed the skill nodes.",
+      "difficulty": "advanced",
+      "tags": ["achievements"],
+      "prerequisites": ["arcana::track_5_achievements"]
+    },
+    {
+      "id": "arcana::setup_gallery_source",
+      "name": "Archive Opened",
+      "description": "Register at least one source in gallery_sources.json. The Gallery screen aggregates media from multiple JSON source files — each source entry points to one such file.\n\ngallery_sources.json schema:\n  { \"version\": 1, \"sources\": [{ \"id\": \"bangumi\", \"name\": \"Anime\", \"path\": \"gallery/bangumi_anime.json\", \"media_type\": \"anime\", \"icon\": \"🎌\" }] }\n\nThe path field can be absolute or relative to the data/ directory. media_type is a free-form string used for display filtering.\n\nEach source file has the structure:\n  { \"version\": 1, \"items\": [{ \"name\": \"...\", \"cover\": \"...\", \"rating\": 8.5, \"date_finished\": \"2024-03\", \"tags\": [...] }] }\n\nThe fastest way to get started is to run one of the provided import scripts — see the next achievement for details.",
+      "difficulty": "beginner",
+      "tags": ["onboarding", "gallery"]
+    },
+    {
+      "id": "arcana::import_gallery_script",
+      "name": "Data Pipeline Active",
+      "description": "Run at least one of the three gallery import scripts to populate a source file. Three sources are supported out of the box:\n\n  Bangumi (anime): fetch_bangumi.py — requires bangumi_uid (your numeric Bangumi user ID, visible in your profile URL)\n  Steam (games): fetch_steam.py — requires steam_api_key (from https://steamcommunity.com/dev/apikey) and steam_id (your 64-bit Steam ID)\n  Douban (movies/TV/books): fetch_douban.py — requires douban_id (your Douban user ID from your profile URL)\n\nSetup:\n  1. cp scripts/config.example.json scripts/config.json\n  2. Fill in the relevant IDs/keys in config.json\n  3. Run: python scripts/fetch_bangumi.py\n          python scripts/fetch_steam.py --detailed\n          python scripts/fetch_douban.py --status all\n\nEach script writes its output to data/gallery/ (e.g. bangumi_anime.json). Register that output file as a source in gallery_sources.json to make it visible in the app.",
+      "difficulty": "intermediate",
+      "tags": ["gallery"],
+      "prerequisites": ["arcana::setup_gallery_source"]
+    },
+    {
+      "id": "arcana::gallery_100_entries",
+      "name": "Curator",
+      "description": "Have 100 or more entries across all gallery sources. A meaningful archive takes time to build — re-run the import scripts periodically as your watch/play history grows.",
+      "difficulty": "advanced",
+      "tags": ["gallery"],
+      "prerequisites": ["arcana::import_gallery_script"]
+    },
+    {
+      "id": "arcana::setup_item_source",
+      "name": "Inventory Logged",
+      "description": "Register at least one source in item_sources.json. The Items module was designed around the author's existing Obsidian vault — it reads .md files directly from a directory, parsing YAML frontmatter as item metadata. If you use Obsidian, point it at your existing item notes. If not, you can create a plain folder of .md files without Obsidian; any text editor works.\n\nEach .md file in a registered directory becomes a tracked item.\n\nitem_sources.json schema:\n  { \"version\": 1, \"sources\": [{ \"id\": \"electronics\", \"name\": \"Electronics\", \"path\": \"/absolute/path/to/obsidian/Items/Electronics\" }] }\n\nEach item is an .md file with YAML frontmatter:\n  ---\n  名称: MacBook Pro 14\n  品牌: Apple\n  价格: 14999\n  购入日期: 2023-11-01\n  购入方式: Apple 官网\n  类别: 电子产品\n  ---\n\nSupported frontmatter fields: 名称, 品牌, 价格, 购入日期, 购入方式, 类别, 颜色. Any other fields go into extra. Files named *总览.md are skipped automatically. Images embedded as ![[filename.ext]] in the body are picked up as cover art.",
+      "difficulty": "beginner",
+      "tags": ["onboarding", "items"]
+    },
+    {
+      "id": "arcana::item_with_price",
+      "name": "Cost Aware",
+      "description": "Have at least one item with both 购入日期 and 价格 recorded in its frontmatter. Arcana computes two derived fields automatically: days_owned (today minus purchase date) and daily_cost (price divided by days owned). Seeing the daily cost of a jacket or gadget reframes how you think about purchases.",
+      "difficulty": "intermediate",
+      "tags": ["items"],
+      "prerequisites": ["arcana::setup_item_source"]
+    },
+    {
+      "id": "arcana::item_50_entries",
+      "name": "Possession Log",
+      "description": "Track 50 or more items across all sources. At this scale the category summaries, cost comparisons, and sorting options in the Items screen become genuinely useful.",
+      "difficulty": "advanced",
+      "tags": ["items"],
+      "prerequisites": ["arcana::item_with_price"]
+    },
+    {
+      "id": "arcana::setup_ai_provider",
+      "name": "Velvet Room Access Granted",
+      "description": "Configure your AI provider so the agent can read and update your data. The agent config is loaded from ~/.arcana/agent_config.json (user-level, recommended) or data/agent_config.json (project-level).\n\nMinimal config:\n  {\n    \"api_key\": \"your-api-key\",\n    \"base_url\": \"https://api.deepseek.com\",\n    \"model\": \"deepseek-chat\"\n  }\n\nFor Anthropic: set base_url to https://api.anthropic.com and model to claude-sonnet-4-5-20251001 (or newer). Alternatively, set the ANTHROPIC_API_KEY environment variable and omit the field.\n\nRecommended for cost-effectiveness: DeepSeek V4 (base_url: https://api.deepseek.com, model: deepseek-chat). It is API-compatible with the Anthropic format and significantly cheaper for daily use.\n\nWithout a working API key, the agent cannot respond to /velvet-room, /phan-site, or /pack-manager invocations.",
+      "difficulty": "beginner",
+      "tags": ["onboarding", "ai"]
+    },
+    {
+      "id": "arcana::first_velvet_room",
+      "name": "First Consultation",
+      "description": "Run /velvet-room in any AI coding agent that supports slash commands (Claude Code, OpenCode, Codex, or even openclaw (untested)) for the first time and let the AI update at least one piece of data.\n\n/velvet-room is the general-purpose progress reporting skill. You tell it what happened in plain language — 'finished reading Dune', 'completed 3 sets of bench press at 80kg', 'started the new job' — and it reads your current context, figures out which missions and achievements are affected, updates the data via arcana-data CLI, and writes a changelog entry.\n\nTry: /velvet-room 今天完成了 Velvet Room 的配置，AI 现在可以更新数据了\n\nThe AI will identify the arcana::setup_ai_provider and arcana::first_velvet_room achievements and mark them.",
+      "difficulty": "beginner",
+      "tags": ["onboarding", "ai"],
+      "prerequisites": ["arcana::setup_ai_provider"]
+    },
+    {
+      "id": "arcana::first_phan_site",
+      "name": "Calling Card Sent",
+      "description": "Run /phan-site to generate a batch of mission proposals based on your current goals and tracked achievements.\n\n/phan-site reads your active missions, achievement progress, and mission memory, then generates 3–5 proposed missions styled as Persona 5 Phan-Site requests. Each mission gets a gamified title, description, difficulty tier, and optionally a deadline or main menu widget suggestion.\n\nProposed missions appear in the Missions screen with status 'proposed'. Browse them in the app and activate the ones you want to pursue — rejected ones are hidden but kept for deduplication.\n\nTry running /phan-site after completing a few onboarding steps so it has enough context to generate relevant suggestions.",
+      "difficulty": "intermediate",
+      "tags": ["ai"],
+      "prerequisites": ["arcana::first_velvet_room"]
+    },
+    {
+      "id": "arcana::first_pack_manager",
+      "name": "Pack Forged",
+      "description": "Run /pack-manager to create or extend a content pack.\n\n/pack-manager is the achievement pack authoring skill. It can create a new pack from scratch, add achievements to an existing pack, or refine descriptions and prerequisites. Packs are stored in data/packs/<pack_id>/ and must be added to loaded_packs.json to take effect.\n\nUseful when: the built-in packs don't cover a domain you care about (e.g. homebrewing, language learning, a specific instrument). Describe your domain and goals in plain language — the skill handles schema compliance, DAG validation, and skill tree point calibration.\n\nNote: existing achievement IDs are never modified in refine/extend mode, to preserve your progress data.",
+      "difficulty": "intermediate",
+      "tags": ["ai"],
+      "prerequisites": ["arcana::first_velvet_room"]
+    },
+    {
+      "id": "arcana::ai_updates_mission",
+      "name": "Igor's Blessing",
+      "description": "Have the AI autonomously complete a data update — mission progress, achievement status, or status metrics — through a /velvet-room conversation, without you manually editing any JSON.\n\nThis is the intended workflow: describe what happened, and the AI figures out the rest. It reads your full context (missions, achievements, memory), decides what to update, calls arcana-data CLI to make the changes atomically, and writes a changelog entry with old_value recorded.\n\nAll AI-driven changes are logged in data/ai_changelog.json and visible to the app.",
+      "difficulty": "intermediate",
+      "tags": ["ai"],
+      "prerequisites": ["arcana::first_velvet_room"]
+    },
+    {
+      "id": "arcana::setup_telegram_bot",
+      "name": "Navigator Deployed",
+      "description": "Build and run agent-telegram so you can send messages to Arcana from your phone.\n\nStep 1 — Create a Telegram bot:\n  1. Open Telegram and search for @BotFather\n  2. Send /newbot, follow the prompts to choose a name and username\n  3. BotFather will give you a token like 123456789:ABCdefGHI...\n\nStep 2 — Find your Telegram user ID:\n  Search for @userinfobot on Telegram and send it any message. It replies with your numeric user ID.\n\nStep 3 — Configure Arcana:\n  Add to ~/.arcana/agent_config.json:\n  {\n    \"api_key\": \"...\",\n    \"telegram\": {\n      \"token\": \"123456789:ABCdefGHI...\",\n      \"allow_from\": [\"YOUR_NUMERIC_USER_ID\"]\n    }\n  }\n  allow_from restricts which Telegram users can send commands. Use [\"*\"] to allow anyone (not recommended if the token is shared).\n\nStep 4 — Build and run:\n  cargo build --manifest-path src-tauri/Cargo.toml --bin agent-telegram\n  ./src-tauri/target/release/agent-telegram\n\nThe bot uses long-polling — no public server or webhook needed. Keep it running on your desktop machine and message it from anywhere.",
+      "difficulty": "advanced",
+      "tags": ["remote"]
+    },
+    {
+      "id": "arcana::remote_update_via_im",
+      "name": "Remote Access Established",
+      "description": "Complete a full data update entirely through a Telegram conversation — without touching the desktop app or any JSON file.\n\nWith agent-telegram running, open the bot in Telegram and describe what you want to update in natural language, the same way you would use /velvet-room in any AI coding agent that supports slash commands. The agent reads your local data, applies changes via arcana-data CLI, and replies with a summary.\n\nExample messages:\n  '刚完成了5公里跑，配速5:30'\n  'Finished reading Project Hail Mary, 5 stars'\n  '今天完成了 Navigator Online 任务'\n\nThe agent runs the same tool-calling loop as the desktop skills — missions, achievements, status metrics, and memory are all accessible.",
+      "difficulty": "advanced",
+      "tags": ["remote"],
+      "prerequisites": ["arcana::setup_telegram_bot"]
+    },
+    {
+      "id": "arcana::telegram_daily_checkin",
+      "name": "Phantom Thief HQ",
+      "description": "Interact with the Telegram agent on 7 separate days. The value of remote access compounds with habit — a quick message after a workout or at the end of the day keeps your data current without requiring you to open the desktop app.",
+      "difficulty": "expert",
+      "tags": ["remote"],
+      "prerequisites": ["arcana::remote_update_via_im"]
+    }
+  ]
+}
