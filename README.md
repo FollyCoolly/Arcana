@@ -189,8 +189,8 @@ cargo build --manifest-path src-tauri/Cargo.toml --bin arcana-data
 ./src-tauri/target/debug/arcana-data init
 
 # 4. Configure your AI provider (recommended: DeepSeek V4)
-#    Create ~/.arcana/agent_config.json:
-#    { "api_key": "your-key", "base_url": "https://api.deepseek.com", "model": "deepseek-chat" }
+#    Create ~/.arcana/agent_config.json, for example:
+#    { "api_key": "your-key", "base_url": "https://api.deepseek.com", "model": "deepseek-model-name" }
 
 # 5. Run the app
 npm run tauri dev
