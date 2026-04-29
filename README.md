@@ -281,7 +281,7 @@ python scripts/validate_data.py data/missions.json
 
 ---
 
-## Roadmap to v0.1
+## Roadmap to v0.1.0
 
 - [ ] Provide example data configuration
 - [x] Polish main menu — countdown and progress bar widgets

@@ -282,7 +282,7 @@ python scripts/validate_data.py data/missions.json
 
 ---
 
-## v0.1 路线图
+## v0.1.0 路线图
 
 - [ ] 提供示例数据配置
 - [x] 打磨主菜单，包括倒计时和进度条组件
