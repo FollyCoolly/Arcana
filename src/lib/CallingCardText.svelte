@@ -8,6 +8,25 @@
 
     let canvas: HTMLCanvasElement | undefined = $state();
 
+    // Current 1rem in CSS px (fluid root font-size changes with viewport).
+    // fontSize prop is specified "as if 1rem = 16px", so the real pixel size
+    // we draw at is fontSize * (currentRemPx / 16).
+    let remPx = $state(16);
+
+    function updateRemPx() {
+        if (typeof window === 'undefined') return;
+        const root = document.documentElement;
+        const v = parseFloat(getComputedStyle(root).fontSize);
+        if (!Number.isNaN(v) && v > 0) remPx = v;
+    }
+
+    $effect(() => {
+        updateRemPx();
+        const onResize = () => updateRemPx();
+        window.addEventListener('resize', onResize);
+        return () => window.removeEventListener('resize', onResize);
+    });
+
     const COLORS = { RED: '#E5191C', WHITE: '#FDFDFD', BLACK: '#0F0F0F' };
     const MAX_ANGLE = 10;
     const GUTTER = 5;
@@ -180,7 +199,7 @@
     $effect(() => {
         const c = canvas;
         const t = text;
-        const fs = fontSize;
+        const fs = fontSize * (remPx / 16);
         const ff = fontFamily;
         if (c && t) {
             draw(c, t, fs, ff);

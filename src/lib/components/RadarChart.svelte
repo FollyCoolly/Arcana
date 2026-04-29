@@ -221,7 +221,7 @@
     .star-wrapper {
         position: relative;
         width: 100%;
-        max-width: min(78vh, 880px);
+        max-width: 55rem;
         aspect-ratio: 1;
         margin: 0 auto;
         overflow: visible;

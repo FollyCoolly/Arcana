@@ -1,1 +1,9 @@
 @import "tailwindcss";
+
+/* Fluid root font-size: 1rem scales linearly with viewport width.
+   At the design reference width 3840, 1rem = 16px (= browser default),
+   so existing layout numbers keep their original meaning. Smaller
+   viewports shrink every `rem`-based dimension proportionally. */
+:root {
+  font-size: calc(100vw / 240);
+}

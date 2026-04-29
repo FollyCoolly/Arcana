@@ -757,8 +757,8 @@
     }
 
     .rm-countdown {
-        width: min(57vw, 832px);
-        height: clamp(10.4rem, 16.9vw, 16.9rem);
+        width: 52rem;
+        height: 16.9rem;
         background-repeat: no-repeat;
         background-size: 100% 100%;
         background-position: center;
@@ -766,8 +766,8 @@
     }
 
     .rm-hint-board {
-        width: min(57vw, 832px);
-        height: clamp(4rem, 8vw, 8rem);
+        width: 52rem;
+        height: 8rem;
         background-repeat: no-repeat;
         background-size: 100% 100%;
         background-position: center;
@@ -782,8 +782,8 @@
     }
 
     .rm-hint-board[data-board="slim"] {
-        width: min(57vw, 832px);
-        height: clamp(4.5rem, 7vw, 7rem);
+        width: 52rem;
+        height: 7rem;
     }
 
     .rm-hint-text {
@@ -1425,9 +1425,9 @@
     }
 
     :global(.rm-skill-image-card) {
-        width: clamp(400px, 27.5vw, 625px);
-        aspect-ratio: 10 / 20;
-        margin-top: clamp(1rem, 3vh, 4rem);
+        width: 40rem;
+        aspect-ratio: 768 / 1376;
+        margin-top: 3rem;
         flex-shrink: 0;
     }
 

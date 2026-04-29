@@ -765,14 +765,17 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: clamp(0.8rem, 1vw, 1.5rem);
         overflow-y: auto;
         padding: clamp(0.5rem, 0.8vw, 1.2rem) clamp(1rem, 2vw, 3rem) 0;
     }
 
+    .rm-skill-image-card {
+        line-height: 0;
+    }
+
     .rm-skill-description {
-        margin: 0;
-        width: clamp(400px, 27.5vw, 625px);
+        margin: 2rem 0 0 0;
+        width: 40rem;
         font-size: clamp(1.5rem, 1.4vw, 2.3rem);
         color: rgba(255, 255, 255, 0.55);
         line-height: 1.6;
@@ -824,7 +827,7 @@
     }
 
     .rm-skill-node-grid {
-        --hex-w: clamp(96px, 7.8vw, 216px);
+        --hex-w: 13.5rem;
         --hex-h: calc(var(--hex-w) * 1.1547);
         --cols: 8;
         display: flex;

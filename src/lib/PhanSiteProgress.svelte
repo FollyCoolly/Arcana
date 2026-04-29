@@ -222,7 +222,7 @@
 
     .phansite-bar {
         position: relative;
-        width: clamp(300px, 33vw, 510px);
+        width: 31.875rem;
         aspect-ratio: 795 / 133;
         display: block;
     }

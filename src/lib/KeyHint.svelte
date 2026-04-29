@@ -13,7 +13,7 @@
 
 <span
     class="p5-key-hint"
-    style:font-size="{fontSize}px"
+    style:font-size="{fontSize / 16}rem"
     style:font-family="{fontFamily}, Arial, sans-serif"
 >
     {key}
