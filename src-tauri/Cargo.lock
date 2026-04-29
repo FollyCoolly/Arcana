@@ -143,6 +143,8 @@ dependencies = [
  "env_logger",
  "fs2",
  "log",
+ "objc2-app-kit",
+ "objc2-foundation",
  "percent-encoding",
  "regex",
  "reqwest 0.12.28",

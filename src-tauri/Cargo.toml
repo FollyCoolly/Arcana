@@ -31,7 +31,7 @@ path = "src/bin/arcana_data.rs"
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+tauri = { version = "2", features = ["macos-private-api"] }
 tauri-plugin-opener = "2"
 tauri-plugin-global-shortcut = "2"
 serde = { version = "1", features = ["derive"] }
@@ -46,3 +46,7 @@ regex = "1"
 percent-encoding = "2"
 clap = { version = "4", features = ["derive"] }
 fs2 = "0.4"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2-app-kit = { version = "0.3", features = ["NSApplication", "NSRunningApplication"] }
+objc2-foundation = "0.3"

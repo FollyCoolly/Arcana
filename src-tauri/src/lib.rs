@@ -14,6 +14,30 @@ use std::sync::{
 use tauri::{Emitter, Manager};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
+#[cfg(target_os = "macos")]
+mod macos {
+    use objc2_app_kit::NSApplication;
+    use objc2_app_kit::NSApplicationPresentationOptions;
+    use objc2_foundation::MainThreadMarker;
+
+    /// Hide the menu bar and dock (auto-hide mode) so the window can fill the entire screen.
+    pub fn hide_menu_bar() {
+        let mtm = MainThreadMarker::new().expect("must be called on the main thread");
+        let app = NSApplication::sharedApplication(mtm);
+        app.setPresentationOptions(
+            NSApplicationPresentationOptions::AutoHideMenuBar
+                | NSApplicationPresentationOptions::AutoHideDock,
+        );
+    }
+
+    /// Restore the default menu bar and dock visibility.
+    pub fn restore_menu_bar() {
+        let mtm = MainThreadMarker::new().expect("must be called on the main thread");
+        let app = NSApplication::sharedApplication(mtm);
+        app.setPresentationOptions(NSApplicationPresentationOptions::empty());
+    }
+}
+
 fn infer_referer(url: &str) -> Option<&'static str> {
     if url.contains("doubanio.com") {
         Some("https://movie.douban.com/")
@@ -221,10 +245,14 @@ pub fn run() {
                     // 只在按键按下时触发，避免释放时也触发
                     if event.state == ShortcutState::Pressed {
                         if window.is_visible().unwrap_or(false) {
+                            #[cfg(target_os = "macos")]
+                            macos::restore_menu_bar();
                             let _ = window.set_always_on_top(false);
                             let _ = window.hide();
                         } else {
                             fit_to_primary(&window);
+                            #[cfg(target_os = "macos")]
+                            macos::hide_menu_bar();
                             let _ = window.set_always_on_top(true);
                             let _ = window.show();
                             let _ = window.set_focus();
