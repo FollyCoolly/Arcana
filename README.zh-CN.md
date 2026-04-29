@@ -117,15 +117,17 @@ Arcana **不是**一个靠连续打卡和复选框驱动的习惯追踪器，也
 
 ## AI 助手
 
-Arcana 内置 AI 助手，可作为个人生活助手运行，目前支持三种入口：
+Arcana 内置 AI 助手，可作为个人生活助手运行，支持多种入口：
 
 | 入口 | 说明 |
 |------|------|
-| **CLI** | 独立终端助手（`agent-cli`） |
-| **Telegram** | 面向移动端访问的机器人适配器（`agent-telegram`） |
-| **Data CLI** | 面向 AI 技能的结构化数据操作工具（`arcana-data`） |
+| **外部 AI harness** | 主要入口——Claude Code、Codex、OpenCode、OpenClaw、Hermes Agent 或任何支持 slash command 的 agent。直接在 AI 编程工具里运行 `/velvet-room` 或 `/phan-site`。 |
+| **Telegram** | 可选的移动端 / 远程访问机器人（`agent-telegram`），按需编译和运行。未来可能支持更多 IM 渠道。 |
+| **Data CLI** | AI 技能和脚本使用的结构化数据操作工具（`arcana-data`）。 |
 
-这三种入口共享同一套服务层（`src-tauri/src/services/`）和数据格式，因此任何入口写入的更新都会在其他地方立即可见。
+所有入口共享同一套服务层（`src-tauri/src/services/`）和数据格式，因此任何入口写入的更新都会在其他地方立即可见。
+
+> `agent-cli` 是一个最简调试工具，用于在不启动 Tauri 的情况下测试 agent 循环，日常使用不需要编译它。
 
 AI 助手可以：
 
@@ -197,7 +199,7 @@ cargo build --manifest-path src-tauri/Cargo.toml --bin arcana-data
 npm run tauri dev
 ```
 
-应用打开后，新手任务已在任务界面中自动激活。在任意支持 slash command 的 AI coding agent（Claude Code、OpenCode、Codex，乃至 openclaw（未经测试）等）中运行 `/velvet-room`，让 AI 带你完成后续配置。
+应用打开后，新手任务已在任务界面中自动激活。在任意支持 slash command 的 AI coding agent（Claude Code、OpenCode、Codex、OpenClaw、Hermes Agent 等）中运行 `/velvet-room`，让 AI 带你完成后续配置。
 
 ---
 
@@ -238,10 +240,12 @@ npm run dev
 # 构建桌面发行包
 npm run tauri build
 
-# 构建独立 AI 助手二进制
-cargo build --manifest-path src-tauri/Cargo.toml --bin agent-cli
-cargo build --manifest-path src-tauri/Cargo.toml --bin agent-telegram
+# 构建数据工具（AI 技能和新手引导必须）
 cargo build --manifest-path src-tauri/Cargo.toml --bin arcana-data
+
+# 按需构建 agent 二进制
+cargo build --manifest-path src-tauri/Cargo.toml --bin agent-telegram  # Telegram 机器人，需要时编译
+cargo build --manifest-path src-tauri/Cargo.toml --bin agent-cli       # 调试工具，日常不需要
 ```
 
 ### 检查

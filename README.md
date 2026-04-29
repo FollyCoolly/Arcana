@@ -117,15 +117,17 @@ Aggregated media consumption and play history hub.
 
 ## AI Agent
 
-Arcana includes a built-in AI agent that acts as a personal life assistant, operating through three channels:
+Arcana includes a built-in AI agent that acts as a personal life assistant. There are three ways to interact with it:
 
 | Channel | Description |
 |---------|-------------|
-| **CLI** | Standalone terminal agent (`agent-cli`) |
-| **Telegram** | Bot adapter for mobile access (`agent-telegram`) |
-| **Data CLI** | Structured data operations for AI skills (`arcana-data`) |
+| **External AI harness** | The primary interface — Claude Code, Codex, OpenCode, OpenClaw, Hermes Agent, or any agent that supports slash commands. Run `/velvet-room` or `/phan-site` directly in your AI coding tool. |
+| **Telegram** | Optional bot adapter for mobile / remote access (`agent-telegram`). Compile and run only when needed. More IM channels may be added in the future. |
+| **Data CLI** | Structured data operations used by AI skills and scripts (`arcana-data`). |
 
-All three share a common services layer (`src-tauri/src/services/`) and data format, so updates from any channel are immediately visible everywhere.
+All paths share a common services layer (`src-tauri/src/services/`) and data format, so updates from any channel are immediately visible everywhere.
+
+> `agent-cli` is a minimal debug harness for testing the agent loop without Tauri. It is not needed for normal use.
 
 The agent can:
 - Read current status, missions, achievements, and memory context
@@ -196,7 +198,7 @@ cargo build --manifest-path src-tauri/Cargo.toml --bin arcana-data
 npm run tauri dev
 ```
 
-After the app opens, the onboarding missions will already be active in the Missions screen. Run `/velvet-room` in any AI coding agent that supports slash commands (Claude Code, OpenCode, Codex, or even openclaw (untested)) to let the AI guide you through the rest of the setup.
+After the app opens, the onboarding missions will already be active in the Missions screen. Run `/velvet-room` in any AI coding agent that supports slash commands (Claude Code, OpenCode, Codex, OpenClaw, Hermes Agent, etc.) to let the AI guide you through the rest of the setup.
 
 ---
 
@@ -237,10 +239,12 @@ npm run dev
 # Build desktop release
 npm run tauri build
 
-# Build standalone agent binaries
-cargo build --manifest-path src-tauri/Cargo.toml --bin agent-cli
-cargo build --manifest-path src-tauri/Cargo.toml --bin agent-telegram
+# Build the data CLI (required for AI skills and onboarding)
 cargo build --manifest-path src-tauri/Cargo.toml --bin arcana-data
+
+# Build agent binaries (optional / on-demand)
+cargo build --manifest-path src-tauri/Cargo.toml --bin agent-telegram  # Telegram bot; build when needed
+cargo build --manifest-path src-tauri/Cargo.toml --bin agent-cli       # Debug harness; not needed for normal use
 ```
 
 ### Checks
