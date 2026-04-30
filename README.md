@@ -219,6 +219,12 @@ Arcana's visual style depends on a few system fonts. These font files are **not 
 
 If these fonts are missing, the app will still run, but the UI will fall back to system fonts such as `Arial`, `Microsoft YaHei`, or generic `sans-serif`, and some title/card layouts may look different.
 
+### Display Scaling Note
+
+The current UI was primarily developed on Windows at 4K resolution with 100% display scaling. It has also received light compatibility checks on Windows 4K at 125% scaling, Windows 2K at 100% scaling, and a MacBook Air 13-inch scaled desktop around 1710x1112.
+
+Support for other resolutions, display scaling settings, and macOS/Retina scaled modes may still have layout issues. A more unified cross-resolution layout strategy is planned for follow-up work.
+
 ### Development
 
 ```bash

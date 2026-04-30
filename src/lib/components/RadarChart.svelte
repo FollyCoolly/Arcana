@@ -227,6 +227,10 @@
         overflow: visible;
     }
 
+    :global(:root[data-platform="macos"]) .star-wrapper {
+        max-width: min(78vh, 880px);
+    }
+
     .star-svg {
         position: absolute;
         inset: 0;

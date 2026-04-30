@@ -7,3 +7,7 @@
 :root {
   font-size: calc(100vw / 240);
 }
+
+:root[data-platform="macos"] {
+  font-size: 16px;
+}

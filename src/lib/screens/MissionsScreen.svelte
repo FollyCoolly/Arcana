@@ -604,6 +604,20 @@
 
     /* ── Panel ── */
     .rm-missions-panel {
+        --missions-content-left: clamp(12rem, 16vw, 40rem);
+        --missions-content-right: clamp(3rem, 6vw, 15rem);
+        --missions-content-width: min(
+            115rem,
+            calc(
+                100% - var(--missions-content-left) -
+                    var(--missions-content-right)
+            )
+        );
+        --mission-status-col: clamp(12rem, 18%, 20rem);
+        --mission-grade-col: clamp(16rem, 22%, 28rem);
+        --mission-grid-columns:
+            var(--mission-status-col) minmax(0, 1fr)
+            var(--mission-grade-col);
         position: absolute;
         top: 0;
         right: 0;
@@ -630,7 +644,9 @@
         align-items: center;
         justify-content: center;
         background: transparent;
-        font-family: "Source Han Sans SC", "Noto Sans SC", "方正兰亭黑_GBK", Arial, sans-serif;
+        font-family:
+            "Source Han Sans SC", "Noto Sans SC", "方正兰亭黑_GBK", Arial,
+            sans-serif;
         font-weight: 600;
         padding: clamp(0.25rem, 0.4vw, 0.6rem) clamp(1rem, 1.2vw, 2rem);
         column-gap: clamp(0.2rem, 0.45vw, 0.7rem);
@@ -688,18 +704,22 @@
     .rm-missions-col-headers {
         flex-shrink: 0;
         position: relative;
+        display: grid;
+        grid-template-columns: var(--mission-grid-columns);
+        width: var(--missions-content-width);
         height: clamp(2.5rem, 3.2vw, 4rem);
+        margin-left: var(--missions-content-left);
         padding: 0;
         background: transparent;
-        font-family: "Source Han Sans SC", "Noto Sans SC", "方正兰亭黑_GBK", Arial, sans-serif;
+        font-family:
+            "Source Han Sans SC", "Noto Sans SC", "方正兰亭黑_GBK", Arial,
+            sans-serif;
         font-weight: 600;
     }
 
     .rm-col-header {
-        position: absolute;
-        left: var(--col-x);
-        top: var(--col-y);
-        width: var(--col-w);
+        position: relative;
+        width: 100%;
         height: var(--col-h);
         display: flex;
         align-items: center;
@@ -718,33 +738,27 @@
     }
 
     .rm-col-status {
-        --col-x: clamp(16rem, 32vw, 32rem);
-        --col-y: clamp(2rem, 4vw, 4rem);
-        --col-w: clamp(12rem, 24vw, 24rem);
         --col-h: clamp(3.5rem, 7vw, 7rem);
         --col-rot: -1deg;
-        --col-font-size: clamp(2.5rem, 5vw, 5rem);
+        --col-font-size: clamp(1.6rem, 2.5vw, 5rem);
         --col-pad-x: clamp(0.5rem, 0.7vw, 1rem);
+        top: clamp(2rem, 4vw, 4rem);
     }
 
     .rm-col-name {
-        --col-x: clamp(28.5rem, 57vw, 57rem);
-        --col-y: clamp(1rem, 2vw, 2rem);
-        --col-w: clamp(41rem, 82vw, 82rem);
         --col-h: clamp(3.5rem, 7vw, 7rem);
         --col-rot: -2deg;
-        --col-font-size: clamp(2.5rem, 5vw, 5rem);
+        --col-font-size: clamp(1.6rem, 2.5vw, 5rem);
         --col-pad-x: clamp(0.7rem, 0.9vw, 1.2rem);
+        top: clamp(1rem, 2vw, 2rem);
     }
 
     .rm-col-grade {
-        --col-x: clamp(70rem, 140vw, 140rem);
-        --col-y: clamp(1rem, 2vw, 2rem);
-        --col-w: clamp(14rem, 28vw, 28rem);
         --col-h: clamp(3.5rem, 7vw, 7rem);
         --col-rot: -3deg;
-        --col-font-size: clamp(2.5rem, 5vw, 5rem);
+        --col-font-size: clamp(1.6rem, 2.5vw, 5rem);
         --col-pad-x: clamp(0.5rem, 0.7vw, 1rem);
+        top: clamp(1rem, 2vw, 2rem);
         text-align: center;
     }
 
@@ -796,7 +810,8 @@
     .rm-missions-list {
         list-style: none;
         margin: 0;
-        margin-left: 40rem;
+        margin-left: var(--missions-content-left);
+        width: var(--missions-content-width);
         padding: 0;
         padding-bottom: 4rem;
         transform: translateY(10rem);
@@ -808,8 +823,8 @@
     /* ── Mission rows ── */
     .rm-mission-row {
         display: grid;
-        grid-template-columns: 20rem 80rem 15rem;
-        width: fit-content;
+        grid-template-columns: var(--mission-grid-columns);
+        width: 100%;
         column-gap: 0;
         align-items: center;
         height: 7rem;
@@ -878,8 +893,11 @@
     /* ── Mission name ── */
     .rm-mission-name {
         min-width: 0;
-        font-family: "Source Han Sans SC", "Noto Sans SC", "方正兰亭黑_GBK", Arial, sans-serif;
-        font-size: clamp(1.5rem, 1.6vw, 3rem);
+        font-family:
+            "Source Han Sans SC", "Noto Sans SC", "方正兰亭黑_GBK", Arial,
+            sans-serif;
+
+        font-size: 3rem;
         font-weight: 1000;
         color: #ffffff;
         letter-spacing: 0.03em;
@@ -891,8 +909,10 @@
     /* ── Grade letter ── */
     .rm-mission-grade {
         text-align: center;
-        font-family: "Source Han Sans SC", "Noto Sans SC", "方正兰亭黑_GBK", Arial, sans-serif;
-        font-size: clamp(4rem, 6vw, 8rem);
+        font-family:
+            "Source Han Sans SC", "Noto Sans SC", "方正兰亭黑_GBK", Arial,
+            sans-serif;
+        font-size: 8rem;
         font-weight: 900;
         color: #ffffff;
         background: none;
@@ -935,7 +955,9 @@
         clip-path: polygon(0% 2%, 100% 0%, 100% 98%, 0% 100%);
         display: flex;
         flex-direction: column;
-        font-family: "Source Han Sans SC", "Noto Sans SC", "方正兰亭黑_GBK", Arial, sans-serif;
+        font-family:
+            "Source Han Sans SC", "Noto Sans SC", "方正兰亭黑_GBK", Arial,
+            sans-serif;
         font-weight: 600;
         animation: rm-detail-pop 180ms ease-out;
     }
@@ -1067,7 +1089,9 @@
 
     .rm-action-btn {
         flex: 1;
-        font-family: "Source Han Sans SC", "Noto Sans SC", "方正兰亭黑_GBK", Arial, sans-serif;
+        font-family:
+            "Source Han Sans SC", "Noto Sans SC", "方正兰亭黑_GBK", Arial,
+            sans-serif;
         font-size: clamp(0.75rem, 0.8vw, 1.1rem);
         font-weight: 900;
         text-transform: uppercase;

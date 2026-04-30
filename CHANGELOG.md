@@ -37,5 +37,5 @@ Initial release. A Persona 5-inspired gamified life management desktop app built
 - Tauri v2 desktop app with global shortcut to toggle window visibility
 - Fullscreen summon with auto-hide menu bar on macOS
 - Configurable data directory
-- Multi-resolution support with per-platform zoom factor handling
+- Initial multi-resolution handling with Windows zoom-factor support; macOS/Retina scaled resolutions remain partially supported and may need follow-up UI tuning
 - Multi-LLM provider support (Anthropic, DeepSeek, and other OpenAI-compatible APIs)
