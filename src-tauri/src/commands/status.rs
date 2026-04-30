@@ -227,7 +227,11 @@ pub fn load_status_data() -> Result<StatusData, String> {
 
     let definitions: MetricDefinitionFile = read_json_file(&definitions_path)?;
     let values: StatusValueFile = read_json_file(&values_path)?;
-    let user_profile: UserProfile = read_json_file(&user_profile_path)?;
+    let user_profile: Option<UserProfile> = if user_profile_path.exists() {
+        Some(read_json_file(&user_profile_path)?)
+    } else {
+        None
+    };
 
     // Validate: no duplicate metric IDs
     let mut metric_ids = HashSet::new();
@@ -262,8 +266,10 @@ pub fn load_status_data() -> Result<StatusData, String> {
     }
 
     // game_days as system metric
-    if let Ok(days) = calculate_days_since(&user_profile.birth_date) {
-        sys_metrics.insert("sys_game_days".to_string(), days as f64);
+    if let Some(profile) = &user_profile {
+        if let Ok(days) = calculate_days_since(&profile.birth_date) {
+            sys_metrics.insert("sys_game_days".to_string(), days as f64);
+        }
     }
 
     // Compute dimensions
@@ -292,8 +298,13 @@ pub fn load_status_data() -> Result<StatusData, String> {
     Ok(StatusData {
         definition_version: definitions.version,
         value_version: values.version,
-        username: user_profile.username,
-        game_days: calculate_days_since(&user_profile.birth_date).ok(),
+        username: user_profile
+            .as_ref()
+            .map(|profile| profile.username.clone())
+            .unwrap_or_else(|| "Trickster".to_string()),
+        game_days: user_profile
+            .as_ref()
+            .and_then(|profile| calculate_days_since(&profile.birth_date).ok()),
         metrics: merged_metrics,
         dimensions,
         system_metrics: sys_metrics,

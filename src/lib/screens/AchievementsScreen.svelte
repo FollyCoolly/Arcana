@@ -37,7 +37,15 @@
     let packBtnRefs = $state<(HTMLButtonElement | undefined)[]>([]);
 
     // Filter & sort state
-    let selectedDifficulties = $state<Set<string>>(new Set(["beginner", "intermediate", "advanced", "expert", "legendary"]));
+    let selectedDifficulties = $state<Set<string>>(
+        new Set([
+            "beginner",
+            "intermediate",
+            "advanced",
+            "expert",
+            "legendary",
+        ]),
+    );
     let showUnlockedOnly = $state(false);
     let sortKey = $state<SortKey>("unlocked");
     let sortDir = $state<SortDir>("asc");
@@ -796,6 +804,7 @@
         font-size: clamp(0.65rem, 0.58vw, 1rem);
         color: rgba(255, 255, 255, 0.7);
         line-height: 1.4;
+        white-space: pre-line;
     }
 
     .rm-achievement-date {

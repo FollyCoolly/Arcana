@@ -15,13 +15,14 @@ use arcana_lib::models::achievement::AchievementProgressFile;
 use arcana_lib::models::mission::MissionFile;
 use arcana_lib::models::status::{MetricDefinitionFile, StatusValueFile};
 use arcana_lib::services;
+use arcana_lib::storage::date_utils::{epoch_days_to_civil, today_epoch_days};
 use arcana_lib::storage::json_store::{read_json_file, resolve_data_dir};
 use clap::{Parser, Subcommand};
 use fs2::FileExt;
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::fs::File;
-use std::io::{BufRead, Read, Write};
+use std::io::Read;
 use std::path::Path;
 
 // ---------------------------------------------------------------------------
@@ -94,7 +95,7 @@ enum Commands {
     },
     /// Initialize a fresh Arcana data directory from data-example/
     Init {
-        /// Skip interactive prompts, use default values
+        /// Deprecated: init is non-interactive by default
         #[arg(long)]
         non_interactive: bool,
     },
@@ -597,7 +598,11 @@ fn cmd_achievement(data_dir: &Path, action: AchievementAction) -> Result<String,
 
 fn cmd_changelog(data_dir: &Path, action: ChangelogAction) -> Result<String, String> {
     match action {
-        ChangelogAction::Write { skill, summary, file } => {
+        ChangelogAction::Write {
+            skill,
+            summary,
+            file,
+        } => {
             let changes_str = read_input(file.as_deref())?;
             let changes: Value = serde_json::from_str(&changes_str)
                 .map_err(|e| format!("Invalid changes JSON: {e}"))?;
@@ -628,18 +633,54 @@ fn cmd_memory(data_dir: &Path, action: MemoryAction) -> Result<String, String> {
 // init
 // ---------------------------------------------------------------------------
 
-fn prompt_line(prompt: &str, default: &str) -> String {
-    print!("{prompt} [{default}]: ");
-    let _ = std::io::stdout().flush();
-    let stdin = std::io::stdin();
-    let line = stdin.lock().lines().next();
-    match line {
-        Some(Ok(s)) if !s.trim().is_empty() => s.trim().to_string(),
-        _ => default.to_string(),
-    }
+fn onboarding_deadline() -> Result<String, String> {
+    let deadline_days = today_epoch_days()? + 7;
+    let (year, month, day) = epoch_days_to_civil(deadline_days);
+    Ok(format!("{year:04}-{month:02}-{day:02}"))
 }
 
-fn cmd_init(data_dir: &Path, non_interactive: bool) -> Result<String, String> {
+fn apply_onboarding_menu_defaults(missions: &mut Value) -> Result<(), String> {
+    let deadline = onboarding_deadline()?;
+    let mission_list = missions
+        .get_mut("missions")
+        .and_then(|v| v.as_array_mut())
+        .ok_or_else(|| "data-example/missions.json is missing missions[]".to_string())?;
+
+    let guide = mission_list
+        .iter_mut()
+        .find(|m| m.get("id").and_then(|v| v.as_str()) == Some("ai_20260430_arcana_guide"))
+        .ok_or_else(|| {
+            "data-example/missions.json is missing Arcana Awakening mission".to_string()
+        })?;
+    guide["deadline"] = json!(deadline);
+
+    missions["main_menu"] = json!({
+        "countdown": {
+            "mission_id": "ai_20260430_arcana_guide",
+            "label": "指引完成"
+        },
+        "hints": [
+            { "mission_id": "ai_20260430_status_calibration" },
+            { "mission_id": "ai_20260430_phantom_thieves_hq" }
+        ],
+        "progress": {
+            "mission_id": "ai_20260430_arcana_guide",
+            "label": "Arcana的新手指引**完成**了吗？"
+        }
+    });
+
+    Ok(())
+}
+
+fn write_initialized_missions(src: &Path, dest: &Path) -> Result<(), String> {
+    let mut missions: Value = read_json_file(src)?;
+    apply_onboarding_menu_defaults(&mut missions)?;
+    let content = serde_json::to_string_pretty(&missions)
+        .map_err(|e| format!("Failed to serialize missions.json: {e}"))?;
+    std::fs::write(dest, content).map_err(|e| format!("Failed to write missions.json: {e}"))
+}
+
+fn cmd_init(data_dir: &Path, _non_interactive: bool) -> Result<String, String> {
     // Locate data-example/ relative to the binary's location or working directory.
     // Try a few candidate paths to work both from repo root and from target/
     let candidates = [
@@ -660,17 +701,9 @@ fn cmd_init(data_dir: &Path, non_interactive: bool) -> Result<String, String> {
             "Cannot find data-example/ directory. Run this command from the repo root.".to_string()
         })?;
 
-    // Collect user info
-    let (username, birth_date) = if non_interactive {
-        ("Trickster".to_string(), "2000-01-01".to_string())
-    } else {
-        println!("=== Arcana Init ===");
-        println!("Setting up your data directory at: {}", data_dir.display());
-        println!();
-        let u = prompt_line("Username", "Trickster");
-        let b = prompt_line("Birth date (YYYY-MM-DD)", "2000-01-01");
-        (u, b)
-    };
+    println!("=== Arcana Init ===");
+    println!("Setting up your data directory at: {}", data_dir.display());
+    println!();
 
     // Copy flat files from data-example/, skipping any that already exist
     let flat_files = [
@@ -690,21 +723,12 @@ fn cmd_init(data_dir: &Path, non_interactive: bool) -> Result<String, String> {
             continue;
         }
         let src = example_dir.join(name);
-        std::fs::copy(&src, &dest)
-            .map_err(|e| format!("Failed to copy {name}: {e}"))?;
+        if *name == "missions.json" {
+            write_initialized_missions(&src, &dest)?;
+        } else {
+            std::fs::copy(&src, &dest).map_err(|e| format!("Failed to copy {name}: {e}"))?;
+        }
         println!("  wrote {name}");
-    }
-
-    // Write user_profile.json with provided values
-    let profile_path = data_dir.join("user_profile.json");
-    if profile_path.exists() {
-        println!("  skip  user_profile.json (already exists)");
-    } else {
-        let profile = json!({ "username": username, "birth_date": birth_date });
-        let content = serde_json::to_string_pretty(&profile).unwrap();
-        std::fs::write(&profile_path, content)
-            .map_err(|e| format!("Failed to write user_profile.json: {e}"))?;
-        println!("  wrote user_profile.json");
     }
 
     // Copy arcana pack
@@ -720,14 +744,21 @@ fn cmd_init(data_dir: &Path, non_interactive: bool) -> Result<String, String> {
         {
             let entry = entry.map_err(|e| e.to_string())?;
             let file_name = entry.file_name();
-            std::fs::copy(entry.path(), pack_dest.join(&file_name))
-                .map_err(|e| format!("Failed to copy packs/arcana/{}: {e}", file_name.to_string_lossy()))?;
+            std::fs::copy(entry.path(), pack_dest.join(&file_name)).map_err(|e| {
+                format!(
+                    "Failed to copy packs/arcana/{}: {e}",
+                    file_name.to_string_lossy()
+                )
+            })?;
         }
         println!("  wrote packs/arcana/");
     }
 
     println!();
-    println!("Done! Data directory initialized at: {}", data_dir.display());
+    println!(
+        "Done! Data directory initialized at: {}",
+        data_dir.display()
+    );
     println!();
     println!("Next step: configure your AI provider, then run the app.");
     println!("  Recommended: set ANTHROPIC_API_KEY or equivalent in your agent config.");

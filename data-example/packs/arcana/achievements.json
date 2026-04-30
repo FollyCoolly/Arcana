@@ -4,14 +4,14 @@
     {
       "id": "arcana::setup_user_profile",
       "name": "Identity Registered",
-      "description": "Set your username and birth date in user_profile.json. This is the foundation of your status panel — your game days counter starts here.",
+      "description": "在 user_profile.json 中设置用户名和出生日期。这是状态面板的基础——你的游戏天数计数从这里开始。",
       "difficulty": "beginner",
       "tags": ["onboarding", "status"]
     },
     {
       "id": "arcana::record_first_metric",
       "name": "First Data Point",
-      "description": "Add at least one metric definition to status_metric_definitions.json and record its value in status.json. Any domain counts — fitness, study hours, whatever you track.",
+      "description": "在 status_metric_definitions.json 中添加至少一个指标定义，并在 status.json 中记录其值。任何领域都可以——健身、学习时长，只要是你想追踪的。",
       "difficulty": "beginner",
       "tags": ["onboarding", "status"],
       "prerequisites": ["arcana::setup_user_profile"]
@@ -19,7 +19,7 @@
     {
       "id": "arcana::setup_5_metrics",
       "name": "Dashboard Initialized",
-      "description": "Define 5 or more metrics across at least 2 groups. A well-populated status panel gives the radar chart meaningful data to display.",
+      "description": "定义 5 个或更多指标，覆盖至少 2 个分组。丰富的状态面板能让雷达图展示有意义的数据。",
       "difficulty": "intermediate",
       "tags": ["status"],
       "prerequisites": ["arcana::record_first_metric"]
@@ -27,7 +27,7 @@
     {
       "id": "arcana::understand_radar",
       "name": "Radar Calibrated",
-      "description": "Configure at least one dimension in status_metric_definitions.json with proper level_thresholds and level_titles, so the radar chart shows a real score.",
+      "description": "在 status_metric_definitions.json 中为至少一个维度配置正确的 level_thresholds 和 level_titles，使雷达图显示真实分数。",
       "difficulty": "intermediate",
       "tags": ["status"],
       "prerequisites": ["arcana::record_first_metric"]
@@ -35,7 +35,7 @@
     {
       "id": "arcana::reach_dimension_level2",
       "name": "Awakening",
-      "description": "Reach Lv.2 in any radar dimension. This requires both enough metric data and a properly configured dimension scoring rule.",
+      "description": "在任意雷达维度达到 Lv.2。这需要足够的指标数据和正确配置的维度评分规则。",
       "difficulty": "advanced",
       "tags": ["status"],
       "prerequisites": ["arcana::understand_radar"]
@@ -43,21 +43,21 @@
     {
       "id": "arcana::setup_weather",
       "name": "Weather Station Online",
-      "description": "Create data/weather.json with your city name or coordinates. The weather widget on the main screen requires this — set {\"city\": \"Tokyo\"} or {\"latitude\": 35.68, \"longitude\": 139.69}.",
+      "description": "创建 data/weather.json 并填入城市名称或坐标。主界面的天气组件依赖此文件——设置 {\"city\": \"Tokyo\"} 或 {\"latitude\": 35.68, \"longitude\": 139.69}。",
       "difficulty": "beginner",
       "tags": ["onboarding", "config"]
     },
     {
       "id": "arcana::activate_first_mission",
       "name": "Mission Accepted",
-      "description": "Set a mission's status to 'active'. Proposed missions sit dormant — accepting one commits you to the objective.",
+      "description": "将一个任务的状态设为 'active'。提案任务处于待命状态——接受一个意味着你承诺完成该目标。",
       "difficulty": "beginner",
       "tags": ["onboarding", "missions"]
     },
     {
       "id": "arcana::complete_first_mission",
       "name": "First Victory",
-      "description": "Mark a mission as 'completed'. The first completion proves the system works end-to-end.",
+      "description": "将一个任务标记为 'completed'。第一次完成证明整个系统端到端运作正常。",
       "difficulty": "intermediate",
       "tags": ["missions"],
       "prerequisites": ["arcana::activate_first_mission"]
@@ -65,14 +65,14 @@
     {
       "id": "arcana::use_main_menu_widget",
       "name": "HQ Display Online",
-      "description": "Configure a countdown or progress widget on the main menu via mission update-menu. The main menu should reflect your most urgent active mission.",
+      "description": "通过 mission update-menu 在主菜单配置倒计时或进度组件。主菜单应反映你最紧急的活跃任务。",
       "difficulty": "beginner",
       "tags": ["onboarding", "missions"]
     },
     {
       "id": "arcana::mission_with_deadline",
       "name": "Deadline Set",
-      "description": "Create or update a mission with a deadline field. Time pressure changes how you prioritize.",
+      "description": "创建或更新一个带有 deadline 字段的任务。时间压力会改变你的优先级判断。",
       "difficulty": "intermediate",
       "tags": ["missions"],
       "prerequisites": ["arcana::activate_first_mission"]
@@ -80,14 +80,14 @@
     {
       "id": "arcana::load_first_pack",
       "name": "Pack Installed",
-      "description": "Add a pack ID to loaded_packs.json (besides 'arcana'). Achievement packs are the content layer — browse the packs/ directory and load one that matches your interests.",
+      "description": "在 loaded_packs.json 中添加一个包 ID（'arcana' 之外的）。成就包是内容层——浏览 packs/ 目录，加载一个符合你兴趣的包。",
       "difficulty": "beginner",
       "tags": ["onboarding", "achievements"]
     },
     {
       "id": "arcana::unlock_first_achievement",
       "name": "Persona Awakened",
-      "description": "Mark any achievement as 'achieved' in achievement_progress.json. The first unlock makes the system real.",
+      "description": "在 achievement_progress.json 中将任意成就标记为 'achieved'。第一次解锁让整个系统变得真实。",
       "difficulty": "beginner",
       "tags": ["onboarding", "achievements"],
       "prerequisites": ["arcana::load_first_pack"]
@@ -95,7 +95,7 @@
     {
       "id": "arcana::track_5_achievements",
       "name": "Active Pursuit",
-      "description": "Have 5 achievements simultaneously in 'tracked' status. Tracking signals intent — the AI uses this to suggest relevant missions.",
+      "description": "同时拥有 5 个处于 'tracked' 状态的成就。追踪表达意图——AI 会据此推荐相关任务。",
       "difficulty": "intermediate",
       "tags": ["achievements"],
       "prerequisites": ["arcana::unlock_first_achievement"]
@@ -103,7 +103,7 @@
     {
       "id": "arcana::reach_skill_level2",
       "name": "Growing Strength",
-      "description": "Reach Lv.2 in any skill tree. Skills level up as you unlock achievements — check which achievements feed the skill nodes.",
+      "description": "在任意技能树中达到 Lv.2。技能随成就解锁而升级——检查哪些成就为技能节点提供经验值。",
       "difficulty": "advanced",
       "tags": ["achievements"],
       "prerequisites": ["arcana::track_5_achievements"]
@@ -111,14 +111,14 @@
     {
       "id": "arcana::setup_gallery_source",
       "name": "Archive Opened",
-      "description": "Register at least one source in gallery_sources.json. The Gallery screen aggregates media from multiple JSON source files — each source entry points to one such file.\n\ngallery_sources.json schema:\n  { \"version\": 1, \"sources\": [{ \"id\": \"bangumi\", \"name\": \"Anime\", \"path\": \"gallery/bangumi_anime.json\", \"media_type\": \"anime\", \"icon\": \"🎌\" }] }\n\nThe path field can be absolute or relative to the data/ directory. media_type is a free-form string used for display filtering.\n\nEach source file has the structure:\n  { \"version\": 1, \"items\": [{ \"name\": \"...\", \"cover\": \"...\", \"rating\": 8.5, \"date_finished\": \"2024-03\", \"tags\": [...] }] }\n\nThe fastest way to get started is to run one of the provided import scripts — see the next achievement for details.",
+      "description": "在 gallery_sources.json 中注册至少一个数据源。媒体库界面从多个 JSON 数据源文件聚合内容——每个数据源条目指向一个这样的文件。\n\ngallery_sources.json schema:\n  { \"version\": 1, \"sources\": [{ \"id\": \"bangumi\", \"name\": \"Anime\", \"path\": \"gallery/bangumi_anime.json\", \"media_type\": \"anime\", \"icon\": \"🎌\" }] }\n\npath 字段可以是绝对路径或相对于 data/ 目录的相对路径。media_type 是用于显示过滤的自由格式字符串。\n\n每个数据源文件的结构：\n  { \"version\": 1, \"items\": [{ \"name\": \"...\", \"cover\": \"...\", \"rating\": 8.5, \"date_finished\": \"2024-03\", \"tags\": [...] }] }\n\n最快的入门方式是运行提供的导入脚本——详见下一个成就。",
       "difficulty": "beginner",
       "tags": ["onboarding", "gallery"]
     },
     {
       "id": "arcana::import_gallery_script",
       "name": "Data Pipeline Active",
-      "description": "Run at least one of the three gallery import scripts to populate a source file. Three sources are supported out of the box:\n\n  Bangumi (anime): fetch_bangumi.py — requires bangumi_uid (your numeric Bangumi user ID, visible in your profile URL)\n  Steam (games): fetch_steam.py — requires steam_api_key (from https://steamcommunity.com/dev/apikey) and steam_id (your 64-bit Steam ID)\n  Douban (movies/TV/books): fetch_douban.py — requires douban_id (your Douban user ID from your profile URL)\n\nSetup:\n  1. cp scripts/config.example.json scripts/config.json\n  2. Fill in the relevant IDs/keys in config.json\n  3. Run: python scripts/fetch_bangumi.py\n          python scripts/fetch_steam.py --detailed\n          python scripts/fetch_douban.py --status all\n\nEach script writes its output to data/gallery/ (e.g. bangumi_anime.json). Register that output file as a source in gallery_sources.json to make it visible in the app.",
+      "description": "运行至少一个媒体库导入脚本来填充数据源文件。开箱即支持三个数据源：\n\n  Bangumi（动画）：fetch_bangumi.py——需要 bangumi_uid（你的 Bangumi 数字用户 ID，可在个人主页 URL 中找到）\n  Steam（游戏）：fetch_steam.py——需要 steam_api_key（从 https://steamcommunity.com/dev/apikey 获取）和 steam_id（你的 64 位 Steam ID）\n  豆瓣（电影/剧集/书籍）：fetch_douban.py——需要 douban_id（你的豆瓣用户 ID，可从个人主页 URL 获取）\n\n设置步骤：\n  1. cp scripts/config.example.json scripts/config.json\n  2. 在 config.json 中填入相关 ID 和密钥\n  3. 运行：python scripts/fetch_bangumi.py\n          python scripts/fetch_steam.py --detailed\n          python scripts/fetch_douban.py --status all\n\n每个脚本的输出写入 data/gallery/（如 bangumi_anime.json）。在 gallery_sources.json 中注册该输出文件即可在应用中显示。",
       "difficulty": "intermediate",
       "tags": ["gallery"],
       "prerequisites": ["arcana::setup_gallery_source"]
@@ -126,7 +126,7 @@
     {
       "id": "arcana::gallery_100_entries",
       "name": "Curator",
-      "description": "Have 100 or more entries across all gallery sources. A meaningful archive takes time to build — re-run the import scripts periodically as your watch/play history grows.",
+      "description": "所有媒体库数据源累计拥有 100 条或更多记录。有意义的档案需要时间积累——随着你的观看/游玩历史增长，定期重新运行导入脚本。",
       "difficulty": "advanced",
       "tags": ["gallery"],
       "prerequisites": ["arcana::import_gallery_script"]
@@ -134,14 +134,14 @@
     {
       "id": "arcana::setup_item_source",
       "name": "Inventory Logged",
-      "description": "Register at least one source in item_sources.json. The Items module was designed around the author's existing Obsidian vault — it reads .md files directly from a directory, parsing YAML frontmatter as item metadata. If you use Obsidian, point it at your existing item notes. If not, you can create a plain folder of .md files without Obsidian; any text editor works.\n\nEach .md file in a registered directory becomes a tracked item.\n\nitem_sources.json schema:\n  { \"version\": 1, \"sources\": [{ \"id\": \"electronics\", \"name\": \"Electronics\", \"path\": \"/absolute/path/to/obsidian/Items/Electronics\" }] }\n\nEach item is an .md file with YAML frontmatter:\n  ---\n  名称: MacBook Pro 14\n  品牌: Apple\n  价格: 14999\n  购入日期: 2023-11-01\n  购入方式: Apple 官网\n  类别: 电子产品\n  ---\n\nSupported frontmatter fields: 名称, 品牌, 价格, 购入日期, 购入方式, 类别, 颜色. Any other fields go into extra. Files named *总览.md are skipped automatically. Images embedded as ![[filename.ext]] in the body are picked up as cover art.",
+      "description": "在 item_sources.json 中注册至少一个数据源。物品模块围绕 Obsidian 笔记库设计——直接从目录读取 .md 文件，解析 YAML frontmatter 作为物品元数据。如果你使用 Obsidian，将其指向已有的物品笔记目录即可。如果不用 Obsidian，用任何文本编辑器创建一个 .md 文件夹也可以。\n\n注册目录中的每个 .md 文件都会成为一个追踪物品。\n\nitem_sources.json schema:\n  { \"version\": 1, \"sources\": [{ \"id\": \"electronics\", \"name\": \"Electronics\", \"path\": \"/absolute/path/to/obsidian/Items/Electronics\" }] }\n\n每个物品是一个带 YAML frontmatter 的 .md 文件：\n  ---\n  名称: MacBook Pro 14\n  品牌: Apple\n  价格: 14999\n  购入日期: 2023-11-01\n  购入方式: Apple 官网\n  类别: 电子产品\n  ---\n\n支持的 frontmatter 字段：名称、品牌、价格、购入日期、购入方式、类别、颜色。其他字段存入 extra。文件名为 *总览.md 的文件会自动跳过。正文中以 ![[filename.ext]] 嵌入的图片会被识别为封面图。",
       "difficulty": "beginner",
       "tags": ["onboarding", "items"]
     },
     {
       "id": "arcana::item_with_price",
       "name": "Cost Aware",
-      "description": "Have at least one item with both 购入日期 and 价格 recorded in its frontmatter. Arcana computes two derived fields automatically: days_owned (today minus purchase date) and daily_cost (price divided by days owned). Seeing the daily cost of a jacket or gadget reframes how you think about purchases.",
+      "description": "至少有一个物品的 frontmatter 中同时记录了购入日期和价格。Arcana 会自动计算两个衍生字段：days_owned（今天减去购入日期）和 daily_cost（价格除以持有天数）。看到一件外套或数码产品的日均成本，会重塑你对消费的思考方式。",
       "difficulty": "intermediate",
       "tags": ["items"],
       "prerequisites": ["arcana::setup_item_source"]
@@ -149,7 +149,7 @@
     {
       "id": "arcana::item_50_entries",
       "name": "Possession Log",
-      "description": "Track 50 or more items across all sources. At this scale the category summaries, cost comparisons, and sorting options in the Items screen become genuinely useful.",
+      "description": "在所有数据源中累计追踪 50 个或更多物品。达到这个规模后，物品界面的分类汇总、成本对比和排序功能才会真正发挥作用。",
       "difficulty": "advanced",
       "tags": ["items"],
       "prerequisites": ["arcana::item_with_price"]
@@ -157,14 +157,14 @@
     {
       "id": "arcana::setup_ai_provider",
       "name": "Velvet Room Access Granted",
-      "description": "Configure your AI provider so the agent can read and update your data. The agent config is loaded from ~/.arcana/agent_config.json (user-level, recommended) or data/agent_config.json (project-level).\n\nMinimal config:\n  {\n    \"api_key\": \"your-api-key\",\n    \"base_url\": \"https://api.deepseek.com\",\n    \"model\": \"deepseek-chat\"\n  }\n\nFor Anthropic: set base_url to https://api.anthropic.com and model to claude-sonnet-4-5-20251001 (or newer). Alternatively, set the ANTHROPIC_API_KEY environment variable and omit the field.\n\nRecommended for cost-effectiveness: DeepSeek V4 (base_url: https://api.deepseek.com, model: deepseek-chat). It is API-compatible with the Anthropic format and significantly cheaper for daily use.\n\nWithout a working API key, the agent cannot respond to /velvet-room, /phan-site, or /pack-manager invocations.",
+      "description": "配置 AI 服务商，使 agent 能够读取和更新你的数据。Agent 配置从 ~/.arcana/agent_config.json（用户级，推荐）或 data/agent_config.json（项目级）加载。\n\n最小配置：\n  {\n    \"api_key\": \"your-api-key\",\n    \"base_url\": \"https://api.deepseek.com\",\n    \"model\": \"deepseek-chat\"\n  }\n\n使用 Anthropic：将 base_url 设为 https://api.anthropic.com，model 设为 claude-sonnet-4-5-20251001（或更新版本）。也可以设置 ANTHROPIC_API_KEY 环境变量并省略该字段。\n\n性价比推荐：DeepSeek V4（base_url: https://api.deepseek.com，model: deepseek-chat）。它与 Anthropic 格式 API 兼容，日常使用成本显著更低。\n\n没有有效的 API 密钥，agent 将无法响应 /velvet-room、/phan-site 或 /pack-manager 调用。",
       "difficulty": "beginner",
       "tags": ["onboarding", "ai"]
     },
     {
       "id": "arcana::first_velvet_room",
       "name": "First Consultation",
-      "description": "Run /velvet-room in any AI coding agent that supports slash commands (Claude Code, OpenCode, Codex, or even openclaw (untested)) for the first time and let the AI update at least one piece of data.\n\n/velvet-room is the general-purpose progress reporting skill. You tell it what happened in plain language — 'finished reading Dune', 'completed 3 sets of bench press at 80kg', 'started the new job' — and it reads your current context, figures out which missions and achievements are affected, updates the data via arcana-data CLI, and writes a changelog entry.\n\nTry: /velvet-room 今天完成了 Velvet Room 的配置，AI 现在可以更新数据了\n\nThe AI will identify the arcana::setup_ai_provider and arcana::first_velvet_room achievements and mark them.",
+      "description": "在任意支持斜杠命令的 AI 编程代理（Claude Code、OpenCode、Codex，甚至 openclaw（未测试））中首次运行 /velvet-room，并让 AI 更新至少一条数据。\n\n/velvet-room 是通用进度汇报技能。用自然语言告诉它发生了什么——「读完了《沙丘》」「完成了 3 组 80kg 卧推」「开始了新工作」——它会读取你的当前上下文，判断哪些任务和成就受到影响，通过 arcana-data CLI 更新数据，并写入 changelog 条目。\n\n试试：/velvet-room 今天完成了 Velvet Room 的配置，AI 现在可以更新数据了\n\nAI 会识别 arcana::setup_ai_provider 和 arcana::first_velvet_room 成就并标记完成。",
       "difficulty": "beginner",
       "tags": ["onboarding", "ai"],
       "prerequisites": ["arcana::setup_ai_provider"]
@@ -172,7 +172,7 @@
     {
       "id": "arcana::first_phan_site",
       "name": "Calling Card Sent",
-      "description": "Run /phan-site to generate a batch of mission proposals based on your current goals and tracked achievements.\n\n/phan-site reads your active missions, achievement progress, and mission memory, then generates 3–5 proposed missions styled as Persona 5 Phan-Site requests. Each mission gets a gamified title, description, difficulty tier, and optionally a deadline or main menu widget suggestion.\n\nProposed missions appear in the Missions screen with status 'proposed'. Browse them in the app and activate the ones you want to pursue — rejected ones are hidden but kept for deduplication.\n\nTry running /phan-site after completing a few onboarding steps so it has enough context to generate relevant suggestions.",
+      "description": "运行 /phan-site 根据当前目标和追踪中的成就生成一批任务提案。\n\n/phan-site 会读取你的活跃任务、成就进度和任务记忆，然后生成 3–5 个 Persona 5 怪盗团请求风格的任务提案。每个任务包含游戏化标题、描述、难度等级，以及可选的截止日期或主菜单组件建议。\n\n提案任务以 'proposed' 状态出现在任务界面。在应用中浏览并激活你想执行的——被拒绝的任务会隐藏但保留用于去重。\n\n建议在完成几个新手引导步骤后再运行 /phan-site，这样它有足够的上下文来生成相关建议。",
       "difficulty": "intermediate",
       "tags": ["ai"],
       "prerequisites": ["arcana::first_velvet_room"]
@@ -180,7 +180,7 @@
     {
       "id": "arcana::first_pack_manager",
       "name": "Pack Forged",
-      "description": "Run /pack-manager to create or extend a content pack.\n\n/pack-manager is the achievement pack authoring skill. It can create a new pack from scratch, add achievements to an existing pack, or refine descriptions and prerequisites. Packs are stored in data/packs/<pack_id>/ and must be added to loaded_packs.json to take effect.\n\nUseful when: the built-in packs don't cover a domain you care about (e.g. homebrewing, language learning, a specific instrument). Describe your domain and goals in plain language — the skill handles schema compliance, DAG validation, and skill tree point calibration.\n\nNote: existing achievement IDs are never modified in refine/extend mode, to preserve your progress data.",
+      "description": "运行 /pack-manager 创建或扩展内容包。\n\n/pack-manager 是成就包编写技能。它可以从零创建新包、向已有包添加成就，或优化描述和前置条件。包存储在 data/packs/<pack_id>/ 下，必须添加到 loaded_packs.json 才能生效。\n\n适用场景：内置包未覆盖你关心的领域（如自酿啤酒、语言学习、某种乐器）。用自然语言描述你的领域和目标——技能会处理 schema 合规性、DAG 校验和技能树点数校准。\n\n注意：在优化/扩展模式下不会修改已有的成就 ID，以保护你的进度数据。",
       "difficulty": "intermediate",
       "tags": ["ai"],
       "prerequisites": ["arcana::first_velvet_room"]
@@ -188,7 +188,7 @@
     {
       "id": "arcana::ai_updates_mission",
       "name": "Igor's Blessing",
-      "description": "Have the AI autonomously complete a data update — mission progress, achievement status, or status metrics — through a /velvet-room conversation, without you manually editing any JSON.\n\nThis is the intended workflow: describe what happened, and the AI figures out the rest. It reads your full context (missions, achievements, memory), decides what to update, calls arcana-data CLI to make the changes atomically, and writes a changelog entry with old_value recorded.\n\nAll AI-driven changes are logged in data/ai_changelog.json and visible to the app.",
+      "description": "让 AI 通过 /velvet-room 对话自主完成一次数据更新——任务进度、成就状态或状态指标——无需你手动编辑任何 JSON。\n\n这是预期的工作流：描述发生了什么，AI 处理剩下的一切。它读取你的完整上下文（任务、成就、记忆），决定更新什么，调用 arcana-data CLI 原子地执行变更，并写入包含 old_value 的 changelog 条目。\n\n所有 AI 驱动的变更都记录在 data/ai_changelog.json 中，应用可见。",
       "difficulty": "intermediate",
       "tags": ["ai"],
       "prerequisites": ["arcana::first_velvet_room"]
@@ -196,14 +196,14 @@
     {
       "id": "arcana::setup_telegram_bot",
       "name": "Navigator Deployed",
-      "description": "Build and run agent-telegram so you can send messages to Arcana from your phone.\n\nStep 1 — Create a Telegram bot:\n  1. Open Telegram and search for @BotFather\n  2. Send /newbot, follow the prompts to choose a name and username\n  3. BotFather will give you a token like 123456789:ABCdefGHI...\n\nStep 2 — Find your Telegram user ID:\n  Search for @userinfobot on Telegram and send it any message. It replies with your numeric user ID.\n\nStep 3 — Configure Arcana:\n  Add to ~/.arcana/agent_config.json:\n  {\n    \"api_key\": \"...\",\n    \"telegram\": {\n      \"token\": \"123456789:ABCdefGHI...\",\n      \"allow_from\": [\"YOUR_NUMERIC_USER_ID\"]\n    }\n  }\n  allow_from restricts which Telegram users can send commands. Use [\"*\"] to allow anyone (not recommended if the token is shared).\n\nStep 4 — Build and run:\n  cargo build --manifest-path src-tauri/Cargo.toml --bin agent-telegram\n  ./src-tauri/target/release/agent-telegram\n\nThe bot uses long-polling — no public server or webhook needed. Keep it running on your desktop machine and message it from anywhere.",
+      "description": "构建并运行 agent-telegram，让你可以通过手机向 Arcana 发送消息。\n\n第一步——创建 Telegram 机器人：\n  1. 打开 Telegram 搜索 @BotFather\n  2. 发送 /newbot，按提示选择名称和用户名\n  3. BotFather 会给你一个 token，如 123456789:ABCdefGHI...\n\n第二步——获取你的 Telegram 用户 ID：\n  在 Telegram 上搜索 @userinfobot 并发送任意消息，它会回复你的数字用户 ID。\n\n第三步——配置 Arcana：\n  添加到 ~/.arcana/agent_config.json：\n  {\n    \"api_key\": \"...\",\n    \"telegram\": {\n      \"token\": \"123456789:ABCdefGHI...\",\n      \"allow_from\": [\"YOUR_NUMERIC_USER_ID\"]\n    }\n  }\n  allow_from 限制哪些 Telegram 用户可以发送命令。使用 [\"*\"] 允许任何人（不建议在 token 共享时使用）。\n\n第四步——构建并运行：\n  cargo build --manifest-path src-tauri/Cargo.toml --bin agent-telegram\n  ./src-tauri/target/release/agent-telegram\n\n机器人使用长轮询——无需公共服务器或 Webhook。在桌面设备上保持运行，随时随地通过手机发送消息。",
       "difficulty": "advanced",
       "tags": ["remote"]
     },
     {
       "id": "arcana::remote_update_via_im",
       "name": "Remote Access Established",
-      "description": "Complete a full data update entirely through a Telegram conversation — without touching the desktop app or any JSON file.\n\nWith agent-telegram running, open the bot in Telegram and describe what you want to update in natural language, the same way you would use /velvet-room in any AI coding agent that supports slash commands. The agent reads your local data, applies changes via arcana-data CLI, and replies with a summary.\n\nExample messages:\n  '刚完成了5公里跑，配速5:30'\n  'Finished reading Project Hail Mary, 5 stars'\n  '今天完成了 Navigator Online 任务'\n\nThe agent runs the same tool-calling loop as the desktop skills — missions, achievements, status metrics, and memory are all accessible.",
+      "description": "完全通过 Telegram 对话完成一次完整的数据更新——不触碰桌面应用或任何 JSON 文件。\n\n在 agent-telegram 运行的情况下，打开 Telegram 中的机器人，用自然语言描述你要更新的内容，就像在任意支持斜杠命令的 AI 编程代理中使用 /velvet-room 一样。Agent 读取你的本地数据，通过 arcana-data CLI 执行变更，并回复摘要。\n\n示例消息：\n  「刚完成了5公里跑，配速5:30」\n  「Finished reading Project Hail Mary, 5 stars」\n  「今天完成了 Navigator Online 任务」\n\nAgent 运行与桌面技能相同的工具调用循环——任务、成就、状态指标和记忆均可访问。",
       "difficulty": "advanced",
       "tags": ["remote"],
       "prerequisites": ["arcana::setup_telegram_bot"]
@@ -211,7 +211,7 @@
     {
       "id": "arcana::telegram_daily_checkin",
       "name": "Phantom Thief HQ",
-      "description": "Interact with the Telegram agent on 7 separate days. The value of remote access compounds with habit — a quick message after a workout or at the end of the day keeps your data current without requiring you to open the desktop app.",
+      "description": "连续在 7 个不同的日期与 Telegram agent 交互。远程访问的价值随习惯而复利增长——锻炼后或一天结束时发条消息，无需打开桌面应用即可保持数据最新。",
       "difficulty": "expert",
       "tags": ["remote"],
       "prerequisites": ["arcana::remote_update_via_im"]

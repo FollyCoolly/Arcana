@@ -187,7 +187,7 @@ npm install
 # 2. Build the data CLI
 cargo build --manifest-path src-tauri/Cargo.toml --bin arcana-data
 
-# 3. Initialize your data directory (interactive — asks for username and birth date)
+# 3. Initialize your data directory
 ./src-tauri/target/debug/arcana-data init
 
 # 4. Run the app

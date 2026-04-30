@@ -2,171 +2,185 @@
   "version": 1,
   "skills": [
     {
-      "id": "arcana::status_mastery",
-      "name": "Status Mastery",
-      "description": "Understanding and configuring the Arcana status panel.",
-      "max_level": 3,
+      "id": "arcana::arcana",
+      "name": "Arcana",
+      "description": "Mastery of the Arcana system — status tracking, missions, achievements, gallery, items, AI integration, and remote access.",
+      "max_level": 5,
       "level_thresholds": [
         {
           "level": 2,
-          "points_required": 10,
-          "required_key_achievements": ["arcana::record_first_metric"]
+          "points_required": 50,
+          "required_key_achievements": [
+            "arcana::setup_user_profile",
+            "arcana::activate_first_mission"
+          ]
         },
         {
           "level": 3,
-          "points_required": 35,
-          "required_key_achievements": ["arcana::understand_radar"]
-        }
-      ],
-      "nodes": [
-        { "node_id": "n0", "achievement_id": "arcana::setup_user_profile", "points": 5 },
-        { "node_id": "n1", "achievement_id": "arcana::record_first_metric", "points": 10 },
-        { "node_id": "n2", "achievement_id": "arcana::setup_5_metrics", "points": 15 },
-        { "node_id": "n3", "achievement_id": "arcana::understand_radar", "points": 15 },
-        { "node_id": "n4", "achievement_id": "arcana::reach_dimension_level2", "points": 20 }
-      ]
-    },
-    {
-      "id": "arcana::mission_mastery",
-      "name": "Mission Mastery",
-      "description": "Operating the Arcana mission and objectives system.",
-      "max_level": 3,
-      "level_thresholds": [
-        {
-          "level": 2,
-          "points_required": 10,
-          "required_key_achievements": ["arcana::activate_first_mission"]
+          "points_required": 130,
+          "required_key_achievements": [
+            "arcana::first_velvet_room",
+            "arcana::complete_first_mission"
+          ]
         },
         {
-          "level": 3,
-          "points_required": 30,
-          "required_key_achievements": ["arcana::complete_first_mission"]
-        }
-      ],
-      "nodes": [
-        { "node_id": "n0", "achievement_id": "arcana::setup_weather", "points": 5 },
-        { "node_id": "n1", "achievement_id": "arcana::activate_first_mission", "points": 10 },
-        { "node_id": "n2", "achievement_id": "arcana::use_main_menu_widget", "points": 5 },
-        { "node_id": "n3", "achievement_id": "arcana::complete_first_mission", "points": 15 },
-        { "node_id": "n4", "achievement_id": "arcana::mission_with_deadline", "points": 10 }
-      ]
-    },
-    {
-      "id": "arcana::achievement_mastery",
-      "name": "Achievement Mastery",
-      "description": "Navigating the Arcana achievement and skill tree system.",
-      "max_level": 3,
-      "level_thresholds": [
-        {
-          "level": 2,
-          "points_required": 10,
-          "required_key_achievements": ["arcana::unlock_first_achievement"]
+          "level": 4,
+          "points_required": 230,
+          "required_key_achievements": [
+            "arcana::understand_radar",
+            "arcana::track_5_achievements"
+          ]
         },
         {
-          "level": 3,
-          "points_required": 30,
-          "required_key_achievements": ["arcana::track_5_achievements"]
+          "level": 5,
+          "points_required": 340,
+          "required_key_achievements": [
+            "arcana::reach_dimension_level2",
+            "arcana::reach_skill_level2"
+          ]
         }
       ],
       "nodes": [
-        { "node_id": "n0", "achievement_id": "arcana::load_first_pack", "points": 5 },
-        { "node_id": "n1", "achievement_id": "arcana::unlock_first_achievement", "points": 10 },
-        { "node_id": "n2", "achievement_id": "arcana::track_5_achievements", "points": 15 },
-        { "node_id": "n3", "achievement_id": "arcana::reach_skill_level2", "points": 20 }
-      ]
-    },
-    {
-      "id": "arcana::gallery_mastery",
-      "name": "Gallery Mastery",
-      "description": "Building and curating your media archive in Arcana.",
-      "max_level": 3,
-      "level_thresholds": [
         {
-          "level": 2,
-          "points_required": 10,
-          "required_key_achievements": ["arcana::setup_gallery_source"]
+          "node_id": "n0",
+          "achievement_id": "arcana::setup_user_profile",
+          "points": 5
         },
         {
-          "level": 3,
-          "points_required": 30,
-          "required_key_achievements": ["arcana::import_gallery_script"]
-        }
-      ],
-      "nodes": [
-        { "node_id": "n0", "achievement_id": "arcana::setup_gallery_source", "points": 10 },
-        { "node_id": "n1", "achievement_id": "arcana::import_gallery_script", "points": 15 },
-        { "node_id": "n2", "achievement_id": "arcana::gallery_100_entries", "points": 20 }
-      ]
-    },
-    {
-      "id": "arcana::items_mastery",
-      "name": "Items Mastery",
-      "description": "Building and analyzing your personal inventory in Arcana.",
-      "max_level": 3,
-      "level_thresholds": [
-        {
-          "level": 2,
-          "points_required": 10,
-          "required_key_achievements": ["arcana::setup_item_source"]
+          "node_id": "n1",
+          "achievement_id": "arcana::record_first_metric",
+          "points": 10
         },
         {
-          "level": 3,
-          "points_required": 30,
-          "required_key_achievements": ["arcana::item_with_price"]
-        }
-      ],
-      "nodes": [
-        { "node_id": "n0", "achievement_id": "arcana::setup_item_source", "points": 10 },
-        { "node_id": "n1", "achievement_id": "arcana::item_with_price", "points": 15 },
-        { "node_id": "n2", "achievement_id": "arcana::item_50_entries", "points": 20 }
-      ]
-    },
-    {
-      "id": "arcana::ai_mastery",
-      "name": "AI Mastery",
-      "description": "Integrating and leveraging AI in the Arcana workflow.",
-      "max_level": 3,
-      "level_thresholds": [
-        {
-          "level": 2,
-          "points_required": 10,
-          "required_key_achievements": ["arcana::first_velvet_room"]
+          "node_id": "n2",
+          "achievement_id": "arcana::setup_5_metrics",
+          "points": 15
         },
         {
-          "level": 3,
-          "points_required": 35,
-          "required_key_achievements": ["arcana::ai_updates_mission"]
-        }
-      ],
-      "nodes": [
-        { "node_id": "n0", "achievement_id": "arcana::setup_ai_provider", "points": 5 },
-        { "node_id": "n1", "achievement_id": "arcana::first_velvet_room", "points": 10 },
-        { "node_id": "n2", "achievement_id": "arcana::first_phan_site", "points": 15 },
-        { "node_id": "n3", "achievement_id": "arcana::first_pack_manager", "points": 15 },
-        { "node_id": "n4", "achievement_id": "arcana::ai_updates_mission", "points": 15 }
-      ]
-    },
-    {
-      "id": "arcana::remote_mastery",
-      "name": "Remote Mastery",
-      "description": "Accessing Arcana remotely through messaging integrations.",
-      "max_level": 3,
-      "level_thresholds": [
-        {
-          "level": 2,
-          "points_required": 20,
-          "required_key_achievements": ["arcana::setup_telegram_bot"]
+          "node_id": "n3",
+          "achievement_id": "arcana::understand_radar",
+          "points": 15
         },
         {
-          "level": 3,
-          "points_required": 45,
-          "required_key_achievements": ["arcana::remote_update_via_im"]
+          "node_id": "n4",
+          "achievement_id": "arcana::reach_dimension_level2",
+          "points": 20
+        },
+        {
+          "node_id": "n5",
+          "achievement_id": "arcana::setup_weather",
+          "points": 5
+        },
+        {
+          "node_id": "n6",
+          "achievement_id": "arcana::activate_first_mission",
+          "points": 10
+        },
+        {
+          "node_id": "n7",
+          "achievement_id": "arcana::use_main_menu_widget",
+          "points": 5
+        },
+        {
+          "node_id": "n8",
+          "achievement_id": "arcana::complete_first_mission",
+          "points": 15
+        },
+        {
+          "node_id": "n9",
+          "achievement_id": "arcana::mission_with_deadline",
+          "points": 10
+        },
+        {
+          "node_id": "n10",
+          "achievement_id": "arcana::load_first_pack",
+          "points": 5
+        },
+        {
+          "node_id": "n11",
+          "achievement_id": "arcana::unlock_first_achievement",
+          "points": 10
+        },
+        {
+          "node_id": "n12",
+          "achievement_id": "arcana::track_5_achievements",
+          "points": 15
+        },
+        {
+          "node_id": "n13",
+          "achievement_id": "arcana::reach_skill_level2",
+          "points": 20
+        },
+        {
+          "node_id": "n14",
+          "achievement_id": "arcana::setup_gallery_source",
+          "points": 10
+        },
+        {
+          "node_id": "n15",
+          "achievement_id": "arcana::import_gallery_script",
+          "points": 15
+        },
+        {
+          "node_id": "n16",
+          "achievement_id": "arcana::gallery_100_entries",
+          "points": 20
+        },
+        {
+          "node_id": "n17",
+          "achievement_id": "arcana::setup_item_source",
+          "points": 10
+        },
+        {
+          "node_id": "n18",
+          "achievement_id": "arcana::item_with_price",
+          "points": 15
+        },
+        {
+          "node_id": "n19",
+          "achievement_id": "arcana::item_50_entries",
+          "points": 20
+        },
+        {
+          "node_id": "n20",
+          "achievement_id": "arcana::setup_ai_provider",
+          "points": 5
+        },
+        {
+          "node_id": "n21",
+          "achievement_id": "arcana::first_velvet_room",
+          "points": 10
+        },
+        {
+          "node_id": "n22",
+          "achievement_id": "arcana::first_phan_site",
+          "points": 15
+        },
+        {
+          "node_id": "n23",
+          "achievement_id": "arcana::first_pack_manager",
+          "points": 15
+        },
+        {
+          "node_id": "n24",
+          "achievement_id": "arcana::ai_updates_mission",
+          "points": 15
+        },
+        {
+          "node_id": "n25",
+          "achievement_id": "arcana::setup_telegram_bot",
+          "points": 20
+        },
+        {
+          "node_id": "n26",
+          "achievement_id": "arcana::remote_update_via_im",
+          "points": 20
+        },
+        {
+          "node_id": "n27",
+          "achievement_id": "arcana::telegram_daily_checkin",
+          "points": 30
         }
-      ],
-      "nodes": [
-        { "node_id": "n0", "achievement_id": "arcana::setup_telegram_bot", "points": 20 },
-        { "node_id": "n1", "achievement_id": "arcana::remote_update_via_im", "points": 20 },
-        { "node_id": "n2", "achievement_id": "arcana::telegram_daily_checkin", "points": 30 }
       ]
     }
   ]

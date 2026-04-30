@@ -615,8 +615,7 @@
         );
         --mission-status-col: clamp(12rem, 18%, 20rem);
         --mission-grade-col: clamp(16rem, 22%, 28rem);
-        --mission-grid-columns:
-            var(--mission-status-col) minmax(0, 1fr)
+        --mission-grid-columns: var(--mission-status-col) minmax(0, 1fr)
             var(--mission-grade-col);
         position: absolute;
         top: 0;
@@ -1028,6 +1027,7 @@
         font-weight: 600;
         color: rgba(255, 255, 255, 0.6);
         line-height: 1.5;
+        white-space: pre-line;
     }
 
     .rm-detail-meta {

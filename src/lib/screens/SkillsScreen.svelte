@@ -107,8 +107,7 @@
                     achievementId: detailAchievementId,
                 });
             }
-            const fresh =
-                await invoke<AchievementData>("load_achievements");
+            const fresh = await invoke<AchievementData>("load_achievements");
             onAchievementDataLoaded?.(fresh);
         } catch (e) {
             toggleError = typeof e === "string" ? e : "Operation failed.";
@@ -118,7 +117,11 @@
     }
 
     let visibleSkills = $derived(
-        skillData ? skillData.skills.filter((s) => s.current_level > 0) : [],
+        skillData
+            ? skillData.skills.filter(
+                  (s) => s.current_level > 0 || s.pack_id === "arcana",
+              )
+            : [],
     );
 
     let selectedSkill = $derived(
@@ -1185,8 +1188,7 @@
         display: flex;
         align-items: center;
         gap: clamp(0.6rem, 0.9vw, 1.2rem);
-        margin: clamp(0.4rem, 0.6vw, 0.9rem)
-            clamp(0.4rem, 0.5vw, 0.8rem)
+        margin: clamp(0.4rem, 0.6vw, 0.9rem) clamp(0.4rem, 0.5vw, 0.8rem)
             clamp(0.8rem, 1.2vw, 1.6rem);
     }
 
@@ -1199,8 +1201,7 @@
         font-weight: 800;
         text-transform: uppercase;
         letter-spacing: 0.08em;
-        padding: clamp(0.5rem, 0.7vw, 1rem)
-            clamp(1.4rem, 1.8vw, 2.6rem);
+        padding: clamp(0.5rem, 0.7vw, 1rem) clamp(1.4rem, 1.8vw, 2.6rem);
         cursor: pointer;
         clip-path: polygon(4% 0%, 100% 0%, 96% 100%, 0% 100%);
         transform: rotate(-1deg);

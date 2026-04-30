@@ -520,12 +520,12 @@
                                 >{cd.label.slice(2, 4)}</span
                             >
                         {/if}
-                        <span class="rm-cd-middle">还剩</span>
+                        <span class="rm-cd-middle">还有</span>
                         <div class="rm-cd-days-bg-1" aria-hidden="true"></div>
                         <div class="rm-cd-days-bg-2" aria-hidden="true"></div>
                         <span class="rm-cd-days-1">{daysStr[0]}</span>
                         <span class="rm-cd-days-2">{daysStr[1]}</span>
-                        <span class="rm-cd-suffix">日</span>
+                        <span class="rm-cd-suffix">天</span>
                     </div>
                 {:else if statusData}
                     <div class="rm-player-info" aria-label="Player info">
