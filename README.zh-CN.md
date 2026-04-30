@@ -191,15 +191,14 @@ cargo build --manifest-path src-tauri/Cargo.toml --bin arcana-data
 # 3. 初始化数据目录（交互式，会询问用户名和生日）
 ./src-tauri/target/debug/arcana-data init
 
-# 4. 配置 AI provider（推荐：DeepSeek V4，性价比高）
-#    创建 ~/.arcana/agent_config.json：
-#    { "api_key": "你的key", "base_url": "https://api.deepseek.com", "model": "deepseek-chat" }
-
-# 5. 启动应用
+# 4. 启动应用
 npm run tauri dev
 ```
 
 应用打开后，新手任务已在任务界面中自动激活。在任意支持 slash command 的 AI coding agent（Claude Code、OpenCode、Codex、OpenClaw、Hermes Agent 等）中运行 `/velvet-room`，让 AI 带你完成后续配置。
+
+> [!NOTE]
+> 如果你需要使用 agent 二进制——主要是 `agent-telegram`，它会启动一个监听服务，让你通过 Telegram 远程控制本地助手——则需要额外配置 LLM provider。通过环境变量（`ANTHROPIC_API_KEY`）或配置文件（`~/.arcana/agent_config.json`）设置 API key 即可。详见 [AI 助手](#ai-助手)。
 
 ---
 
@@ -305,19 +304,6 @@ python scripts/validate_data.py data/missions.json
 - **AI 助手与 UI 解耦**：AI 助手可以独立于桌面 GUI 运行（CLI / Telegram），并共享同一套数据层。
 - **前置条件驱动的进度系统**：成就前置条件在数据模型中保持为经过校验的 DAG，而技能在 UI 中呈现为紧凑的蜂窝状节点图，不是传统连线图。
 - **共享服务层**：`services/` 集中任务、状态、成就、记忆和 changelog 等业务逻辑，供 Tauri commands、`arcana-data` 和 Rust AI 助手共同使用。
-
----
-
-## v0.1.0 路线图
-
-- [ ] 提供示例数据配置
-- [x] 打磨主菜单，包括倒计时和进度条组件
-- [x] 打磨技能界面
-- [x] 打磨成就界面
-- [x] 打磨物品界面
-- [x] 打磨图鉴界面
-- [x] 打磨任务界面
-- [ ] 测试 AI 技能相关功能
 
 ---
 

@@ -190,15 +190,14 @@ cargo build --manifest-path src-tauri/Cargo.toml --bin arcana-data
 # 3. Initialize your data directory (interactive — asks for username and birth date)
 ./src-tauri/target/debug/arcana-data init
 
-# 4. Configure your AI provider (recommended: DeepSeek V4)
-#    Create ~/.arcana/agent_config.json, for example:
-#    { "api_key": "your-key", "base_url": "https://api.deepseek.com", "model": "deepseek-model-name" }
-
-# 5. Run the app
+# 4. Run the app
 npm run tauri dev
 ```
 
 After the app opens, the onboarding missions will already be active in the Missions screen. Run `/velvet-room` in any AI coding agent that supports slash commands (Claude Code, OpenCode, Codex, OpenClaw, Hermes Agent, etc.) to let the AI guide you through the rest of the setup.
+
+> [!NOTE]
+> If you want to use the agent binaries — primarily `agent-telegram`, which starts a listener service for controlling your local assistant remotely via Telegram — you will need to configure an LLM provider. Set your API key via environment variable (`ANTHROPIC_API_KEY`) or config file (`~/.arcana/agent_config.json`). See [AI Agent](#ai-agent) for details.
 
 ---
 
@@ -304,19 +303,6 @@ python scripts/validate_data.py data/missions.json
 - **Agent decoupled from UI**: The AI agent runs independently of the desktop GUI (CLI / Telegram), sharing the same data layer.
 - **Prerequisite-driven progression**: Achievement prerequisites remain a validated DAG in the data model, while skills present that progression as a compact honeycomb-style node map rather than a traditional edge graph.
 - **Shared services layer**: `services/` contains all business logic, consumed by Tauri commands, arcana-data CLI, and the Rust agent alike.
-
----
-
-## Roadmap to v0.1.0
-
-- [ ] Provide example data configuration
-- [x] Polish main menu — countdown and progress bar widgets
-- [x] Polish Skills screen
-- [x] Polish Achievements screen
-- [x] Polish Items screen
-- [x] Polish Gallery screen
-- [x] Polish Missions screen
-- [ ] Test agent skills functionality
 
 ---
 
