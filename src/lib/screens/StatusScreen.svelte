@@ -141,6 +141,23 @@
         <PromptWord text="Back" fontSize={72} />
     </button>
 
+    {#if statusData}
+        <div class="rm-player-panel" aria-label="Player info">
+            <div
+                class="rm-hint-board"
+                style:background-image="url(/ui/board/board_fat.png)"
+            >
+                <span class="rm-hint-text">用户：{statusData.username}</span>
+            </div>
+            <div
+                class="rm-hint-board rm-hint-board--slim"
+                style:background-image="url(/ui/board/board_slim.png)"
+            >
+                <span class="rm-hint-text">游戏天数：{statusData.game_days ?? "—"}</span>
+            </div>
+        </div>
+    {/if}
+
     {#if loading}
         <div class="rm-stage-inner">
             <p class="state-text">Loading status data...</p>
@@ -172,6 +189,45 @@
 </section>
 
 <style>
+    .rm-player-panel {
+        position: fixed;
+        top: 2rem;
+        left: 2rem;
+        z-index: 10;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        pointer-events: none;
+    }
+
+    .rm-hint-board {
+        width: 32rem;
+        height: 8rem;
+        background-repeat: no-repeat;
+        background-size: 100% 100%;
+        background-position: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .rm-hint-board--slim {
+        height: 7rem;
+        margin-top: -1rem;
+    }
+
+    .rm-hint-text {
+        font-family:
+            "Source Han Sans SC", "Noto Sans SC", "方正兰亭黑_GBK", "Microsoft YaHei", sans-serif;
+        font-weight: 900;
+        color: #ffffff;
+        font-size: clamp(1rem, 1.8vw, 1.8rem);
+        white-space: nowrap;
+        line-height: 1;
+        -webkit-text-stroke: 0.03em #000000;
+        paint-order: stroke fill;
+    }
+
     .rm-status-title-img {
         position: fixed;
         top: clamp(0.8rem, 1.5vh, 3rem);

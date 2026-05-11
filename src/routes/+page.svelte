@@ -527,14 +527,6 @@
                         <span class="rm-cd-days-2">{daysStr[1]}</span>
                         <span class="rm-cd-suffix">天</span>
                     </div>
-                {:else if statusData}
-                    <div class="rm-player-info" aria-label="Player info">
-                        <span class="rm-player-name">{statusData.username}</span
-                        >
-                        <span class="rm-player-days"
-                            >Day {statusData.game_days ?? "—"}</span
-                        >
-                    </div>
                 {/if}
 
                 {#if missionMenuData?.hints}
