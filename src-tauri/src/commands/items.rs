@@ -9,14 +9,7 @@ use crate::storage::date_utils::calculate_days_since;
 use crate::storage::json_store::{read_json_file, resolve_data_dir};
 
 /// Known frontmatter keys that map to public fields (Chinese keys).
-const KNOWN_KEYS: &[&str] = &[
-    "品牌",
-    "价格",
-    "购入日期",
-    "购入方式",
-    "类别",
-    "颜色",
-];
+const KNOWN_KEYS: &[&str] = &["品牌", "价格", "购入日期", "购入方式", "类别", "颜色"];
 
 fn yaml_value_to_json(val: &serde_yaml::Value) -> serde_json::Value {
     match val {

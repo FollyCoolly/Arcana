@@ -156,9 +156,17 @@ fn compute_dimensions(
     definitions
         .iter()
         .map(|dim| {
-            let mut total_score = 0.0;
-            let mut has_any_data = false;
-            let mut metric_results = Vec::new();
+            // Pass 1: collect raw contributions for filled metrics
+            struct Row {
+                metric_id: String,
+                value: Option<f64>,
+                filled_contrib: Option<f64>,
+                weight: f64,
+            }
+
+            let mut rows: Vec<Row> = Vec::with_capacity(dim.metrics.len());
+            let mut filled_count: usize = 0;
+            let mut sum_filled_contrib: f64 = 0.0;
 
             for (metric_id, config) in &dim.metrics {
                 let value = user_values
@@ -166,20 +174,61 @@ fn compute_dimensions(
                     .or_else(|| sys_metrics.get(metric_id))
                     .copied();
 
-                let contribution = value.map(|v| {
-                    has_any_data = true;
-                    let c = compute_contribution(v, config);
-                    total_score += c * config.weight;
-                    c
-                });
+                let filled_contrib = value.map(|v| compute_contribution(v, config));
+                if let Some(c) = filled_contrib {
+                    filled_count += 1;
+                    sum_filled_contrib += c;
+                }
 
-                metric_results.push(DimensionMetricResult {
+                rows.push(Row {
                     metric_id: metric_id.clone(),
                     value,
-                    contribution,
+                    filled_contrib,
                     weight: config.weight,
                 });
             }
+
+            // Pass 2: assemble total_score. Missing metrics get an estimated
+            // contribution = avg(filled_contrib) × (0.7 + 0.3 × completeness),
+            // so users aren't punished by leaving a metric blank, but
+            // completeness still matters. If no metrics are filled, the
+            // dimension is unscored.
+            let total = dim.metrics.len();
+            let has_any_data = filled_count > 0;
+
+            let (estimated_contrib, completeness) = if has_any_data && total > 0 {
+                let avg = sum_filled_contrib / filled_count as f64;
+                let c = filled_count as f64 / total as f64;
+                let penalty = 0.7 + 0.3 * c;
+                (avg * penalty, c)
+            } else {
+                (0.0, 0.0)
+            };
+
+            let mut total_score = 0.0;
+            let mut metric_results = Vec::with_capacity(rows.len());
+            for row in rows {
+                let contribution = match row.filled_contrib {
+                    Some(c) => {
+                        total_score += c * row.weight;
+                        Some(c)
+                    }
+                    None => {
+                        if has_any_data {
+                            total_score += estimated_contrib * row.weight;
+                        }
+                        None
+                    }
+                };
+
+                metric_results.push(DimensionMetricResult {
+                    metric_id: row.metric_id,
+                    value: row.value,
+                    contribution,
+                    weight: row.weight,
+                });
+            }
+            let _ = completeness; // reserved for future UI surfacing
 
             let (score, level, level_title) =
                 if has_any_data && dim.level_thresholds.len() == 4 && dim.level_titles.len() == 5 {
@@ -216,6 +265,113 @@ fn compute_dimensions(
             }
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn bracket(min: f64, max: f64, score: f64) -> ScoringBracket {
+        ScoringBracket { min, max, score }
+    }
+
+    fn health_dim() -> DimensionDefinition {
+        let mut metrics = HashMap::new();
+        metrics.insert(
+            "bmi".to_string(),
+            DimensionMetricConfig {
+                weight: 1.0,
+                target_max: None,
+                target_min: None,
+                scoring_brackets: Some(vec![
+                    bracket(20.0, 23.0, 1.0),
+                    bracket(23.0, 24.9, 0.85),
+                ]),
+            },
+        );
+        metrics.insert(
+            "hr".to_string(),
+            DimensionMetricConfig {
+                weight: 2.0,
+                target_max: None,
+                target_min: None,
+                scoring_brackets: Some(vec![
+                    bracket(45.0, 56.0, 1.0),
+                    bracket(56.0, 61.0, 0.9),
+                ]),
+            },
+        );
+        metrics.insert(
+            "body_fat".to_string(),
+            DimensionMetricConfig {
+                weight: 1.0,
+                target_max: None,
+                target_min: None,
+                scoring_brackets: Some(vec![bracket(10.0, 15.0, 1.0)]),
+            },
+        );
+        DimensionDefinition {
+            id: "health".to_string(),
+            name: "Health".to_string(),
+            level_titles: vec![
+                "L1".to_string(),
+                "L2".to_string(),
+                "L3".to_string(),
+                "L4".to_string(),
+                "L5".to_string(),
+            ],
+            level_thresholds: vec![0.5, 1.0, 2.0, 3.5],
+            enabled: true,
+            metrics,
+        }
+    }
+
+    #[test]
+    fn missing_metric_gets_estimated_contribution() {
+        // Two metrics filled (bmi=22 → 1.0, hr=58 → 0.9), body_fat missing.
+        // avg_contrib = (1.0 + 0.9) / 2 = 0.95
+        // completeness = 2/3
+        // penalty = 0.7 + 0.3 * (2/3) = 0.9
+        // estimated = 0.95 * 0.9 = 0.855
+        // total = 1.0*1.0 + 0.9*2.0 + 0.855*1.0 = 3.655
+        let mut values = HashMap::new();
+        values.insert("bmi".to_string(), 22.0);
+        values.insert("hr".to_string(), 58.0);
+        let dims = compute_dimensions(&[health_dim()], &values, &HashMap::new());
+        let score = dims[0].score.unwrap();
+        assert!(
+            (score - 3.655).abs() < 1e-6,
+            "expected ~3.655, got {}",
+            score
+        );
+        // body_fat's external contribution stays None (UI-visible marker)
+        let bf = dims[0]
+            .metrics
+            .iter()
+            .find(|m| m.metric_id == "body_fat")
+            .unwrap();
+        assert!(bf.contribution.is_none());
+    }
+
+    #[test]
+    fn all_filled_behaves_like_plain_weighted_sum() {
+        // bmi=22 → 1.0, hr=58 → 0.9, body_fat=12 → 1.0
+        // total = 1.0 + 0.9*2.0 + 1.0 = 3.8
+        let mut values = HashMap::new();
+        values.insert("bmi".to_string(), 22.0);
+        values.insert("hr".to_string(), 58.0);
+        values.insert("body_fat".to_string(), 12.0);
+        let dims = compute_dimensions(&[health_dim()], &values, &HashMap::new());
+        let score = dims[0].score.unwrap();
+        assert!((score - 3.8).abs() < 1e-6, "expected 3.8, got {}", score);
+    }
+
+    #[test]
+    fn no_data_leaves_dimension_unscored() {
+        let dims = compute_dimensions(&[health_dim()], &HashMap::new(), &HashMap::new());
+        assert!(dims[0].score.is_none());
+        assert!(dims[0].level.is_none());
+    }
 }
 
 #[tauri::command]

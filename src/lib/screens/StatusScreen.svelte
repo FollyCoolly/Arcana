@@ -141,7 +141,7 @@
         <PromptWord text="Back" fontSize={72} />
     </button>
 
-    {#if statusData}
+    {#if statusData && view === "radar"}
         <div class="rm-player-panel" aria-label="Player info">
             <div
                 class="rm-hint-board"

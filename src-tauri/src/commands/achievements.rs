@@ -199,10 +199,7 @@ pub fn set_achievement_achieved(achievement_id: String) -> Result<String, String
                 .collect();
 
             if !missing.is_empty() {
-                return Err(format!(
-                    "Prerequisites not met: {}",
-                    missing.join(", ")
-                ));
+                return Err(format!("Prerequisites not met: {}", missing.join(", ")));
             }
         }
     }

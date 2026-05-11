@@ -187,10 +187,7 @@ impl LlmClient {
             req = req.header("authorization", format!("Bearer {}", self.api_key));
         }
 
-        let resp = req
-            .send()
-            .await
-            .map_err(|e| format!("HTTP error: {e}"))?;
+        let resp = req.send().await.map_err(|e| format!("HTTP error: {e}"))?;
 
         let status = resp.status();
         if !status.is_success() {
