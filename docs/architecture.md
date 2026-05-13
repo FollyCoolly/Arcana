@@ -323,7 +323,7 @@ data/packs/<pack_id>/
 - achievement ID 使用 `<pack_id>::<snake_case_name>`。
 - `manifest.id` 必须等于目录名。
 - achievement prerequisites 只引用同包 achievement，并且必须构成 DAG。
-- skill `level_thresholds` 与 `max_level` 对齐，`points_required` 严格递增。
+- skill `level_thresholds` 数量 == `max_level - 1`（Lv.1 为隐含起始），`points_required` 严格递增。
 - loaded packs 由 `loaded_packs.json` 控制。
 
 ### 5.3 Mission System

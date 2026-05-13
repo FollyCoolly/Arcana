@@ -36,6 +36,30 @@ pub fn update_status(data_dir: &Path, input: &Value) -> Result<String, String> {
         changes.push(format!("{id}: {old_val:?} → {new_val}"));
     }
 
+    if let Some(remove) = input.get("remove").and_then(|v| v.as_array()) {
+        for id_val in remove {
+            let id = id_val.as_str().ok_or("'remove' entries must be strings")?;
+            if id.starts_with("sys_") {
+                return Err(format!(
+                    "Cannot remove system metric '{id}': sys_ metrics are read-only"
+                ));
+            }
+            if !valid_ids.contains(id) {
+                return Err(format!(
+                    "Unknown metric ID: '{id}'. Valid IDs: {valid_ids:?}"
+                ));
+            }
+            match file.metrics.remove(id) {
+                Some(old_val) => changes.push(format!("{id}: {old_val} → (removed)")),
+                None => changes.push(format!("{id}: (not set, skipped)")),
+            }
+        }
+    }
+
+    if changes.is_empty() {
+        return Err("No metric updates or removals provided".into());
+    }
+
     write_and_validate(&status_path, &file, "status.json")?;
     Ok(format!("Updated status.json:\n- {}", changes.join("\n- ")))
 }

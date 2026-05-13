@@ -106,45 +106,11 @@ pub fn load_skills() -> Result<SkillData, String> {
                 }
             }
 
-            // Prepend implicit Lv.1 threshold (points >= 1 = Lv.1)
-            let mut skill = skill;
-            skill.level_thresholds.insert(
-                0,
-                LevelThreshold {
-                    level: 1,
-                    points_required: 1,
-                    required_key_achievements: vec![],
-                },
-            );
-
-            // Calculate level
-            let total_points: u32 = skill
-                .nodes
-                .iter()
-                .filter(|n| unlocked_ids.contains(&n.achievement_id))
-                .map(|n| n.points)
-                .sum();
-
-            let max_points: u32 = skill.nodes.iter().map(|n| n.points).sum();
-
-            let mut current_level: u32 = 0;
-            let mut accumulated_keys: Vec<&str> = Vec::new();
-            for threshold in &skill.level_thresholds {
-                accumulated_keys.extend(
-                    threshold
-                        .required_key_achievements
-                        .iter()
-                        .map(|s| s.as_str()),
-                );
-                let all_keys_unlocked =
-                    accumulated_keys.iter().all(|id| unlocked_ids.contains(*id));
-
-                if total_points >= threshold.points_required && all_keys_unlocked {
-                    current_level = threshold.level;
-                } else {
-                    break;
-                }
-            }
+            let SkillLevelResult {
+                current_level,
+                total_points,
+                max_points,
+            } = compute_skill_level(&skill, &unlocked_ids);
 
             let next_threshold = skill
                 .level_thresholds
@@ -153,6 +119,7 @@ pub fn load_skills() -> Result<SkillData, String> {
                 .cloned();
 
             // Fill in default level titles if the pack didn't provide any
+            let mut skill = skill;
             if skill.level_titles.is_empty() {
                 skill.level_titles = default_level_titles(skill.max_level);
             }

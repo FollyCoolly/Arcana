@@ -151,10 +151,13 @@ enum MissionAction {
 
 #[derive(Subcommand)]
 enum StatusAction {
-    /// Update metric values: key=value pairs
+    /// Update metric values: set via key=value pairs and/or remove via --remove
     Update {
         /// Metric updates as key=value pairs (e.g. weight_kg=75.2 sleep_hours=7)
         metrics: Vec<String>,
+        /// Metric IDs to remove (can be repeated). Sets the metric back to "not measured".
+        #[arg(long = "remove", value_name = "METRIC_ID")]
+        remove: Vec<String>,
     },
 }
 
@@ -539,7 +542,10 @@ fn cmd_mission(data_dir: &Path, action: MissionAction) -> Result<String, String>
 
 fn cmd_status(data_dir: &Path, action: StatusAction) -> Result<String, String> {
     match action {
-        StatusAction::Update { metrics } => {
+        StatusAction::Update { metrics, remove } => {
+            if metrics.is_empty() && remove.is_empty() {
+                return Err("Provide at least one key=value update or --remove <id>".into());
+            }
             let mut map = serde_json::Map::new();
             for kv in &metrics {
                 let parts: Vec<&str> = kv.splitn(2, '=').collect();
@@ -551,7 +557,7 @@ fn cmd_status(data_dir: &Path, action: StatusAction) -> Result<String, String> {
                 })?;
                 map.insert(parts[0].to_string(), json!(val));
             }
-            let input = json!({"metrics": map});
+            let input = json!({"metrics": map, "remove": remove});
             with_write_lock(data_dir, || {
                 services::status::update_status(data_dir, &input)
             })

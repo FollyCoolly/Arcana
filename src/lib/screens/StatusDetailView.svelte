@@ -195,7 +195,7 @@
                     <span
                         class="dim-level-frag dim-level-inv"
                         style:transform="rotate(4deg)"
-                        >{activeDimension.level >=
+                        >{activeDimension.level >
                         activeDimension.level_thresholds.length
                             ? "MAX"
                             : activeDimension.level}</span
@@ -222,10 +222,13 @@
                     <div class="detail-metric-grid">
                         {#each group.metrics as metric}
                             {@const contribution = getContribution(metric.id)}
+                            {@const isMissing = metric.value === null}
                             <article
                                 class="rm-metric-card"
-                                class:rm-metric-maxed={contribution === null ||
+                                class:rm-metric-maxed={!isMissing &&
+                                    contribution !== null &&
                                     contribution >= 1}
+                                class:rm-metric-missing={isMissing}
                             >
                                 <p class="rm-metric-name">{metric.name}</p>
                                 <p class="rm-metric-value">
@@ -234,12 +237,12 @@
                                         metric.unit,
                                     )}
                                 </p>
-                                {#if contribution !== null && contribution < 1}
+                                {#if isMissing || (contribution !== null && contribution < 1)}
                                     <div class="rm-metric-bar-wrap">
                                         <div
                                             class="rm-metric-bar"
                                             style:width="{Math.min(
-                                                contribution * 100,
+                                                (contribution ?? 0) * 100,
                                                 100,
                                             )}%"
                                         ></div>
@@ -436,6 +439,10 @@
 
     .rm-metric-card.rm-metric-maxed {
         background: var(--rm-gold, #f5a623);
+    }
+
+    .rm-metric-card.rm-metric-missing {
+        opacity: 0.7;
     }
 
     .rm-metric-name {

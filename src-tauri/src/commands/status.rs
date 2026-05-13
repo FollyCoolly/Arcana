@@ -69,33 +69,8 @@ fn compute_skill_sys_metrics(data_dir: &Path) -> HashMap<String, f64> {
         };
 
         for skill in &skill_file.skills {
-            let total_points: u32 = skill
-                .nodes
-                .iter()
-                .filter(|n| unlocked_ids.contains(&n.achievement_id))
-                .map(|n| n.points)
-                .sum();
-
-            let mut current_level: u32 = 0;
-            let mut accumulated_keys: Vec<&str> = Vec::new();
-            for threshold in &skill.level_thresholds {
-                accumulated_keys.extend(
-                    threshold
-                        .required_key_achievements
-                        .iter()
-                        .map(|s| s.as_str()),
-                );
-                let all_keys_unlocked =
-                    accumulated_keys.iter().all(|id| unlocked_ids.contains(*id));
-
-                if total_points >= threshold.points_required && all_keys_unlocked {
-                    current_level = threshold.level;
-                } else {
-                    break;
-                }
-            }
-
-            let lv = (current_level as usize).min(5);
+            let result = compute_skill_level(skill, &unlocked_ids);
+            let lv = (result.current_level as usize).min(5);
             // Count cumulatively: a lv3 skill counts for lv1, lv2, and lv3
             for l in 1..=lv {
                 lv_counts[l] += 1;
@@ -283,10 +258,7 @@ mod tests {
                 weight: 1.0,
                 target_max: None,
                 target_min: None,
-                scoring_brackets: Some(vec![
-                    bracket(20.0, 23.0, 1.0),
-                    bracket(23.0, 24.9, 0.85),
-                ]),
+                scoring_brackets: Some(vec![bracket(20.0, 23.0, 1.0), bracket(23.0, 24.9, 0.85)]),
             },
         );
         metrics.insert(
@@ -295,10 +267,7 @@ mod tests {
                 weight: 2.0,
                 target_max: None,
                 target_min: None,
-                scoring_brackets: Some(vec![
-                    bracket(45.0, 56.0, 1.0),
-                    bracket(56.0, 61.0, 0.9),
-                ]),
+                scoring_brackets: Some(vec![bracket(45.0, 56.0, 1.0), bracket(56.0, 61.0, 0.9)]),
             },
         );
         metrics.insert(

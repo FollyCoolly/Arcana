@@ -96,7 +96,7 @@ These rules are enforced by the Rust backend. Violating them causes load failure
 2. **ID uniqueness**: No duplicate achievement IDs within a pack. No duplicate node_ids within a skill.
 3. **Difficulty enum**: Must be exactly one of: `beginner`, `intermediate`, `advanced`, `expert`, `legendary`.
 4. **Prerequisites DAG**: `prerequisites` can only reference achievements within the same pack. The prerequisite graph must be acyclic (DAG).
-5. **Level thresholds count**: `level_thresholds` array length MUST equal `max_level`.
+5. **Level thresholds count**: `level_thresholds` array length MUST equal `max_level - 1`. Lv.1 is implicit (any positive points count as Lv.1); thresholds define gates for Lv.2 and above.
 6. **Points monotonically increasing**: Each level's `points_required` must be strictly greater than the previous level's.
 7. **Key achievements valid**: Every ID in `required_key_achievements` must be a valid achievement ID in the same pack.
 8. **Node achievement valid**: Every `nodes[].achievement_id` must reference a valid achievement in the same pack.
@@ -210,7 +210,7 @@ Before writing any file, verify:
 - [ ] No cycles in prerequisite graph
 - [ ] Difficulty values are valid enum values
 - [ ] All skill IDs follow `<pack_id>::<name>` format
-- [ ] level_thresholds count == max_level for each skill
+- [ ] level_thresholds count == max_level - 1 for each skill (Lv.1 is implicit)
 - [ ] points_required is monotonically increasing for each skill
 - [ ] All node achievement_ids reference valid achievements
 - [ ] No duplicate node_ids within a skill

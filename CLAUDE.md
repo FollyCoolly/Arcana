@@ -59,7 +59,6 @@ PR 前必须通过：`npm run check` + `cargo test` + `cargo fmt --check`。
 
 - **调色板**: `#000000`、`#ffffff`、`#E5191C` + 数据可视化专用 `#F5A623`（`--rm-gold`） + 装饰结构专用 `#2E2E2E`（`--rm-gray`），**不使用渐变**
 - 所有交互元素必须有几何底座（不允许裸文字按钮）
-- 状态变化必须是形状+颜色双重变化（不能只改透明度）
 - 动画时长：fast=120ms, base=180ms, slow=260ms, 曲线=`cubic-bezier(0.2, 0.8, 0.2, 1)`
 - 详见 `docs/visual_style_guide.md` 和 `docs/ui_design_spec.md`
 
@@ -78,7 +77,7 @@ PR 前必须通过：`npm run check` + `cargo test` + `cargo fmt --check`。
 - 所有 ID 格式：`<pack_id>::<snake_case_name>`，`manifest.id` 必须等于目录名
 - `prerequisites` 仅引用同包成就，必须构成 DAG（无环）
 - `difficulty` 枚举：`beginner` / `intermediate` / `advanced` / `expert` / `legendary`
-- 技能树 `level_thresholds` 数量 == `max_level`，`points_required` 严格单调递增
+- 技能树 `level_thresholds` 数量 == `max_level - 1`（Lv.1 为隐含起始：拿到任意 points 即为 Lv.1，`level_thresholds` 定义 Lv.2 起的升级门槛），`points_required` 严格单调递增
 - `required_key_achievements` 是增量式的（每级只加新要求）
 - **Refine/Extend 模式下禁止修改已有的 achievement ID**（会破坏进度数据）
 
