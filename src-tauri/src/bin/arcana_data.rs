@@ -111,6 +111,9 @@ enum MissionAction {
         progress: Option<u32>,
         #[arg(long)]
         status: Option<String>,
+        /// Difficulty: S, A, B, C, or D (S = hardest)
+        #[arg(long)]
+        difficulty: Option<String>,
         #[arg(long)]
         title: Option<String>,
         #[arg(long)]
@@ -146,6 +149,11 @@ enum MissionAction {
         /// Read JSON from file instead of stdin
         #[arg(long)]
         file: Option<String>,
+    },
+    /// Permanently delete a mission (also clears any main_menu references to it)
+    Delete {
+        /// Mission ID
+        id: String,
     },
 }
 
@@ -441,6 +449,7 @@ fn cmd_mission(data_dir: &Path, action: MissionAction) -> Result<String, String>
             id,
             progress,
             status,
+            difficulty,
             title,
             description,
             short_desc,
@@ -456,6 +465,9 @@ fn cmd_mission(data_dir: &Path, action: MissionAction) -> Result<String, String>
             }
             if let Some(s) = status {
                 updates.insert("status".into(), json!(s));
+            }
+            if let Some(d) = difficulty {
+                updates.insert("difficulty".into(), json!(d));
             }
             if let Some(t) = title {
                 updates.insert("title".into(), json!(t));
@@ -533,6 +545,9 @@ fn cmd_mission(data_dir: &Path, action: MissionAction) -> Result<String, String>
                 services::mission::create_mission(data_dir, &input)
             })
         }
+        MissionAction::Delete { id } => with_write_lock(data_dir, || {
+            services::mission::delete_mission(data_dir, &id)
+        }),
     }
 }
 

@@ -40,6 +40,22 @@ pub fn update_mission(data_dir: &Path, input: &Value) -> Result<String, String> 
                             changes.push(format!("{id}.status: {old} → {s}"));
                         }
                     }
+                    "difficulty" => {
+                        let old = mission.difficulty.clone();
+                        if val.is_null() {
+                            mission.difficulty = None;
+                            changes.push(format!("{id}.difficulty: {old:?} → cleared"));
+                        } else if let Some(s) = val.as_str() {
+                            let valid = ["S", "A", "B", "C", "D"];
+                            if !valid.contains(&s) {
+                                return Err(format!(
+                                    "Invalid difficulty '{s}', must be one of {valid:?}"
+                                ));
+                            }
+                            mission.difficulty = Some(s.to_string());
+                            changes.push(format!("{id}.difficulty: {old:?} → {s:?}"));
+                        }
+                    }
                     "completed_at" => {
                         if let Some(s) = val.as_str() {
                             mission.completed_at = Some(s.to_string());
@@ -182,12 +198,22 @@ pub fn create_mission(data_dir: &Path, input: &Value) -> Result<String, String> 
         return Err(format!("Mission '{id}' already exists"));
     }
 
+    if let Some(d) = input["difficulty"].as_str() {
+        let valid = ["S", "A", "B", "C", "D"];
+        if !valid.contains(&d) {
+            return Err(format!(
+                "Invalid difficulty '{d}', must be one of {valid:?}"
+            ));
+        }
+    }
+
     let mission = Mission {
         id: id.to_string(),
         title: title.to_string(),
         description: input["description"].as_str().map(|s| s.to_string()),
         status: status.to_string(),
         progress: input["progress"].as_u64().map(|v| v as u32),
+        difficulty: input["difficulty"].as_str().map(|s| s.to_string()),
         deadline: input["deadline"].as_str().map(|s| s.to_string()),
         short_desc: input["short_desc"].as_str().map(|s| s.to_string()),
         linked_achievement_id: input["linked_achievement_id"]
@@ -202,4 +228,31 @@ pub fn create_mission(data_dir: &Path, input: &Value) -> Result<String, String> 
     file.missions.push(mission);
     write_and_validate(&missions_path, &file, "missions.json")?;
     Ok(format!("Created mission '{id}' with status '{status}'"))
+}
+
+pub fn delete_mission(data_dir: &Path, id: &str) -> Result<String, String> {
+    let missions_path = data_dir.join("missions.json");
+    let mut file: MissionFile = read_json_file(&missions_path)?;
+
+    let original_len = file.missions.len();
+    file.missions.retain(|m| m.id != id);
+
+    if file.missions.len() == original_len {
+        return Err(format!("Mission '{id}' not found"));
+    }
+
+    if let Some(cd) = &file.main_menu.countdown {
+        if cd.mission_id == id {
+            file.main_menu.countdown = None;
+        }
+    }
+    if let Some(pg) = &file.main_menu.progress {
+        if pg.mission_id == id {
+            file.main_menu.progress = None;
+        }
+    }
+    file.main_menu.hints.retain(|h| h.mission_id != id);
+
+    write_and_validate(&missions_path, &file, "missions.json")?;
+    Ok(format!("Deleted mission '{id}'"))
 }

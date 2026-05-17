@@ -9,7 +9,7 @@
 ## 核心设计决策
 
 1. **积分放在技能侧**：技能树节点包含 `points`，成就定义不含积分。看技能树就能知道每个节点值多少分。
-2. **无边（edges）**：技能树只定义节点，不定义边。前端渲染时根据 `achievements.prerequisites` 推导连线。
+2. **无边（edges）**：技能树只定义节点，不定义边。
 3. **无位置（position）**：节点不存储布局坐标，前端根据成就的 `difficulty`、`tags` 等属性动态计算布局。
 
 ## `skills.json`（每包）
@@ -33,7 +33,7 @@
 | `max_level` | number | 是 | 最大等级 |
 | `level_thresholds` | array | 是 | 等级门槛（Lv.2 起），共 `max_level - 1` 条。Lv.1 隐含为 points ≥ 1 |
 | `nodes` | array | 是 | 技能树节点列表 |
-| `card_image` | string | 否 | 卡面图片路径（相对于 app 根目录，如 `/card_examples/finance.png`）。有值时前端使用图片卡面，否则使用 HTML 生成的默认卡面 |
+| `card_image` | string | 否 | 卡面图片路径（相对于 app 根目录，如 `/card_examples/finance.png`）。有值时前端使用图片卡面，否则使用默认卡面 |
 
 ### `nodes[]` 字段
 
@@ -129,24 +129,6 @@ calculate_skill_level(skill, unlocked_achievement_ids):
 - Level 2：35 >= 15，accumulated_keys = [] → 通过
 - Level 3：35 >= 30，accumulated_keys = [`shipped_side_project`]，已解锁 → 通过
 - 结果：Level 3
-
-## 连线推导算法（前端渲染）
-
-技能树不存储边（edges）。前端根据节点的 `achievement_id` 在 `achievements.json` 中查找 `prerequisites`，推导连线：
-
-```
-derive_edges(skill, achievements_map):
-    edges = []
-    for node in skill.nodes:
-        achievement = achievements_map[node.achievement_id]
-        for prereq_id in achievement.prerequisites:
-            prereq_node = skill.nodes.find(n => n.achievement_id == prereq_id)
-            if prereq_node exists:
-                edges.push({ from: prereq_node.node_id, to: node.node_id })
-    return edges
-```
-
-同一成就在不同技能树中出现时，仅在该树中引用了前置成就节点时才会产生连线。
 
 ## 校验规则
 

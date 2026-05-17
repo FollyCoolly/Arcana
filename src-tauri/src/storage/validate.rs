@@ -7,6 +7,7 @@ use serde_json::Value;
 use std::collections::HashSet;
 
 const MISSION_STATUSES: &[&str] = &["proposed", "active", "completed", "archived", "rejected"];
+const MISSION_DIFFICULTIES: &[&str] = &["S", "A", "B", "C", "D"];
 const ACHIEVEMENT_STATUSES: &[&str] = &["tracked", "achieved"];
 const CHANGELOG_SKILLS: &[&str] = &["velvet-room", "phan-site", "agent"];
 const CHANGELOG_CHANGE_TYPES: &[&str] = &["add", "update", "delete"];
@@ -64,6 +65,19 @@ fn validate_missions(data: &Value) -> Result<(), String> {
                     .ok_or(format!("{prefix}: progress must be a non-negative integer"))?;
                 if p > 100 {
                     return Err(format!("{prefix}: progress must be 0-100, got {p}"));
+                }
+            }
+        }
+
+        if let Some(difficulty) = m.get("difficulty") {
+            if !difficulty.is_null() {
+                let d = difficulty
+                    .as_str()
+                    .ok_or(format!("{prefix}: difficulty must be a string"))?;
+                if !MISSION_DIFFICULTIES.contains(&d) {
+                    return Err(format!(
+                        "{prefix}: invalid difficulty '{d}', must be one of {MISSION_DIFFICULTIES:?}"
+                    ));
                 }
             }
         }

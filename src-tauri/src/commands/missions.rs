@@ -26,11 +26,7 @@ pub fn load_missions() -> Result<MissionData, String> {
                 .deadline
                 .as_deref()
                 .and_then(|d| compute_days_remaining(d).ok());
-            let difficulty = m
-                .ai_metadata
-                .as_ref()
-                .and_then(|meta| meta["difficulty_tier"].as_str())
-                .map(|s| s.to_string());
+            let difficulty = m.difficulty.clone();
             MissionResponse {
                 id: m.id,
                 title: m.title,

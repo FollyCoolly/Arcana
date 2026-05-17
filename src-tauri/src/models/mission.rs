@@ -22,6 +22,8 @@ pub struct Mission {
     #[serde(default)]
     pub progress: Option<u32>,
     #[serde(default)]
+    pub difficulty: Option<String>,
+    #[serde(default)]
     pub deadline: Option<String>,
     #[serde(default)]
     pub short_desc: Option<String>,

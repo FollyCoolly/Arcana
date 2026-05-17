@@ -92,6 +92,7 @@ PR 前必须通过：`npm run check` + `cargo test` + `cargo fmt --check`。
 
 - 状态生命周期：`proposed` → `active` → `completed` / `archived` / `rejected`
 - `progress`：0-100 整数，AI 写入
+- `difficulty`：顶级字段，枚举 `S` / `A` / `B` / `C` / `D`（S 最难）。**不要写 `easy/medium/hard`，也不要埋进 `ai_metadata`**
 - AI 生成的任务 ID 格式：`ai_<YYYYMMDD>_<slug>`
 - `main_menu.label` 是 AI 精心撰写的简洁展示文本，**不是标题的复制**
 - 任务描述**不得包含进度预测**
@@ -154,6 +155,7 @@ cargo build --manifest-path src-tauri/Cargo.toml --bin arcana-data   # 构建
 | `mission update <id> [flags]` | 写 | 更新任务字段 |
 | `mission update-menu [--countdown JSON] [--progress JSON]` | 写 | 更新 main_menu 配置 |
 | `mission create < stdin` | 写 | 插入新任务（phan-site 用，JSON 从 stdin 读） |
+| `mission delete <id>` | 写 | 物理删除任务（同时清理 main_menu 引用） |
 | `status update <key=value>...` | 写 | 更新状态指标 |
 | `achievement update <id> --status <s> [flags]` | 写 | 追踪/达成成就 |
 | `changelog write --skill <s> --summary "..." < stdin` | 写 | 写审计日志（**MANDATORY**，changes JSON 从 stdin 读） |

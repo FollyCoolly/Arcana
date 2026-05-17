@@ -16,6 +16,7 @@ The CLI binary is at `./src-tauri/target/debug/arcana-data`. All commands output
 | `arcana-data read <path>` | Read pack achievement/skill definitions |
 | `arcana-data mission update <id> [flags]` | Update existing mission status |
 | `arcana-data mission create [--file <path>]` | Insert new proposed missions (prefer `--file`) |
+| `arcana-data mission delete <id>` | Permanently delete a mission (also clears any main_menu refs) |
 | `arcana-data changelog write --skill phan-site --summary "..." --file changes.json` | **MANDATORY** after data modifications |
 | `arcana-data memory update --file memory.json` | Update generation history, patterns, context |
 
@@ -50,6 +51,10 @@ If there is an active countdown mission (urgent deadline), **most proposals shou
 
 ### Difficulty Balance
 - At least 1 easy (1-3 days) and 1 hard (stretch goal)
+
+### Difficulty — MUST be top-level field with one of `S` / `A` / `B` / `C` / `D` (S = hardest)
+
+`difficulty` 是 mission 的顶级字段，不是埋在 `ai_metadata` 里。前端用它做排序和徽章渲染。生成 mission 时，写入 mission JSON 的 `"difficulty"` 字段（不是 `"difficulty_tier"`，不是顶层放 `"easy"/"medium"/"hard"` 这种字串）。校验枚举：`S A B C D`。
 
 ### Mission Naming — MUST be gamified quest names
 GOOD: "Borrow Checker Gauntlet", "Iron Ascension", "Old School Alchemy"

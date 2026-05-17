@@ -37,6 +37,7 @@ Mission 模块管理用户的长期目标和重要任务。日常追踪需求由
 | `description` | string | 否 | 详细描述 |
 | `status` | string | 是 | `"proposed"` / `"active"` / `"completed"` / `"archived"` / `"rejected"` |
 | `progress` | number | 否 | 进度 0–100，由 AI 写入 |
+| `difficulty` | string | 否 | 难度等级，枚举 `"S"` / `"A"` / `"B"` / `"C"` / `"D"`（S 最难） |
 | `deadline` | string | 否 | 截止日期，`YYYY-MM-DD` |
 | `short_desc` | string | 否 | 5–15 字简洁描述，供主菜单任务提示板直接渲染 |
 | `linked_achievement_id` | string | 否 | 关联的成就 ID，由 AI agent 判断是更新进度还是解锁 |
@@ -115,15 +116,17 @@ AI 通过 `ai_metadata` 字段存储生成元数据：
 ```json
 "ai_metadata": {
   "generation_id": "2026-03-31",
-  "difficulty_tier": "D|C|B|A|S",
   "generation_reason": "拆解活跃任务: learn_rust"
 }
 ```
+
+> 历史注：早期 AI 把难度埋在 `ai_metadata.difficulty_tier`，现已提升为顶级字段 `difficulty`。新数据不要再写 `ai_metadata.difficulty_tier`。
 
 ## 校验规则
 
 1. `id` 唯一
 2. `progress` 范围 0–100
 3. `status` 只能是 `"proposed"` / `"active"` / `"completed"` / `"archived"` / `"rejected"`
-4. `linked_achievement_id` 引用的成就 ID 必须存在（运行时校验）
-5. `main_menu.countdown.mission_id` 和 `main_menu.progress.mission_id` 必须引用存在的 mission
+4. `difficulty` 若提供，只能是 `"S"` / `"A"` / `"B"` / `"C"` / `"D"`
+5. `linked_achievement_id` 引用的成就 ID 必须存在（运行时校验）
+6. `main_menu.countdown.mission_id` 和 `main_menu.progress.mission_id` 必须引用存在的 mission

@@ -22,6 +22,7 @@ Do **not** edit `data/*.json` directly unless the CLI is unavailable and the use
 | `read <path>` | Read any file under `data/` |
 | `mission update <id> [--progress N] [--status S] [--completed-at ISO] ...` | Update mission fields |
 | `mission update-menu [--countdown JSON] [--hints JSON] [--progress JSON]` | Update main menu display config |
+| `mission delete <id>` | Permanently delete a mission (only when user explicitly asks) |
 | `status update <metric=value>...` | Update status metric values |
 | `achievement update <id> --status <s> [--progress-detail "..."]...` | Track or achieve an achievement, append progress detail |
 | `changelog write --skill velvet-room --summary "..." --file changes.json` | **MANDATORY** after every data modification |

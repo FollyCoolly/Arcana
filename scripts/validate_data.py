@@ -17,6 +17,7 @@ from pathlib import Path
 DATA_DIR = (Path(__file__).parent / ".." / "data").resolve()
 
 MISSION_STATUSES = {"proposed", "active", "completed", "archived", "rejected"}
+MISSION_DIFFICULTIES = {"S", "A", "B", "C", "D"}
 ACHIEVEMENT_STATUSES = {"tracked", "achieved"}
 DIFFICULTY_LEVELS = {"beginner", "intermediate", "advanced", "expert", "legendary"}
 CHANGELOG_SKILLS = {"velvet-room", "phan-site", "agent"}
@@ -71,6 +72,12 @@ def validate_missions(data: dict, path: Path) -> None:
         if progress is not None:
             if not isinstance(progress, (int, float)) or progress < 0 or progress > 100:
                 fail(f"{prefix}: progress must be 0-100, got {progress}")
+
+        difficulty = m.get("difficulty")
+        if difficulty is not None and difficulty not in MISSION_DIFFICULTIES:
+            fail(
+                f"{prefix}: invalid difficulty '{difficulty}', must be one of {MISSION_DIFFICULTIES}"
+            )
 
     # main_menu references
     main_menu = data.get("main_menu")
