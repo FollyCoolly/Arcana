@@ -16,6 +16,18 @@ Based on the user's request, determine the mode:
 
 A pack's theme defines the **future space** it can grow into, not the **initial content** it must ship with. A "Music" pack is allowed to start with only electric guitar + the music-theory basics that guitar needs; piano and vocals come later via Extend mode when the user actually wants them.
 
+# Write Path
+
+Use the `arcana-data` CLI as the write path for pack files whenever it is available. The CLI validates the full pack before writing and safely updates `loaded_packs.json` when enabling a pack.
+
+```bash
+src-tauri/target/debug/arcana-data.exe pack scaffold <pack_id> --name "Display Name" --description "..." --tag tag1
+src-tauri/target/debug/arcana-data.exe pack write <pack_id> --manifest tmp_manifest.json --achievements tmp_achievements.json --skills tmp_skills.json --enable
+src-tauri/target/debug/arcana-data.exe pack validate <pack_id>
+```
+
+Directly editing `data/packs/<pack_id>/...` is only a fallback if the CLI is unavailable.
+
 # File Structure
 
 Each pack lives in `data/packs/<pack_id>/` with three files:
@@ -178,7 +190,8 @@ Think carefully: "Use a keyboard shortcut" is beginner, not expert. "Write a TCP
 3. Wait for user confirmation/adjustment
 4. For each skill, generate the full achievement list with all fields
 5. Present a summary (total achievements, per-skill node count, difficulty distribution)
-6. Write all three JSON files to `data/packs/<pack_id>/`
+6. Write all three JSON files through `arcana-data pack write <pack_id> --manifest ... --achievements ... --skills ... --enable`
+7. Run `arcana-data pack validate <pack_id>` and fix any reported schema issues
 
 ## Refine Mode
 
@@ -187,7 +200,8 @@ Think carefully: "Use a keyboard shortcut" is beginner, not expert. "Write a TCP
 3. Propose specific changes, grouped by category
 4. Wait for user confirmation
 5. Apply changes, preserving all existing achievement IDs (critical — progress data depends on stable IDs)
-6. Write updated files
+6. Write updated files through `arcana-data pack write <pack_id> --manifest ... --achievements ... --skills ...`
+7. Run `arcana-data pack validate <pack_id>` and fix any reported schema issues
 
 ## Extend Mode
 
@@ -197,7 +211,8 @@ Think carefully: "Use a keyboard shortcut" is beginner, not expert. "Write a TCP
 4. New achievements CAN have prerequisites pointing to existing achievements
 5. MUST NOT modify existing achievements (their IDs, names, descriptions, etc.)
 6. Wait for user confirmation
-7. Merge new content into existing files and write
+7. Merge new content into existing files and write through `arcana-data pack write <pack_id> --manifest ... --achievements ... --skills ...`
+8. Run `arcana-data pack validate <pack_id>` and fix any reported schema issues
 
 # Important Constraints
 

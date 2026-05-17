@@ -8,11 +8,13 @@
 //!   arcana-data mission update-menu [--countdown JSON] [--progress JSON]
 //!   arcana-data status update <key=value>...
 //!   arcana-data achievement update <id> --status <s> [--progress-detail "..."]...
+//!   arcana-data pack list|validate|scaffold|write|enable|disable
 //!   arcana-data changelog write --skill <s> --summary "..." [--file <path>]
 //!   arcana-data memory update [--file <path>]
 
-use arcana_lib::models::achievement::AchievementProgressFile;
+use arcana_lib::models::achievement::{AchievementFile, AchievementProgressFile, PackManifest};
 use arcana_lib::models::mission::MissionFile;
+use arcana_lib::models::skill::SkillFile;
 use arcana_lib::models::status::{MetricDefinitionFile, StatusValueFile};
 use arcana_lib::services;
 use arcana_lib::storage::date_utils::{epoch_days_to_civil, today_epoch_days};
@@ -20,7 +22,7 @@ use arcana_lib::storage::json_store::{read_json_file, resolve_data_dir};
 use clap::{Parser, Subcommand};
 use fs2::FileExt;
 use serde_json::{json, Value};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
@@ -82,6 +84,11 @@ enum Commands {
     Achievement {
         #[command(subcommand)]
         action: AchievementAction,
+    },
+    /// Content pack operations
+    Pack {
+        #[command(subcommand)]
+        action: PackAction,
     },
     /// Write a changelog entry
     Changelog {
@@ -191,6 +198,61 @@ enum AchievementAction {
 }
 
 #[derive(Subcommand)]
+enum PackAction {
+    /// List content packs and whether they are enabled
+    List,
+    /// Validate a content pack's manifest, achievements, and skills
+    Validate {
+        /// Pack ID / directory name under data/packs/
+        id: String,
+    },
+    /// Create a pack directory with valid starter JSON files
+    Scaffold {
+        /// Pack ID / directory name under data/packs/
+        id: String,
+        /// Display name. Defaults to a title-cased form of the ID.
+        #[arg(long)]
+        name: Option<String>,
+        /// Pack description
+        #[arg(long, default_value = "")]
+        description: String,
+        /// Pack author
+        #[arg(long, default_value = "Arcana")]
+        author: String,
+        /// Pack tags. Repeat --tag for multiple tags.
+        #[arg(long = "tag")]
+        tags: Vec<String>,
+    },
+    /// Write one or more pack JSON files after validating the full pack
+    Write {
+        /// Pack ID / directory name under data/packs/
+        id: String,
+        /// Path to manifest.json payload
+        #[arg(long)]
+        manifest: Option<String>,
+        /// Path to achievements.json payload
+        #[arg(long)]
+        achievements: Option<String>,
+        /// Path to skills.json payload
+        #[arg(long)]
+        skills: Option<String>,
+        /// Enable the pack after a successful write
+        #[arg(long)]
+        enable: bool,
+    },
+    /// Add a valid pack to loaded_packs.json
+    Enable {
+        /// Pack ID / directory name under data/packs/
+        id: String,
+    },
+    /// Remove a pack from loaded_packs.json
+    Disable {
+        /// Pack ID / directory name under data/packs/
+        id: String,
+    },
+}
+
+#[derive(Subcommand)]
 enum ChangelogAction {
     /// Write a changelog entry (reads changes JSON array from stdin or --file)
     Write {
@@ -252,6 +314,7 @@ fn main() {
         Commands::Mission { action } => cmd_mission(&data_dir, action),
         Commands::Status { action } => cmd_status(&data_dir, action),
         Commands::Achievement { action } => cmd_achievement(&data_dir, action),
+        Commands::Pack { action } => cmd_pack(&data_dir, action),
         Commands::Changelog { action } => cmd_changelog(&data_dir, action),
         Commands::Memory { action } => cmd_memory(&data_dir, action),
         Commands::Init { non_interactive } => cmd_init(&data_dir, non_interactive),
@@ -611,6 +674,516 @@ fn cmd_achievement(data_dir: &Path, action: AchievementAction) -> Result<String,
             })
         }
     }
+}
+
+// ---------------------------------------------------------------------------
+// pack
+// ---------------------------------------------------------------------------
+
+fn cmd_pack(data_dir: &Path, action: PackAction) -> Result<String, String> {
+    match action {
+        PackAction::List => cmd_pack_list(data_dir),
+        PackAction::Validate { id } => {
+            validate_pack_id(&id)?;
+            let summary = validate_pack_on_disk(data_dir, &id)?;
+            Ok(serde_json::to_string_pretty(&summary).unwrap_or_default())
+        }
+        PackAction::Scaffold {
+            id,
+            name,
+            description,
+            author,
+            tags,
+        } => {
+            validate_pack_id(&id)?;
+            with_write_lock(data_dir, || {
+                cmd_pack_scaffold(data_dir, &id, name, description, author, tags)
+            })
+        }
+        PackAction::Write {
+            id,
+            manifest,
+            achievements,
+            skills,
+            enable,
+        } => {
+            validate_pack_id(&id)?;
+            with_write_lock(data_dir, || {
+                cmd_pack_write(data_dir, &id, manifest, achievements, skills, enable)
+            })
+        }
+        PackAction::Enable { id } => {
+            validate_pack_id(&id)?;
+            with_write_lock(data_dir, || cmd_pack_enable(data_dir, &id))
+        }
+        PackAction::Disable { id } => {
+            validate_pack_id(&id)?;
+            with_write_lock(data_dir, || cmd_pack_disable(data_dir, &id))
+        }
+    }
+}
+
+fn validate_pack_id(id: &str) -> Result<(), String> {
+    if id.is_empty() {
+        return Err("Pack ID cannot be empty".into());
+    }
+    if id == "." || id == ".." {
+        return Err("Pack ID cannot be '.' or '..'".into());
+    }
+    if !id
+        .chars()
+        .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_' || c == '-')
+    {
+        return Err(format!(
+            "Invalid pack ID '{id}'. Use lowercase ASCII letters, digits, '_' or '-'."
+        ));
+    }
+    Ok(())
+}
+
+fn pack_dir(data_dir: &Path, id: &str) -> std::path::PathBuf {
+    data_dir.join("packs").join(id)
+}
+
+fn read_json_value(path: &Path) -> Result<Value, String> {
+    read_json_file(path)
+}
+
+fn read_json_value_from_arg(path: &str) -> Result<Value, String> {
+    let input = read_input(Some(path))?;
+    serde_json::from_str(&input).map_err(|e| format!("Invalid JSON in {path}: {e}"))
+}
+
+fn write_json_value(path: &Path, value: &Value) -> Result<(), String> {
+    let content = serde_json::to_string_pretty(value)
+        .map_err(|e| format!("Failed to serialize {}: {e}", path.display()))?;
+    std::fs::write(path, content).map_err(|e| format!("Failed to write {}: {e}", path.display()))
+}
+
+fn read_pack_file_or_arg(
+    pack_dir: &Path,
+    file_name: &str,
+    arg: Option<&String>,
+) -> Result<Value, String> {
+    if let Some(path) = arg {
+        read_json_value_from_arg(path)
+    } else {
+        let path = pack_dir.join(file_name);
+        if !path.exists() {
+            return Err(format!(
+                "Missing {file_name}. Provide --{} <path> or scaffold the pack first.",
+                file_name.trim_end_matches(".json")
+            ));
+        }
+        read_json_value(&path)
+    }
+}
+
+fn value_as<T: serde::de::DeserializeOwned>(value: &Value, label: &str) -> Result<T, String> {
+    serde_json::from_value(value.clone()).map_err(|e| format!("Invalid {label}: {e}"))
+}
+
+fn validate_pack_values(
+    id: &str,
+    manifest_value: &Value,
+    achievements_value: &Value,
+    skills_value: &Value,
+) -> Result<Value, String> {
+    let manifest: PackManifest = value_as(manifest_value, "manifest.json")?;
+    let achievement_file: AchievementFile = value_as(achievements_value, "achievements.json")?;
+    let skill_file: SkillFile = value_as(skills_value, "skills.json")?;
+
+    if manifest.id != id {
+        return Err(format!(
+            "manifest.id '{}' must equal pack directory '{}'",
+            manifest.id, id
+        ));
+    }
+
+    let prefix = format!("{id}::");
+    let mut achievement_ids = HashSet::new();
+    for achievement in &achievement_file.achievements {
+        if !achievement.id.starts_with(&prefix) {
+            return Err(format!(
+                "Achievement '{}' must start with '{}'",
+                achievement.id, prefix
+            ));
+        }
+        if !achievement_ids.insert(achievement.id.clone()) {
+            return Err(format!("Duplicate achievement id '{}'", achievement.id));
+        }
+    }
+
+    for achievement in &achievement_file.achievements {
+        for prereq in &achievement.prerequisites {
+            if !achievement_ids.contains(prereq) {
+                return Err(format!(
+                    "Achievement '{}' references unknown prerequisite '{}'",
+                    achievement.id, prereq
+                ));
+            }
+        }
+    }
+    if let Some(cycle) = detect_pack_prerequisite_cycle(&achievement_file.achievements) {
+        return Err(cycle);
+    }
+
+    let mut skill_ids = HashSet::new();
+    for skill in &skill_file.skills {
+        if !skill.id.starts_with(&prefix) {
+            return Err(format!("Skill '{}' must start with '{}'", skill.id, prefix));
+        }
+        if !skill_ids.insert(skill.id.clone()) {
+            return Err(format!("Duplicate skill id '{}'", skill.id));
+        }
+
+        let expected_thresholds = skill.max_level.saturating_sub(1) as usize;
+        if skill.level_thresholds.len() != expected_thresholds {
+            return Err(format!(
+                "Skill '{}': level_thresholds count ({}) != max_level - 1 ({})",
+                skill.id,
+                skill.level_thresholds.len(),
+                expected_thresholds
+            ));
+        }
+
+        let mut previous_points = 0;
+        for (i, threshold) in skill.level_thresholds.iter().enumerate() {
+            let expected_level = i as u32 + 2;
+            if threshold.level != expected_level {
+                return Err(format!(
+                    "Skill '{}': level_thresholds[{i}].level must be {expected_level}, got {}",
+                    skill.id, threshold.level
+                ));
+            }
+            if i > 0 && threshold.points_required <= previous_points {
+                return Err(format!(
+                    "Skill '{}': level_thresholds[{i}].points_required {} must be greater than previous {}",
+                    skill.id, threshold.points_required, previous_points
+                ));
+            }
+            previous_points = threshold.points_required;
+
+            for key in &threshold.required_key_achievements {
+                if !achievement_ids.contains(key) {
+                    return Err(format!(
+                        "Skill '{}': level {} required_key_achievement '{}' not found",
+                        skill.id, threshold.level, key
+                    ));
+                }
+            }
+        }
+
+        let mut node_ids = HashSet::new();
+        for node in &skill.nodes {
+            if !node_ids.insert(node.node_id.clone()) {
+                return Err(format!(
+                    "Skill '{}': duplicate node_id '{}'",
+                    skill.id, node.node_id
+                ));
+            }
+            if !achievement_ids.contains(&node.achievement_id) {
+                return Err(format!(
+                    "Skill '{}': node '{}' references unknown achievement '{}'",
+                    skill.id, node.node_id, node.achievement_id
+                ));
+            }
+        }
+    }
+
+    Ok(json!({
+        "pack_id": id,
+        "valid": true,
+        "manifest": {
+            "name": manifest.name,
+            "version": manifest.version,
+            "author": manifest.author,
+            "tags": manifest.tags,
+        },
+        "achievement_count": achievement_file.achievements.len(),
+        "skill_count": skill_file.skills.len(),
+    }))
+}
+
+fn detect_pack_prerequisite_cycle(
+    achievements: &[arcana_lib::models::achievement::AchievementDef],
+) -> Option<String> {
+    let adjacency: HashMap<&str, Vec<&str>> = achievements
+        .iter()
+        .map(|a| {
+            (
+                a.id.as_str(),
+                a.prerequisites.iter().map(|p| p.as_str()).collect(),
+            )
+        })
+        .collect();
+    let mut state: HashMap<&str, u8> = adjacency.keys().map(|&id| (id, 0)).collect();
+
+    for &start in adjacency.keys() {
+        if state.get(start) == Some(&2) {
+            continue;
+        }
+
+        let mut stack = vec![(start, 0usize)];
+        state.insert(start, 1);
+        while let Some((node, index)) = stack.last_mut() {
+            let next_nodes = adjacency.get(*node).map(|v| v.as_slice()).unwrap_or(&[]);
+            if *index < next_nodes.len() {
+                let next = next_nodes[*index];
+                *index += 1;
+                match state.get(next).copied().unwrap_or(0) {
+                    0 => {
+                        state.insert(next, 1);
+                        stack.push((next, 0));
+                    }
+                    1 => {
+                        return Some(format!("Prerequisite cycle detected involving '{}'", next));
+                    }
+                    _ => {}
+                }
+            } else {
+                let finished = *node;
+                state.insert(finished, 2);
+                stack.pop();
+            }
+        }
+    }
+
+    None
+}
+
+fn validate_pack_on_disk(data_dir: &Path, id: &str) -> Result<Value, String> {
+    let dir = pack_dir(data_dir, id);
+    if !dir.is_dir() {
+        return Err(format!("Pack '{id}' does not exist at {}", dir.display()));
+    }
+    let manifest = read_json_value(&dir.join("manifest.json"))?;
+    let achievements = read_json_value(&dir.join("achievements.json"))?;
+    let skills = read_json_value(&dir.join("skills.json"))?;
+    validate_pack_values(id, &manifest, &achievements, &skills)
+}
+
+fn read_loaded_pack_ids(data_dir: &Path) -> Result<Vec<String>, String> {
+    let path = data_dir.join("loaded_packs.json");
+    if !path.exists() {
+        return Ok(Vec::new());
+    }
+    let value: Value = read_json_file(&path)?;
+    let packs = value
+        .get("packs")
+        .and_then(|v| v.as_array())
+        .ok_or_else(|| "loaded_packs.json: 'packs' must be an array".to_string())?;
+    packs
+        .iter()
+        .map(|v| {
+            v.as_str()
+                .map(String::from)
+                .ok_or_else(|| "loaded_packs.json: every pack id must be a string".to_string())
+        })
+        .collect()
+}
+
+fn write_loaded_pack_ids(data_dir: &Path, packs: &[String]) -> Result<(), String> {
+    let path = data_dir.join("loaded_packs.json");
+    write_json_value(&path, &json!({"version": 1, "packs": packs}))
+}
+
+fn cmd_pack_list(data_dir: &Path) -> Result<String, String> {
+    let loaded: HashSet<String> = read_loaded_pack_ids(data_dir)?.into_iter().collect();
+    let packs_dir = data_dir.join("packs");
+    let mut packs = Vec::new();
+
+    if packs_dir.is_dir() {
+        for entry in std::fs::read_dir(&packs_dir)
+            .map_err(|e| format!("Cannot read {}: {e}", packs_dir.display()))?
+        {
+            let entry = entry.map_err(|e| e.to_string())?;
+            let path = entry.path();
+            if !path.is_dir() {
+                continue;
+            }
+            let id = entry.file_name().to_string_lossy().to_string();
+            let manifest_path = path.join("manifest.json");
+            let manifest = if manifest_path.exists() {
+                read_json_value(&manifest_path).unwrap_or_else(|e| json!({"error": e}))
+            } else {
+                Value::Null
+            };
+            packs.push(json!({
+                "id": id,
+                "enabled": loaded.contains(&id),
+                "manifest": manifest,
+            }));
+        }
+    }
+
+    packs.sort_by(|a, b| a["id"].as_str().cmp(&b["id"].as_str()));
+    Ok(serde_json::to_string_pretty(&json!({ "packs": packs })).unwrap_or_default())
+}
+
+fn default_pack_name(id: &str) -> String {
+    id.split(['_', '-'])
+        .filter(|part| !part.is_empty())
+        .map(|part| {
+            let mut chars = part.chars();
+            match chars.next() {
+                Some(first) => format!("{}{}", first.to_ascii_uppercase(), chars.as_str()),
+                None => String::new(),
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+fn cmd_pack_scaffold(
+    data_dir: &Path,
+    id: &str,
+    name: Option<String>,
+    description: String,
+    author: String,
+    tags: Vec<String>,
+) -> Result<String, String> {
+    let dir = pack_dir(data_dir, id);
+    if dir.exists() {
+        return Err(format!("Pack '{id}' already exists at {}", dir.display()));
+    }
+
+    let manifest = json!({
+        "id": id,
+        "name": name.unwrap_or_else(|| default_pack_name(id)),
+        "description": description,
+        "version": "1.0.0",
+        "author": author,
+        "tags": tags,
+    });
+    let achievements = json!({
+        "version": 1,
+        "achievements": [],
+    });
+    let skills = json!({
+        "version": 1,
+        "skills": [],
+    });
+    let summary = validate_pack_values(id, &manifest, &achievements, &skills)?;
+
+    std::fs::create_dir_all(&dir)
+        .map_err(|e| format!("Failed to create {}: {e}", dir.display()))?;
+    write_json_value(&dir.join("manifest.json"), &manifest)?;
+    write_json_value(&dir.join("achievements.json"), &achievements)?;
+    write_json_value(&dir.join("skills.json"), &skills)?;
+
+    Ok(serde_json::to_string_pretty(&json!({
+        "message": "Pack scaffolded.",
+        "pack": summary,
+    }))
+    .unwrap_or_default())
+}
+
+fn cmd_pack_write(
+    data_dir: &Path,
+    id: &str,
+    manifest_arg: Option<String>,
+    achievements_arg: Option<String>,
+    skills_arg: Option<String>,
+    enable: bool,
+) -> Result<String, String> {
+    if manifest_arg.is_none() && achievements_arg.is_none() && skills_arg.is_none() {
+        return Err("Provide at least one of --manifest, --achievements, or --skills".into());
+    }
+
+    let dir = pack_dir(data_dir, id);
+    let manifest = read_pack_file_or_arg(&dir, "manifest.json", manifest_arg.as_ref())?;
+    let achievements = read_pack_file_or_arg(&dir, "achievements.json", achievements_arg.as_ref())?;
+    let skills = read_pack_file_or_arg(&dir, "skills.json", skills_arg.as_ref())?;
+    let summary = validate_pack_values(id, &manifest, &achievements, &skills)?;
+
+    std::fs::create_dir_all(&dir)
+        .map_err(|e| format!("Failed to create {}: {e}", dir.display()))?;
+    let writes = [
+        ("manifest.json", manifest_arg.as_ref(), &manifest),
+        (
+            "achievements.json",
+            achievements_arg.as_ref(),
+            &achievements,
+        ),
+        ("skills.json", skills_arg.as_ref(), &skills),
+    ];
+
+    let mut backups: Vec<(&str, Option<Vec<u8>>)> = Vec::new();
+    for (file_name, arg, _) in &writes {
+        if arg.is_some() {
+            backups.push((*file_name, std::fs::read(dir.join(file_name)).ok()));
+        }
+    }
+
+    for (file_name, arg, value) in &writes {
+        if arg.is_some() {
+            write_json_value(&dir.join(file_name), value)?;
+        }
+    }
+
+    if let Err(e) = validate_pack_on_disk(data_dir, id) {
+        for (file_name, backup) in backups {
+            let path = dir.join(file_name);
+            if let Some(bytes) = backup {
+                let _ = std::fs::write(path, bytes);
+            } else {
+                let _ = std::fs::remove_file(path);
+            }
+        }
+        return Err(format!(
+            "Pack write rolled back after validation failure: {e}"
+        ));
+    }
+
+    let enabled = if enable {
+        enable_pack_id(data_dir, id)?;
+        true
+    } else {
+        read_loaded_pack_ids(data_dir)?.contains(&id.to_string())
+    };
+
+    Ok(serde_json::to_string_pretty(&json!({
+        "message": "Pack written.",
+        "enabled": enabled,
+        "pack": summary,
+    }))
+    .unwrap_or_default())
+}
+
+fn enable_pack_id(data_dir: &Path, id: &str) -> Result<(), String> {
+    validate_pack_on_disk(data_dir, id)?;
+    let mut packs = read_loaded_pack_ids(data_dir)?;
+    if !packs.contains(&id.to_string()) {
+        packs.push(id.to_string());
+        write_loaded_pack_ids(data_dir, &packs)?;
+    }
+    Ok(())
+}
+
+fn cmd_pack_enable(data_dir: &Path, id: &str) -> Result<String, String> {
+    enable_pack_id(data_dir, id)?;
+    Ok(serde_json::to_string_pretty(&json!({
+        "message": "Pack enabled.",
+        "pack_id": id,
+        "loaded_packs": read_loaded_pack_ids(data_dir)?,
+    }))
+    .unwrap_or_default())
+}
+
+fn cmd_pack_disable(data_dir: &Path, id: &str) -> Result<String, String> {
+    let mut packs = read_loaded_pack_ids(data_dir)?;
+    let before = packs.len();
+    packs.retain(|pack_id| pack_id != id);
+    if packs.len() != before {
+        write_loaded_pack_ids(data_dir, &packs)?;
+    }
+    Ok(serde_json::to_string_pretty(&json!({
+        "message": "Pack disabled.",
+        "pack_id": id,
+        "loaded_packs": packs,
+    }))
+    .unwrap_or_default())
 }
 
 // ---------------------------------------------------------------------------
