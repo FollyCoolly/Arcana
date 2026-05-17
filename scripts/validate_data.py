@@ -17,6 +17,8 @@ from pathlib import Path
 DATA_DIR = (Path(__file__).parent / ".." / "data").resolve()
 
 MISSION_STATUSES = {"proposed", "active", "completed", "archived", "rejected"}
+CURRENT_MISSION_STATUSES = {"proposed", "active"}
+ARCHIVE_MISSION_STATUSES = {"completed", "archived", "rejected"}
 MISSION_DIFFICULTIES = {"S", "A", "B", "C", "D"}
 ACHIEVEMENT_STATUSES = {"tracked", "achieved"}
 DIFFICULTY_LEVELS = {"beginner", "intermediate", "advanced", "expert", "legendary"}
@@ -25,7 +27,12 @@ CHANGELOG_CHANGE_TYPES = {"add", "update", "delete"}
 PRIORITY_LEVELS = {"high", "medium", "low"}
 
 # Files whose modification should be accompanied by a changelog entry
-CHANGELOG_TRACKED_FILES = {"missions.json", "achievement_progress.json", "status.json"}
+CHANGELOG_TRACKED_FILES = {
+    "missions.json",
+    "mission_archive.json",
+    "achievement_progress.json",
+    "status.json",
+}
 
 
 def fail(msg: str) -> None:
@@ -42,7 +49,12 @@ def warn(msg: str) -> None:
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def validate_missions(data: dict, path: Path) -> None:
+def validate_missions(
+    data: dict,
+    path: Path,
+    allowed_statuses: set[str],
+    validate_main_menu: bool,
+) -> None:
     if "version" not in data:
         fail(f"{path.name}: missing 'version' field")
 
@@ -67,6 +79,16 @@ def validate_missions(data: dict, path: Path) -> None:
             fail(
                 f"{prefix}: invalid status '{m['status']}', must be one of {MISSION_STATUSES}"
             )
+        if m["status"] not in allowed_statuses:
+            target = (
+                "mission_archive.json"
+                if m["status"] in ARCHIVE_MISSION_STATUSES
+                else "missions.json"
+            )
+            fail(
+                f"{prefix}: status '{m['status']}' belongs in {target}, "
+                f"allowed here: {allowed_statuses}"
+            )
 
         progress = m.get("progress")
         if progress is not None:
@@ -80,6 +102,9 @@ def validate_missions(data: dict, path: Path) -> None:
             )
 
     # main_menu references
+    if not validate_main_menu:
+        return
+
     main_menu = data.get("main_menu")
     if isinstance(main_menu, dict):
         for widget in ("countdown", "progress"):
@@ -90,6 +115,15 @@ def validate_missions(data: dict, path: Path) -> None:
                     fail(
                         f"{path.name}: main_menu.{widget}.mission_id '{ref_id}' not found in missions"
                     )
+        hints = main_menu.get("hints")
+        if isinstance(hints, list):
+            for i, hint in enumerate(hints):
+                if isinstance(hint, dict) and "mission_id" in hint:
+                    ref_id = hint["mission_id"]
+                    if ref_id not in seen_ids:
+                        fail(
+                            f"{path.name}: main_menu.hints[{i}].mission_id '{ref_id}' not found in missions"
+                        )
 
 
 def validate_achievement_progress(data: dict, path: Path) -> None:
@@ -340,7 +374,12 @@ def check_changelog_freshness(file_name: str) -> None:
 # ─────────────────────────────────────────────────────────────────────────────
 
 VALIDATORS: dict[str, callable] = {
-    "missions.json": validate_missions,
+    "missions.json": lambda data, path: validate_missions(
+        data, path, CURRENT_MISSION_STATUSES, True
+    ),
+    "mission_archive.json": lambda data, path: validate_missions(
+        data, path, ARCHIVE_MISSION_STATUSES, False
+    ),
     "achievement_progress.json": validate_achievement_progress,
     "ai_changelog.json": validate_changelog,
     "mission_memory.json": validate_mission_memory,

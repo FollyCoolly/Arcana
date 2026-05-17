@@ -13,6 +13,13 @@ pub struct MissionFile {
 
 #[derive(Debug, Deserialize, Serialize)]
 #[allow(dead_code)]
+pub struct MissionArchiveFile {
+    pub version: u32,
+    pub missions: Vec<Mission>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[allow(dead_code)]
 pub struct Mission {
     pub id: String,
     pub title: String,

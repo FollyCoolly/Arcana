@@ -258,6 +258,7 @@ data/
   loaded_packs.json
   mission_memory.json
   missions.json
+  mission_archive.json
   recipe_sources.json
   status_metric_definitions.json
   status.json
@@ -289,7 +290,7 @@ static/
 | 模块 | 数据文件/来源 | 后端入口 | 前端入口 |
 | --- | --- | --- | --- |
 | Status | `status.json`, `status_metric_definitions.json`, `user_profile.json`, system metrics | `commands/status.rs`, `services/status.rs` | `StatusScreen.svelte`, `StatusDetailView.svelte`, `RadarChart.svelte` |
-| Missions | `missions.json`, `mission_memory.json` | `commands/missions.rs`, `services/mission.rs`, `services/memory.rs` | `MissionsScreen.svelte`, `PhanSiteProgress.svelte` |
+| Missions | `missions.json`, `mission_archive.json`, `mission_memory.json` | `commands/missions.rs`, `services/mission.rs`, `services/memory.rs` | `MissionsScreen.svelte`, `PhanSiteProgress.svelte` |
 | Achievements | `data/packs/*/achievements.json`, `achievement_progress.json`, `loaded_packs.json` | `commands/achievements.rs`, `services/achievement.rs` | `AchievementsScreen.svelte` |
 | Skills | `data/packs/*/skills.json`, achievement progress | `commands/skills.rs` | `SkillsScreen.svelte`, `SkillNebula.svelte` |
 | Items | `item_sources.json` + source files | `commands/items.rs` | `ItemsScreen.svelte` |

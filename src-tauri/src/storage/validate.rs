@@ -15,7 +15,13 @@ const CHANGELOG_CHANGE_TYPES: &[&str] = &["add", "update", "delete"];
 /// Validate a data file by name. Returns `Ok(())` or a human-readable error.
 pub fn validate_data_file(file_name: &str, data: &Value) -> Result<(), String> {
     match file_name {
-        "missions.json" => validate_missions(data),
+        "missions.json" => validate_missions(data, file_name, &["proposed", "active"], true),
+        "mission_archive.json" => validate_missions(
+            data,
+            file_name,
+            &["completed", "archived", "rejected"],
+            false,
+        ),
         "achievement_progress.json" => validate_achievement_progress(data),
         "ai_changelog.json" => validate_changelog(data),
         "status.json" => validate_status(data),
@@ -25,20 +31,25 @@ pub fn validate_data_file(file_name: &str, data: &Value) -> Result<(), String> {
 }
 
 // ---------------------------------------------------------------------------
-// missions.json
+// missions.json / mission_archive.json
 // ---------------------------------------------------------------------------
 
-fn validate_missions(data: &Value) -> Result<(), String> {
-    require_version(data, "missions.json")?;
+fn validate_missions(
+    data: &Value,
+    file_name: &str,
+    allowed_statuses: &[&str],
+    validate_main_menu: bool,
+) -> Result<(), String> {
+    require_version(data, file_name)?;
 
     let missions = data
         .get("missions")
         .and_then(|v| v.as_array())
-        .ok_or("missions.json: 'missions' must be an array")?;
+        .ok_or(format!("{file_name}: 'missions' must be an array"))?;
 
     let mut seen_ids = HashSet::new();
     for (i, m) in missions.iter().enumerate() {
-        let prefix = format!("missions.json: missions[{i}]");
+        let prefix = format!("{file_name}: missions[{i}]");
 
         for field in &["id", "title", "status"] {
             if m.get(*field).and_then(|v| v.as_str()).is_none() {
@@ -55,6 +66,16 @@ fn validate_missions(data: &Value) -> Result<(), String> {
         if !MISSION_STATUSES.contains(&status) {
             return Err(format!(
                 "{prefix}: invalid status '{status}', must be one of {MISSION_STATUSES:?}"
+            ));
+        }
+        if !allowed_statuses.contains(&status) {
+            return Err(format!(
+                "{prefix}: status '{status}' belongs in {}, allowed here: {allowed_statuses:?}",
+                if ["completed", "archived", "rejected"].contains(&status) {
+                    "mission_archive.json"
+                } else {
+                    "missions.json"
+                }
             ));
         }
 
@@ -84,13 +105,16 @@ fn validate_missions(data: &Value) -> Result<(), String> {
     }
 
     // main_menu references
-    if let Some(menu) = data.get("main_menu").and_then(|v| v.as_object()) {
+    if validate_main_menu {
+        let Some(menu) = data.get("main_menu").and_then(|v| v.as_object()) else {
+            return Ok(());
+        };
         for widget in &["countdown", "progress"] {
             if let Some(w) = menu.get(*widget).and_then(|v| v.as_object()) {
                 if let Some(ref_id) = w.get("mission_id").and_then(|v| v.as_str()) {
                     if !seen_ids.contains(ref_id) {
                         return Err(format!(
-                            "missions.json: main_menu.{widget}.mission_id '{ref_id}' not found in missions"
+                            "{file_name}: main_menu.{widget}.mission_id '{ref_id}' not found in missions"
                         ));
                     }
                 }
@@ -101,7 +125,7 @@ fn validate_missions(data: &Value) -> Result<(), String> {
                 if let Some(ref_id) = h.get("mission_id").and_then(|v| v.as_str()) {
                     if !seen_ids.contains(ref_id) {
                         return Err(format!(
-                            "missions.json: main_menu.hints[{i}].mission_id '{ref_id}' not found in missions"
+                            "{file_name}: main_menu.hints[{i}].mission_id '{ref_id}' not found in missions"
                         ));
                     }
                 }
@@ -303,6 +327,28 @@ mod tests {
             ]
         });
         assert!(validate_data_file("missions.json", &data).is_err());
+    }
+
+    #[test]
+    fn missions_rejects_archive_status() {
+        let data = json!({
+            "version": 1,
+            "missions": [
+                {"id": "m1", "title": "Test", "status": "completed"}
+            ]
+        });
+        assert!(validate_data_file("missions.json", &data).is_err());
+    }
+
+    #[test]
+    fn valid_mission_archive() {
+        let data = json!({
+            "version": 1,
+            "missions": [
+                {"id": "m1", "title": "Test", "status": "completed"}
+            ]
+        });
+        assert!(validate_data_file("mission_archive.json", &data).is_ok());
     }
 
     #[test]

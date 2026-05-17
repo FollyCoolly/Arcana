@@ -1,25 +1,44 @@
 use crate::models::mission::{
     CountdownDisplay, HintDisplay, MainMenuHintRef, MainMenuMissionData, MainMenuRef, Mission,
-    MissionData, MissionFile, MissionResponse, ProgressDisplay,
+    MissionArchiveFile, MissionData, MissionFile, MissionResponse, ProgressDisplay,
 };
+use crate::services;
 use crate::storage::date_utils::{days_from_civil, parse_date, today_epoch_days};
-use crate::storage::json_store::{read_json_file, resolve_data_dir, write_json_file};
-use crate::storage::validate::validate_data_file;
+use crate::storage::json_store::{read_json_file, resolve_data_dir};
+use serde_json::json;
 
 #[tauri::command]
 pub fn load_missions() -> Result<MissionData, String> {
     let data_dir = resolve_data_dir()?;
     let missions_path = data_dir.join("missions.json");
+    let archive_path = data_dir.join("mission_archive.json");
 
-    if !missions_path.exists() {
+    if !missions_path.exists() && !archive_path.exists() {
         return Ok(MissionData { missions: vec![] });
     }
 
-    let file: MissionFile = read_json_file(&missions_path)?;
+    let file: MissionFile = if missions_path.exists() {
+        read_json_file(&missions_path)?
+    } else {
+        MissionFile {
+            version: 1,
+            missions: vec![],
+            main_menu: Default::default(),
+        }
+    };
+    let archive: MissionArchiveFile = if archive_path.exists() {
+        read_json_file(&archive_path)?
+    } else {
+        MissionArchiveFile {
+            version: 1,
+            missions: vec![],
+        }
+    };
 
     let missions = file
         .missions
         .into_iter()
+        .chain(archive.missions)
         .filter(|m| m.status != "rejected")
         .map(|m| {
             let days_remaining = m
@@ -125,27 +144,16 @@ pub fn update_mission_status(id: String, new_status: String) -> Result<(), Strin
     }
 
     let data_dir = resolve_data_dir()?;
-    let missions_path = data_dir.join("missions.json");
-
-    let mut file: MissionFile = read_json_file(&missions_path)?;
-
-    let mission = file
-        .missions
-        .iter_mut()
-        .find(|m| m.id == id)
-        .ok_or_else(|| format!("Mission '{}' not found", id))?;
-
-    mission.status = new_status;
-    write_json_file(&missions_path, &file)?;
-
-    // Post-write validation (shared rules with agent)
-    let written: serde_json::Value = read_json_file(&missions_path)?;
-    if let Err(e) = validate_data_file("missions.json", &written) {
-        // This should not happen since status was pre-checked, but guard against drift
-        return Err(format!("Post-write validation failed: {e}"));
-    }
-
-    Ok(())
+    services::mission::update_mission(
+        &data_dir,
+        &json!({
+            "mission_id": id,
+            "updates": {
+                "status": new_status,
+            }
+        }),
+    )
+    .map(|_| ())
 }
 
 fn resolve_hints(missions: &[Mission], hints: &[MainMenuHintRef]) -> Vec<HintDisplay> {

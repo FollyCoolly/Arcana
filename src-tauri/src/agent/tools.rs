@@ -106,7 +106,7 @@ impl Tool for UpdateMissionTool {
     fn definition(&self) -> ToolDef {
         ToolDef {
             name: "update_mission".into(),
-            description: "Update a mission's fields or the main_menu config in missions.json."
+            description: "Update a mission's fields or the main_menu config. Terminal missions move to mission_archive.json."
                 .into(),
             input_schema: json!({
                 "type": "object",

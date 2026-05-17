@@ -11,7 +11,8 @@ Mission 模块管理用户的长期目标和重要任务。日常追踪需求由
 
 ## 文件路径
 
-- `data/missions.json`：任务定义、状态与主菜单展示配置（单文件）
+- `data/missions.json`：当前任务板，仅保存 `proposed` / `active` mission，以及主菜单展示配置
+- `data/mission_archive.json`：历史档案，仅保存 `completed` / `archived` / `rejected` mission，用于历史回顾和 AI 去重
 
 ## `missions.json`
 
@@ -35,7 +36,7 @@ Mission 模块管理用户的长期目标和重要任务。日常追踪需求由
 | `id` | string | 是 | 唯一标识 |
 | `title` | string | 是 | 任务名称 |
 | `description` | string | 否 | 详细描述 |
-| `status` | string | 是 | `"proposed"` / `"active"` / `"completed"` / `"archived"` / `"rejected"` |
+| `status` | string | 是 | `missions.json` 中为 `"proposed"` / `"active"`；`mission_archive.json` 中为 `"completed"` / `"archived"` / `"rejected"` |
 | `progress` | number | 否 | 进度 0–100，由 AI 写入 |
 | `difficulty` | string | 否 | 难度等级，枚举 `"S"` / `"A"` / `"B"` / `"C"` / `"D"`（S 最难） |
 | `deadline` | string | 否 | 截止日期，`YYYY-MM-DD` |
@@ -66,6 +67,25 @@ AI agent 决定是否展示以及文案内容。`countdown` 和 `progress` 各�
 - countdown `label` 是 mission 标题的精炼，不是复制
 - hints 渲染 mission 自身的 `short_desc`（无则 fallback 到 title），fat 板（第 1 条）比 slim 板（第 2 条）更大
 - 前端渲染：倒计时 → `距离{label}还有{days}天`；进度条 → `{label}` + 进度条
+
+## `mission_archive.json`
+
+### 顶层结构
+
+```json
+{
+  "version": 1,
+  "missions": []
+}
+```
+
+`mission_archive.json` 与 `missions.json` 使用同一套 `missions[]` 字段结构，但不包含 `main_menu`。任务进入终态时移动到 archive：
+
+- `completed`
+- `archived`
+- `rejected`
+
+任务被重新激活或重新提案时，可以从 archive 移回 `missions.json`。
 
 ## 计算字段（后端返回时附加）
 
@@ -107,7 +127,7 @@ AI agent 决定是否展示以及文案内容。`countdown` 和 `progress` 各�
 
 AI agent skill（`phan-site`）会生成 `status: "proposed"` 的任务建议。用户接受后变为 `active`，拒绝则变为 `rejected`。
 
-`rejected` 任务不在前端显示，仅供 AI 任务生成器（phan-site）参考，避免重复推荐被拒绝的任务类型。
+`rejected` 任务不在前端显示，并存入 `mission_archive.json`，仅供 AI 任务生成器（phan-site）参考，避免重复推荐被拒绝的任务类型。
 
 AI 生成的 mission ID 使用 `ai_<YYYYMMDD>_<slug>` 前缀（如 `ai_20260331_rust_ch12`）。
 
@@ -127,6 +147,7 @@ AI 通过 `ai_metadata` 字段存储生成元数据：
 1. `id` 唯一
 2. `progress` 范围 0–100
 3. `status` 只能是 `"proposed"` / `"active"` / `"completed"` / `"archived"` / `"rejected"`
-4. `difficulty` 若提供，只能是 `"S"` / `"A"` / `"B"` / `"C"` / `"D"`
-5. `linked_achievement_id` 引用的成就 ID 必须存在（运行时校验）
-6. `main_menu.countdown.mission_id` 和 `main_menu.progress.mission_id` 必须引用存在的 mission
+4. `missions.json` 只能包含 `"proposed"` / `"active"`；`mission_archive.json` 只能包含 `"completed"` / `"archived"` / `"rejected"`
+5. `difficulty` 若提供，只能是 `"S"` / `"A"` / `"B"` / `"C"` / `"D"`
+6. `linked_achievement_id` 引用的成就 ID 必须存在（运行时校验）
+7. `main_menu.countdown.mission_id` 和 `main_menu.progress.mission_id` 必须引用 `missions.json` 中存在的当前 mission

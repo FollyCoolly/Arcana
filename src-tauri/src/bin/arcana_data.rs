@@ -735,6 +735,7 @@ fn cmd_init(data_dir: &Path, _non_interactive: bool) -> Result<String, String> {
         "gallery_sources.json",
         "item_sources.json",
         "missions.json",
+        "mission_archive.json",
         "weather.json",
     ];
     for name in &flat_files {
