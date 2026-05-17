@@ -27,6 +27,7 @@
     let skillError = $state<string | null>(null);
     let skillData = $state<SkillData | null>(null);
     let selectedIndex = $state(0);
+    let showAllSkills = $state(false);
 
     /** Achievement IDs that changed since last view (from ui_events) */
     let changedAchievementIds = $state<Set<string>>(new Set());
@@ -118,11 +119,13 @@
 
     let visibleSkills = $derived(
         skillData
-            ? skillData.skills.filter(
-                  (s) => s.current_level > 0 || s.pack_id === "arcana",
-              )
+            ? showAllSkills
+                ? skillData.skills
+                : skillData.skills.filter((s) => s.current_level > 0)
             : [],
     );
+
+    let skillFilterPrompt = $derived(showAllSkills ? "Started" : "All");
 
     let selectedSkill = $derived(
         visibleSkills.length > 0 ? visibleSkills[selectedIndex] : null,
@@ -346,6 +349,11 @@
         selectedIndex = (selectedIndex + 1) % totalSkills;
     }
 
+    function toggleSkillFilter() {
+        showAllSkills = !showAllSkills;
+        selectedIndex = 0;
+    }
+
     function handleKeydown(event: KeyboardEvent) {
         if (event.key === "Escape") {
             event.preventDefault();
@@ -362,6 +370,10 @@
             if (detailAchievementId) return;
             event.preventDefault();
             navigateNext();
+        } else if (event.key === "h" || event.key === "H") {
+            if (detailAchievementId) return;
+            event.preventDefault();
+            toggleSkillFilter();
         }
     }
 
@@ -378,6 +390,7 @@
             ]);
             skillData = skills;
             selectedIndex = 0;
+            showAllSkills = false;
 
             // Extract changed achievement IDs from consumed events
             const ids = new Set<string>();
@@ -423,24 +436,35 @@
             <PromptWord text="Back" fontSize={72} />
         </button>
 
-        {#if totalSkills > 1}
+        {#if totalSkills > 1 || (skillData && skillData.skills.length > 0)}
             <div class="rm-nav-hint-group">
-                <button
-                    type="button"
-                    class="rm-nav-hint-btn"
-                    onclick={() => navigatePrev()}
-                >
-                    <KeyHint key="Q" fontSize={36} />
-                    <PromptWord text="Prev" fontSize={72} />
-                </button>
+                {#if totalSkills > 1}
+                    <button
+                        type="button"
+                        class="rm-nav-hint-btn"
+                        onclick={() => navigatePrev()}
+                    >
+                        <KeyHint key="Q" fontSize={36} />
+                        <PromptWord text="Prev" fontSize={72} />
+                    </button>
+
+                    <button
+                        type="button"
+                        class="rm-nav-hint-btn"
+                        onclick={() => navigateNext()}
+                    >
+                        <KeyHint key="E" fontSize={36} />
+                        <PromptWord text="Next" fontSize={72} />
+                    </button>
+                {/if}
 
                 <button
                     type="button"
                     class="rm-nav-hint-btn"
-                    onclick={() => navigateNext()}
+                    onclick={() => toggleSkillFilter()}
                 >
-                    <KeyHint key="E" fontSize={36} />
-                    <PromptWord text="Next" fontSize={72} />
+                    <KeyHint key="H" fontSize={36} />
+                    <PromptWord text={skillFilterPrompt} fontSize={72} />
                 </button>
             </div>
         {/if}
