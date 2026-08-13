@@ -84,7 +84,6 @@ data/packs/<pack_id>/
       "description": "What proficiency in this skill means.",
       "max_level": 5,
       "level_thresholds": [
-        { "level": 1, "points_required": 10 },
         { "level": 2, "points_required": 25 },
         { "level": 3, "points_required": 50, "required_key_achievements": ["<pack_id>::<key_ach>"] },
         { "level": 4, "points_required": 80 },
@@ -120,10 +119,14 @@ These rules are enforced by the Rust backend. Violating them causes load failure
 
 These are not enforced by code but are critical for a good user experience.
 
-## Achievement Names — MUST be gamified and fun
+## Achievement Names — MUST feel like game achievement labels
 - GOOD: "Inception" (for learning recursion), "Ship It!" (for completing a side project), "The Merge Master" (for first PR merged)
 - BAD: "Use recursion", "Complete a side project", "First Pull Request Merged"
-- Names should feel like real game achievements — memorable, sometimes witty, sometimes epic
+- Names should feel like real game achievements or badges — memorable, scannable, sometimes witty, sometimes epic
+- Gamified does NOT mean stuffing game-ish verbs into the name. The test is: "Would this label plausibly appear on a game badge, trophy, license, rank, or achievement card?"
+- Completion verbs and task-status words usually belong in the description, not the name
+- GOOD: "RSL GRADE 03", "Life Will Change", "First Blood"
+- BAD: "RSL GRADE 03 Complete", "Finish Life Will Change", "Kill your first enemy"
 
 ## Achievement Descriptions — MUST be informative and distinct from name
 - The description explains WHAT the achievement actually is
@@ -156,6 +159,19 @@ Think carefully: "Use a keyboard shortcut" is beginner, not expert. "Write a TCP
 - A pack MAY have a single skill at first — multi-skill structure is the long-term shape, not the day-one requirement. If the user is focused on one skill, ship one skill (plus any basics it directly depends on); add more later via Extend.
 - Cross-skill achievements (e.g., "perform a song while playing guitar and singing") are fine **only when they sit naturally on the boundary of the user's current focus** — don't invent sibling-skill content the user hasn't asked for.
 
+## Achievements vs Skill Nodes
+- Achievements are reusable milestones; `skill.nodes` is a curated view for one skill. A pack MAY contain more achievements than any single skill references.
+- Do NOT assume every relevant achievement must be referenced by every related skill.
+- When a skill tree becomes crowded, first consider removing achievement references from that skill's `nodes` while preserving the achievement definitions. Delete achievement definitions only when they are truly invalid or unwanted.
+- Achievement-only milestones can later be referenced by other skills with different point values (e.g., "Performance", "Recording", "Tone", "Composition", "Teaching").
+
+## External Curricula and Personal Routes
+- External curricula, exams, books, video courses, target songs, target projects, and personal goals are valuable sources for concrete milestones and difficulty calibration.
+- Convert external sources into Arcana milestones; do NOT copy a syllabus, book table of contents, or video playlist mechanically.
+- Prefer milestone granularity over lesson granularity. A 100-video course should usually become phase/week/module checkpoints plus a few important target pieces, not 100 achievements.
+- Curriculum checkpoints and generic capability achievements can coexist. Example: "RSL GRADE 03" can coexist with reusable skills like barre chords, blues shuffle, sight-reading, and pentatonic improvisation.
+- Use external sources to reveal missing competencies, calibrate difficulty, shape prerequisites, and add personal route checkpoints.
+
 ## Points Calibration
 - Points reflect the achievement's significance WITHIN that specific skill
 - Difficulty levels should have meaningful point gaps to reflect the real effort difference:
@@ -174,6 +190,7 @@ Think carefully: "Use a keyboard shortcut" is beginner, not expert. "Write a TCP
   - Example: If level 3 requires 100 points, imagine a concrete set of achievements totaling ~100. Would someone who completed exactly those achievements feel like a level 3? If it feels too high or too low, adjust.
 - Total points available across all nodes should be significantly MORE than the max level threshold, giving users multiple paths to level up. There is no fixed ratio — it depends on the domain. A skill with many legendary achievements might have 4x+ the max threshold in total points, because those achievements are so hard that most people will only ever complete a few of them — but completing even one or two already demonstrates mastery. Design for reality, not for a formula.
 - required_key_achievements: Only add when "if you haven't done X but claim level Y, it would seem ridiculous". Don't add them just for the sake of having them.
+- If a `required_key_achievements` entry is removed from a skill's `nodes`, either add it back or remove it from that level. A level MAY intentionally have no key achievement.
 
 ## Same Achievement in Multiple Skills
 - An achievement CAN appear in multiple skill trees with different point values
@@ -186,6 +203,7 @@ Think carefully: "Use a keyboard shortcut" is beginner, not expert. "Write a TCP
 1. Identify the user's actual focus. Two common shapes:
    - **Subject-first**: "create a cooking pack" — user already has a domain in mind
    - **Skill-first**: "I want to track my electric guitar" — user has a specific skill, and we propose a pack (e.g., "Music") to host it
+   - Ask whether the user follows specific curricula, exams, books, video courses, target songs/projects, or personal goals. These sources should shape concrete milestones.
 2. Propose a pack_id and name, plus the **minimum** skill set needed to cover the user's stated focus — typically 1-2 skills (the focus skill, plus any basics it directly depends on). Do NOT pre-populate sibling skills the user didn't ask about; those belong in future Extend passes.
 3. Wait for user confirmation/adjustment
 4. For each skill, generate the full achievement list with all fields
@@ -198,6 +216,7 @@ Think carefully: "Use a keyboard shortcut" is beginner, not expert. "Write a TCP
 1. Read the existing pack files from `data/packs/<pack_id>/`
 2. Analyze and report quality issues (bad names, duplicate descriptions, wrong difficulty, useless tags, poor skill organization)
 3. Propose specific changes, grouped by category
+   - For pruning/crowding, distinguish deletion from dereferencing: preserve achievement definitions unless they are invalid or unwanted; remove from `skill.nodes` when they simply do not belong in the current skill view.
 4. Wait for user confirmation
 5. Apply changes, preserving all existing achievement IDs (critical — progress data depends on stable IDs)
 6. Write updated files through `arcana-data pack write <pack_id> --manifest ... --achievements ... --skills ...`
@@ -210,9 +229,10 @@ Think carefully: "Use a keyboard shortcut" is beginner, not expert. "Write a TCP
 3. Propose new achievements and optionally new skills for the requested topic
 4. New achievements CAN have prerequisites pointing to existing achievements
 5. MUST NOT modify existing achievements (their IDs, names, descriptions, etc.)
-6. Wait for user confirmation
-7. Merge new content into existing files and write through `arcana-data pack write <pack_id> --manifest ... --achievements ... --skills ...`
-8. Run `arcana-data pack validate <pack_id>` and fix any reported schema issues
+6. If the request requires both adding new content and improving existing content, treat it as **Refine + Extend**: preserve existing IDs, but names/descriptions/tags/difficulties may be refined with confirmation.
+7. Wait for user confirmation
+8. Merge new content into existing files and write through `arcana-data pack write <pack_id> --manifest ... --achievements ... --skills ...`
+9. Run `arcana-data pack validate <pack_id>` and fix any reported schema issues
 
 # Important Constraints
 
@@ -220,6 +240,7 @@ Think carefully: "Use a keyboard shortcut" is beginner, not expert. "Write a TCP
 - **JSON validity**: Output must be valid JSON. Always verify mentally before writing.
 - **No cross-pack references**: Prerequisites can only reference achievements within the same pack. Skills can only reference achievements within the same pack.
 - **Incremental key achievements**: When designing level_thresholds, remember that required_key_achievements is incremental — only list NEW requirements at each level.
+- **Achievement library vs skill view**: Keeping an achievement definition does not mean every skill must reference it. Removing a node from a skill does not delete the achievement.
 
 # Self-Check Before Writing
 
@@ -235,7 +256,7 @@ Before writing any file, verify:
 - [ ] All node achievement_ids reference valid achievements
 - [ ] No duplicate node_ids within a skill
 - [ ] All required_key_achievements reference valid achievement IDs
-- [ ] Names are gamified and fun (not boring literal descriptions)
+- [ ] Names feel like game achievement labels (scannable badge/title text, not completion criteria)
 - [ ] Descriptions are informative (not copies of names)
 - [ ] Difficulty is calibrated realistically
 - [ ] Tags are meaningful and differentiated
