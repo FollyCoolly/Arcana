@@ -190,7 +190,7 @@
     ): SkillNode[] {
         if (nodes.length <= 1) return [...nodes];
 
-        const COLS = 8;
+        const COLS = 9;
 
         const nodeIds = new Set(nodes.map((n) => n.achievement_id));
         const prereqMap = new Map<string, string[]>();
@@ -514,8 +514,8 @@
             </div>
 
             <div class="rm-skill-detail-right">
-                <div class="rm-skill-node-grid" style="--cols: 8">
-                    {#each computeHexRows(sortedNodes, 8) as row, rowIdx}
+                <div class="rm-skill-node-grid" style="--cols: 9">
+                    {#each computeHexRows(sortedNodes, 9) as row, rowIdx}
                         <div
                             class="rm-hex-row"
                             class:rm-hex-row--odd={rowIdx % 2 === 1}
@@ -856,7 +856,7 @@
     .rm-skill-node-grid {
         --hex-w: 13.5rem;
         --hex-h: calc(var(--hex-w) * 1.1547);
-        --cols: 8;
+        --cols: 9;
         display: flex;
         flex-wrap: wrap;
         align-content: flex-start;
