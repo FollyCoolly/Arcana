@@ -82,6 +82,8 @@ sync status|import|export|pull|push|run
 
 `json import|export` 是不接触 Git 的底层完整目录转换命令；`sync` 后续在它之上增加 managed path digest、防覆盖、恢复 journal 和显式 Git 操作。
 
+当前过渡实现已经提供新运行时的 `init`、完整 `record` 命令族和 `json import|export`。`arcana-data init [--runtime <directory>]` 创建只含启用状态 `basic` Pack 的新 SQLite；Record 命令统一使用 `arcana-data record [--runtime <directory>] <action>`，省略 runtime 时读取本机 settings 或默认目录。`get` 返回当前 Record，`query` 可按 `--definition-id`、`--namespace`、`--pack`、`--kind`、`--has-value` 组合过滤；修改复杂 payload 的命令从 stdin 或 `--file` 读取对应 Application Command JSON。结果 Envelope、稳定错误 code、`--dry-run`、batch 和 `capabilities` 仍属于后续 CLI contract 切换，Agent Skill 暂不能把当前过渡输出当成稳定 v1 合约。
+
 实际 flag 和请求体由 CLI `--help --json` 生成文档；Skill 不复制完整 JSON Schema，而是在需要时查询 capabilities/schema，避免随代码漂移。
 
 ## 4. Velvet Room

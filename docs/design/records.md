@@ -79,6 +79,8 @@ RecordDefinition 第一版只包含：
 
 所有命令通过同一事务 API 执行。`increment`、collection item 和 event 的读改写必须全部发生在数据库事务内，不能由调用方先读后写。向尚不存在的 collection/event 添加第一项时同时创建对应 Record header；显式创建空 Record 不得覆盖已有 Record。重复 item/event ID 必须返回冲突，只有 `correct_item` / `correct_event` 可以替换既有内容。删除最后一项后仍保留 Record header，以区分“明确为空”和“从未记录”。
 
+读取分为两种语义：`get` 按一个 `definition_id` 返回当前 Record 或空值；`query` 返回运行时 Definition Registry 中的定义、所有提供该定义的已启用 Pack ID，以及可选的当前 Record。`query` 支持 `definition_id`、namespace、Pack、kind 和 `has_value` 过滤，多个条件按 AND 组合。定义已不可用但仍被保留的 unresolved Record 也可按 ID、namespace、kind 和 `has_value` 查到，此时 `definition` 为空；由于没有当前提供者，指定 Pack 过滤时不会返回它。
+
 ## 5. 标识与时间
 
 - RecordDefinition ID 固定为 `<namespace>.<name>`，例如 `health.body_weight`、`programming.projects`。

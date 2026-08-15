@@ -81,6 +81,32 @@ pub struct DeleteEvent {
     pub event_id: String,
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct QueryRecords {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub definition_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub namespace: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pack_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub kind: Option<crate::domain::RecordKind>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub has_value: Option<bool>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RecordQueryEntry {
+    pub definition_id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub definition: Option<RecordDefinition>,
+    pub supplied_by_pack_ids: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub record: Option<Record>,
+}
+
 pub struct RecordCommands<'repository, R> {
     repository: &'repository mut R,
 }
@@ -95,6 +121,68 @@ where
 
     pub fn get(&self, definition_id: &str) -> RepositoryResult<Option<Record>> {
         self.repository.get_record(definition_id)
+    }
+
+    /// Query active RecordDefinitions together with their current values.
+    /// Records whose definitions are no longer supplied by an enabled Pack are
+    /// retained in the result with `definition = None` unless a Pack filter is
+    /// present. Every filter is combined with logical AND.
+    pub fn query(&self, query: QueryRecords) -> RepositoryResult<Vec<RecordQueryEntry>> {
+        let snapshot = self.repository.load_synced_snapshot()?;
+        let registry = snapshot.definition_registry()?;
+        let mut records: BTreeMap<String, Record> = snapshot
+            .records
+            .values()
+            .flat_map(|file| file.records.iter().cloned())
+            .map(|record| (record.definition_id().to_string(), record))
+            .collect();
+        let mut entries = BTreeMap::new();
+
+        for (definition_id, definition) in registry.iter() {
+            let supplied_by_pack_ids = snapshot
+                .manifest
+                .enabled_pack_ids
+                .iter()
+                .filter(|pack_id| {
+                    snapshot
+                        .packs
+                        .get(*pack_id)
+                        .and_then(|pack| pack.record_definitions.as_ref())
+                        .is_some_and(|file| {
+                            file.definitions
+                                .iter()
+                                .any(|candidate| candidate.id() == definition_id)
+                        })
+                })
+                .cloned()
+                .collect();
+            entries.insert(
+                definition_id.to_string(),
+                RecordQueryEntry {
+                    definition_id: definition_id.to_string(),
+                    definition: Some(definition.clone()),
+                    supplied_by_pack_ids,
+                    record: records.remove(definition_id),
+                },
+            );
+        }
+
+        for (definition_id, record) in records {
+            entries.insert(
+                definition_id.clone(),
+                RecordQueryEntry {
+                    definition_id,
+                    definition: None,
+                    supplied_by_pack_ids: Vec::new(),
+                    record: Some(record),
+                },
+            );
+        }
+
+        Ok(entries
+            .into_values()
+            .filter(|entry| record_query_matches(entry, &query))
+            .collect())
     }
 
     pub fn set_scalar(&mut self, command: SetScalarRecord) -> RepositoryResult<Record> {
@@ -429,6 +517,45 @@ where
     }
 }
 
+fn record_query_matches(entry: &RecordQueryEntry, query: &QueryRecords) -> bool {
+    if query
+        .definition_id
+        .as_deref()
+        .is_some_and(|definition_id| entry.definition_id != definition_id)
+    {
+        return false;
+    }
+    if query.namespace.as_deref().is_some_and(|namespace| {
+        crate::domain::split_record_definition_id(&entry.definition_id)
+            .is_none_or(|(candidate, _)| candidate != namespace)
+    }) {
+        return false;
+    }
+    if query.pack_id.as_deref().is_some_and(|pack_id| {
+        !entry
+            .supplied_by_pack_ids
+            .iter()
+            .any(|candidate| candidate == pack_id)
+    }) {
+        return false;
+    }
+    let kind = entry
+        .definition
+        .as_ref()
+        .map(RecordDefinition::kind)
+        .or_else(|| entry.record.as_ref().map(Record::kind));
+    if query.kind.is_some_and(|expected| kind != Some(expected)) {
+        return false;
+    }
+    if query
+        .has_value
+        .is_some_and(|has_value| entry.record.is_some() != has_value)
+    {
+        return false;
+    }
+    true
+}
+
 fn required_record(record: Option<Record>, definition_id: &str) -> RepositoryResult<Record> {
     record.ok_or_else(|| {
         RepositoryError::new(
@@ -633,6 +760,58 @@ mod tests {
         transaction.set_pack_enabled("stats", true).unwrap();
         transaction.commit().unwrap();
         repository
+    }
+
+    #[test]
+    fn query_combines_active_definitions_suppliers_and_current_records() {
+        let mut repository = repository();
+        let mut commands = RecordCommands::new(&mut repository);
+        let empty_scalars = commands
+            .query(QueryRecords {
+                namespace: Some("stats".to_string()),
+                kind: Some(crate::domain::RecordKind::Scalar),
+                has_value: Some(false),
+                ..QueryRecords::default()
+            })
+            .unwrap();
+        assert_eq!(
+            empty_scalars
+                .iter()
+                .map(|entry| entry.definition_id.as_str())
+                .collect::<Vec<_>>(),
+            vec!["stats.count", "stats.score"]
+        );
+
+        commands
+            .set_scalar_at(
+                SetScalarRecord {
+                    definition_id: "stats.count".to_string(),
+                    value: json!(2),
+                    effective_at: None,
+                },
+                "2026-08-15T20:30:00+08:00".to_string(),
+            )
+            .unwrap();
+        let entries = commands
+            .query(QueryRecords {
+                definition_id: Some("stats.count".to_string()),
+                pack_id: Some("stats".to_string()),
+                has_value: Some(true),
+                ..QueryRecords::default()
+            })
+            .unwrap();
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].supplied_by_pack_ids, ["stats"]);
+        assert!(entries[0].definition.is_some());
+        assert!(entries[0].record.is_some());
+
+        assert!(commands
+            .query(QueryRecords {
+                pack_id: Some("disabled_pack".to_string()),
+                ..QueryRecords::default()
+            })
+            .unwrap()
+            .is_empty());
     }
 
     #[test]

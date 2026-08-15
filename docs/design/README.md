@@ -3,7 +3,7 @@
 > **状态**：Target / 本机数据平台实现中
 > **最后更新**：2026-08-15
 
-本目录描述 Arcana 下一阶段的数据平台与领域模型。领域模型、DDL、SQLite migration runner、Repository adapter、本机运行时锁、`basic` Pack 初始化、全部 Record Commands，以及 SQLite 与规范 JSON 新目录之间的核心 Codec 已落地，但 UI、CLI 与 Git 同步编排尚未切换，因此当前程序还没有完整支持这里的结构。
+本目录描述 Arcana 下一阶段的数据平台与领域模型。领域模型、DDL、SQLite migration runner、Repository adapter、本机运行时锁、`basic` Pack 初始化、全部 Record Commands，以及 SQLite 与规范 JSON 新目录之间的核心 Codec 已落地；`arcana-data` 的 init、record 和 json 命令已切到新运行时，但其余 CLI、UI 与 Git 同步编排尚未切换，因此当前程序还没有完整支持这里的结构。
 
 尚未切换的 UI/CLI 行为仍以 [`docs/architecture.md`](../architecture.md) 与 [`docs/schema/`](../schema/README.md) 为准；新入口只实现本目录的目标模型，不导入或兼容旧 JSON。完成入口切换后删除旧实现与旧 Schema 文档。若两组文档冲突：
 
@@ -48,10 +48,10 @@
 ### 实现进度与顺序
 
 1. 已完成：Rust Domain Model、校验器、Repository interface、SQLite DDL/migration/adapter。
-2. 进行中：进程间锁、运行时初始化与 Application Commands；Record 的 get/set/increment/correct、collection item、event 和 delete 命令已完成，其他领域命令待实现。
+2. 进行中：进程间锁、运行时初始化与 Application Commands；Record 的 get/query/set/increment/correct、collection item、event 和 delete 命令及其 CLI 入口已完成，其他领域命令待实现。
 3. 进行中：确定性 JSON Codec 和持有运行时独占锁的 SQLite import/export 已完成；已有目录的防覆盖 digest、崩溃恢复 journal、临时数据库切换和 Git 编排待实现。
 4. 待实现：Status evaluator、Achievement/Skill 查询与 Mission/Memory command。
-5. 进行中：`arcana-data json import|export` 已接入新运行时；其余 CLI contract、Tauri UI 和 canonical Agent Skill 待切换，切换时直接停止使用旧 JSON。
+5. 进行中：`arcana-data init`、`record ...` 和 `json import|export` 已接入新运行时；统一结果 Envelope、结构化错误、dry-run/batch、其余 CLI、Tauri UI 和 canonical Agent Skill 待切换，切换完成后直接停止使用旧 JSON。
 
 ### 暂不处理
 
