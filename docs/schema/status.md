@@ -1,5 +1,8 @@
 # Status Schema
 
+> **状态**：Current JSON v1
+> **目标替代**：[`docs/design/status.md`](../design/status.md)。目标模型改为 RecordData + Pack DimensionDefinition、子 Score 表达式和固定加权平均，并由本机 UI 选择五个 Dimension；本文件中的 values、target 和 bracket 结构仅用于解释当前代码。
+
 `Status` 是一套通用的指标展示系统，用户可自定义追踪任意领域的数值指标，并通过雷达图展示多维度的综合评价。
 
 ## 核心概念
@@ -13,8 +16,8 @@
 
 | 文件 | 用途 |
 |------|------|
-| `data/status_metric_definitions.json` | 用户指标定义 + 维度配置 |
-| `data/status.json` | 用户指标的当前值 |
+| `<data_dir>/status_metric_definitions.json` | 用户指标定义 + 维度配置 |
+| `<data_dir>/status.json` | 用户指标的当前值 |
 
 ## 缺省值约定
 
@@ -102,10 +105,19 @@ Metric 是纯数据字典，不包含评分逻辑。
 ### 维度聚合
 
 ```
-dimension_score = Σ(contribution_i × weight_i)
+filled_avg = Σ(filled contribution_i) / filled_count
+completeness = filled_count / total_metric_count
+estimated_missing_contribution = filled_avg × (0.7 + 0.3 × completeness)
+
+dimension_score =
+    Σ(filled contribution_i × weight_i)
+    + Σ(estimated_missing_contribution × missing weight_i)
 ```
 
-仅对有数据的指标求和。全部无数据时 score 为 null，显示 "--"。
+当前实现会用已填写指标的平均 contribution 估算缺失指标，再按完整度施加 `0.7～1.0` 的系数。全部无数据时 score 为 null，显示 "--"。返回给前端的缺失指标 contribution 仍为 null，估算值只参与 Dimension 总分。
+
+> [!WARNING]
+> 这是当前代码行为，不是目标规则。目标 Status 不估算缺失数据，而是将缺失子 Score 同时从分子和分母排除。
 
 ### 等级映射
 
@@ -113,13 +125,15 @@ dimension_score = Σ(contribution_i × weight_i)
 
 | 条件 | 等级 | 显示 |
 |------|------|------|
-| score < t1 | Lv.1 | `level_titles[0]` |
+| score < t1（只要 Dimension 至少有一个已填写指标） | Lv.1 | `level_titles[0]` |
 | t1 ≤ score < t2 | Lv.2 | `level_titles[1]` |
 | t2 ≤ score < t3 | Lv.3 | `level_titles[2]` |
 | t3 ≤ score < t4 | Lv.4 | `level_titles[3]` |
 | score ≥ t4 | Lv.5 | `level_titles[4]` |
 
 阈值由维度自行定义，不同维度的 score 量纲可以完全不同。
+
+当前实现没有 Lv.0 的 Dimension 输出：只要存在任一已填写指标，就至少得到 Lv.1；全部缺失时 level 为 null。目标模型会把 score 为 null 或 0 映射为 Lv.0。
 
 ---
 
@@ -299,42 +313,14 @@ dimension_score = Σ(contribution_i × weight_i)
 
 ---
 
-## 模板系统
+## 当前加载与校验行为
 
-项目提供预设的指标定义模板：
+- 两个文件首先按 Rust 类型反序列化；必填字段缺失或字段类型错误会导致加载失败。
+- `status_metric_definitions.json` 中重复的 metric ID 会导致加载失败。
+- `status.json` 的 key 若不在 metric definitions 中会导致加载失败；value 必须为数字。
+- 只有 `value_type: "number"` 的 metric 会返回给 UI；其他值目前被过滤，不会作为配置错误报告。
+- `dimensions` 可以为空，`enabled` 缺省为 `true`。
+- Dimension 只有在 `level_titles` 长度为 5、`level_thresholds` 长度为 4 且至少一个 metric 有值时才产生分数和等级；否则返回未评分。
+- 未找到的 metric 引用按缺失数据处理，不会导致加载失败。
 
-- 模板存放在 `data/templates/status/`，每个模板一个 JSON 文件
-- 模板格式与 `status_metric_definitions.json` 完全一致
-- 用户导入模板时可选择全量替换或增量合并
-- 默认提供 `fitness.json`（健身指标 + 对应维度配置）
-
----
-
-## 校验规则
-
-### 用户指标
-
-- `metrics` 为数组
-- 每项必须有 `id`, `name`, `group`, `unit`, `value_type`
-- `id` 全局唯一，不得以 `sys_` 开头
-- `value_type` 当前仅允许 `number`
-
-### 维度
-
-- `dimensions` 为数组（可为空）
-- 每项必须有 `id`, `name`, `level_titles`, `level_thresholds`, `metrics`
-- `id` 全局唯一
-- `level_titles` 长度必须为 5
-- `level_thresholds` 长度必须为 4，且严格递增
-- `metrics` 中每个 key 必须引用已定义的用户指标或已注册的系统指标
-- 每个 metric entry 必须有 `weight`（> 0）
-- `scoring_brackets` 与 `target_max`/`target_min` 互斥
-- `target_max` > 0，`target_min` > 0
-- 同时设置 `target_min` + `target_max` 时，`target_max` > `target_min`
-- `scoring_brackets` 每项有 `min`, `max`, `score`，`score` 范围 [0, 1]
-- 启用的维度数量建议 3-8（校验警告，非错误）
-
-### 指标数值
-
-- key 必须对应用户指标的 `id`（不可写入系统指标）
-- value 必须为数字
+当前实现没有完整校验 Dimension ID 唯一性、threshold 递增、正权重、target 合法范围、bracket 合法范围或多种评分配置互斥。目标架构会替换这套评分模型，因此不再为旧结构补充新的模板或校验规则。

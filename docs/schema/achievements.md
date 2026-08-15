@@ -1,11 +1,14 @@
 # Achievements Schema
 
+> **状态**：Current JSON v1
+> **目标替代**：[`docs/design/achievements_skills_packs.md`](../design/achievements_skills_packs.md)。目标模型保留互斥的 `tracked` / `achieved` 最小用户状态，移除持久化进度详情，并且只有 `achieved` 参与 Skill 计分。
+
 成就定义存在于每个内容包中，描述用户可解锁的里程碑。成就定义**不包含**积分信息——积分由技能树节点定义。
 
 ## 文件路径
 
-- `data/packs/<pack_id>/achievements.json`：成就定义（每包）
-- `data/achievement_progress.json`：用户成就解锁状态（全局）
+- `<data_dir>/packs/<pack_id>/achievements.json`：成就定义（每包）
+- `<data_dir>/achievement_progress.json`：用户成就解锁状态（全局）
 
 ## `achievements.json`（每包）
 

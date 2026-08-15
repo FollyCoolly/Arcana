@@ -13,6 +13,9 @@ An AI-guided, Persona 5-inspired HUD for gamified life management.
 
 Arcana is an AI-guided desktop HUD for turning real-life progress into structured game-like systems: status dimensions, missions, achievements, skills, inventory, and media history. It stores your data locally as JSON and uses an AI agent to help interpret updates, propose missions, track progress, and keep the system coherent over time.
 
+> [!NOTE]
+> The paragraph above describes the current implementation. The approved next architecture replaces runtime JSON with SQLite while keeping deterministic, human-readable JSON in a private Git repository for sync. See [Target Data Platform Design](docs/design/README.md).
+
 Arcana is **not** a streak-based habit tracker or a toy stat sheet. It borrows the visual language and motivation loops of games, but the underlying data is real: personal milestones, ongoing goals, owned items, consumed media, and measurable status signals. The goal is not to pretend life is a game, but to give real life a sharper interface.
 
 ---
@@ -121,8 +124,8 @@ Arcana includes a built-in AI agent that acts as a personal life assistant. Ther
 
 | Channel | Description |
 |---------|-------------|
-| **External AI harness** | The primary interface — Claude Code, Codex, OpenCode, OpenClaw, Hermes Agent, or any agent that supports slash commands. Run `/velvet-room` or `/phan-site` directly in your AI coding tool. |
-| **Telegram** | Optional bot adapter for mobile / remote access (`agent-telegram`). Compile and run only when needed. More IM channels may be added in the future. |
+| **External AI harness** | The primary interface. Project-local Skill definitions currently live under `.claude/skills`; other harnesses can use `arcana-data`. |
+| **Telegram** | Optional bot adapter for mobile / remote access (`agent-telegram`). Compile and run only when needed. |
 | **Data CLI** | Structured data operations used by AI skills and scripts (`arcana-data`). |
 
 All paths share a common services layer (`src-tauri/src/services/`) and data format, so updates from any channel are immediately visible everywhere.
@@ -143,7 +146,7 @@ The agent can:
 - **Framework**: [Tauri v2](https://v2.tauri.app/) (Rust backend + webview frontend)
 - **Frontend**: Svelte 5 + SvelteKit v2 + TypeScript + Tailwind CSS v4 + Three.js
 - **Backend**: Rust (IPC commands, AI agent, JSON data layer)
-- **Data**: Local JSON files (`data/`, gitignored) — no database
+- **Data**: Local JSON files in the configured user data directory — current implementation; `data-example/` contains tracked initialization templates, while the target architecture uses SQLite locally and Git JSON for sync
 - **AI**: Direct Anthropic API integration with tool-calling loop
 
 ---
@@ -157,7 +160,6 @@ src/                    # SvelteKit frontend
       ├── screens/      #   Screen components (Status, Achievements, Skills, Items, Gallery, Missions)
       ├── components/   #   Shared UI components (RadarChart, SkillNebula, etc.)
       ├── types/        #   TypeScript type definitions
-      ├── stores/       #   Svelte stores
       └── utils/        #   Frontend utilities
 src-tauri/src/          # Rust backend
   ├── commands/         #   Tauri IPC commands (status, achievements, skills, missions, items, gallery, weather)
@@ -166,10 +168,10 @@ src-tauri/src/          # Rust backend
   ├── services/         #   Shared business logic (used by agent, arcana-data CLI, and Tauri commands)
   ├── agent/            #   AI agent subsystem (runner, LLM, tools, prompt, config, session)
   └── bin/              #   Standalone binaries: agent_cli, agent_telegram, arcana_data
-data/                   # Runtime JSON data (gitignored)
+data/                   # Ignored local development data
+data-example/           # Tracked templates copied by `arcana-data init`
   ├── packs/<pack_id>/  #   Content packs (manifest.json, achievements.json, skills.json)
-  ├── sessions/         #   Agent JSONL session history
-  └── *.json            #   missions, status, achievement_progress, mission_memory, etc.
+  └── *.json            #   missions, status, achievement_progress, etc.
 docs/                   # Architecture docs, schema specs, UI design guides
   └── schema/           #   JSON schema definitions
 scripts/                # Python tooling (data import, schema validation)
@@ -194,7 +196,7 @@ cargo build --manifest-path src-tauri/Cargo.toml --bin arcana-data
 npm run tauri dev
 ```
 
-After the app opens, the onboarding missions will already be active in the Missions screen. Run `/velvet-room` in any AI coding agent that supports slash commands (Claude Code, OpenCode, Codex, OpenClaw, Hermes Agent, etc.) to let the AI guide you through the rest of the setup.
+After the app opens, the onboarding missions will already be active in the Missions screen. In a harness that loads the project-local `.claude/skills`, run `/velvet-room`; other harnesses can use the structured `arcana-data` CLI until their plugin packages are completed.
 
 > [!NOTE]
 > If you want to use the agent binaries — primarily `agent-telegram`, which starts a listener service for controlling your local assistant remotely via Telegram — you will need to configure an LLM provider. Set your API key via environment variable (`ANTHROPIC_API_KEY`) or config file (`~/.arcana/agent_config.json`). See [AI Agent](#ai-agent) for details.
@@ -280,13 +282,12 @@ Some data import scripts read credentials or user IDs from `scripts/config.json`
 | `scripts/fetch_douban.py` | Fetch Douban movies, TV, and books; supports `--status all`. |
 | `scripts/dev/process_assets.py` | Resize and prepare UI assets under `static/ui/`. |
 | `scripts/dev/remove_bg.py` | Remove backgrounds from image files or folders. |
-| `scripts/validate_data.py` | Validate runtime JSON data and content pack schema rules. |
+| `scripts/validate_data.py` | Legacy post-edit hook for JSON files under the repository-local `data/`; normal CLI/Tauri writes use Rust validation. |
 
 ```bash
 python scripts/fetch_bangumi.py
 python scripts/fetch_steam.py --detailed
 python scripts/fetch_douban.py --status all
-python scripts/validate_data.py data/missions.json
 ```
 
 ---
@@ -294,52 +295,20 @@ python scripts/validate_data.py data/missions.json
 ## Documentation
 
 - [Architecture](docs/architecture.md) — Tauri, data layer, frontend, and agent architecture.
-- [Directory Structure](docs/directory_structure.md) — project layout and historical structure notes.
-- [Schema Reference](docs/schema/README.md) — detailed JSON schemas for missions, achievements, skills, status, items, gallery, changelog, memory, and UI events.
+- [Target Data Platform Design](docs/design/README.md) — planned SQLite runtime, Git JSON sync, RecordData, Status, Achievement, PackForest, Mission, and memory architecture.
+- [Schema Reference](docs/schema/README.md) — detailed JSON schemas for missions, achievements, skills, status, items, changelog, memory, and UI events.
 - [Visual Style Guide](docs/visual_style_guide.md) — Persona 5-inspired design principles, palette, typography, and interaction rules.
 - [UI Design Spec](docs/ui_design_spec.md) — main menu and sub-screen layout/interaction spec.
-- [AI Agent Integration](docs/ai_agent_integration.md) — MCP/Nanobot integration proposal and agent platform research notes.
 
 ---
 
-## Design Decisions
+## Current Implementation Notes
 
-- **Tauri + JSON over Electron + SQLite**: Smaller binary, better performance, human-readable and version-controllable data files.
-- **Content Pack system**: Achievements and skills are loaded via pluggable packs, supporting community extension.
+- **Tauri + JSON in the current release**: The current code uses JSON for runtime data. The target architecture keeps Tauri, moves runtime state to SQLite, and exports human-readable JSON for Git sync.
+- **Content Pack system**: Achievements and skills are loaded via user-extensible packs.
 - **Agent decoupled from UI**: The AI agent runs independently of the desktop GUI (CLI / Telegram), sharing the same data layer.
-- **Prerequisite-driven progression**: Achievement prerequisites remain a validated DAG in the data model, while skills present that progression as a compact honeycomb-style node map rather than a traditional edge graph.
+- **Prerequisite validation**: The current Achievement model validates prerequisites as a DAG; Skills present the result as a compact honeycomb-style node map.
 - **Shared services layer**: `services/` contains all business logic, consumed by Tauri commands, arcana-data CLI, and the Rust agent alike.
-
----
-
-## Future Ideas
-
-### UI & Experience
-
-- Onboarding wizard for first-time setup
-- Sound effects across the interface
-- Data-change reveal animations — show what changed since last session on first open
-- Cinematic animations for mission acceptance and completion
-
-### Features
-
-- Skill tarot card generator — auto-generate a Persona-style card for each tracked skill (possibly with a generative model)
-- Music tracking in Gallery (alongside books, anime, movies, games)
-- AI navigator companion — a persistent on-screen assistant inspired by Futaba / Morgana from P5 (default look: Kurisu from Steins;Gate)
-
-### Audit & Transparency
-
-- User-facing changelog viewer — surface `ai_changelog.json` in the UI so users can review, approve, and roll back AI-driven data changes
-- Diff view for AI modifications with one-click revert
-
-### Integration & Platform
-
-- Support more IM channels (e.g. Discord, WeChat) and LLM providers beyond Anthropic
-- More data source importers for Gallery and Status
-- Deeper integration with external AI knowledge management systems
-- Mobile read-only dashboard — a lightweight web view for checking Status radar and Mission progress on the go
-- Health data auto-import — sync from Apple Health / Google Fit / Garmin to keep Status metrics up-to-date automatically
-- Community content pack repository — let others publish and share achievement packs
 
 ---
 

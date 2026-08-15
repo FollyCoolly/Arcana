@@ -1,13 +1,16 @@
 # Content Packs Schema
 
+> **状态**：Current JSON v1
+> **目标替代**：[`docs/design/achievements_skills_packs.md`](../design/achievements_skills_packs.md)。目标 Pack 增加 RecordSet 模板、DimensionDefinition 和 `parent_pack_id`；父子关系只用于组织，不形成启用或运行依赖。
+
 内容包（Content Pack）是 Arcana 的可插拔数据单元，每个包包含成就定义、技能树定义和包元数据。
 
 ## 文件路径
 
-- `data/loaded_packs.json`：已加载的内容包列表
-- `data/packs/<pack_id>/manifest.json`：包元数据
-- `data/packs/<pack_id>/achievements.json`：成就定义
-- `data/packs/<pack_id>/skills.json`：技能树定义
+- `<data_dir>/loaded_packs.json`：已加载的内容包列表
+- `<data_dir>/packs/<pack_id>/manifest.json`：包元数据
+- `<data_dir>/packs/<pack_id>/achievements.json`：成就定义
+- `<data_dir>/packs/<pack_id>/skills.json`：技能树定义
 
 ## 缺省值约定
 
@@ -38,7 +41,7 @@
 ### 字段
 
 - `version` (`number`, 必填)：Schema 版本号
-- `packs` (`string[]`, 必填)：已加载的包 ID 列表，每个 ID 对应 `data/packs/` 下的目录名
+- `packs` (`string[]`, 必填)：已加载的包 ID 列表，每个 ID 对应 `<data_dir>/packs/` 下的目录名
 
 ### 示例
 
@@ -92,7 +95,7 @@
 
 1. `manifest.id` 必须等于包所在的目录名
 2. 包内所有成就 ID 和技能 ID 必须以 `<manifest.id>::` 开头
-3. `loaded_packs.json` 中的每个 ID 必须对应 `data/packs/` 下的有效目录
+3. `loaded_packs.json` 中的每个 ID 必须对应 `<data_dir>/packs/` 下的有效目录
 4. 跨包 ID 无重复（由前缀机制保证）
 
 ## 卸载行为

@@ -1,6 +1,6 @@
 # Arcana - UI Design Spec
 
-> **最后更新**: 2026-04-30
+> **最后更新**: 2026-08-15
 > **状态**: 反映当前代码实现
 
 ---
@@ -160,20 +160,20 @@ Arcana 采用单页 SPA 架构（非 SvelteKit 路由），所有屏幕通过 `c
 
 ## 6. 组件库
 
-`src/lib/components/` 下的可复用组件：
+可复用组件分布在 `src/lib/` 根目录和 `src/lib/components/`：
 
 | 组件 | 用途 |
 |------|------|
-| `MenuItem.svelte` | 逐字符几何化菜单标签渲染 |
-| `KeyHint.svelte` | 键位提示方块（白底黑框 + 键名） |
-| `PromptWord.svelte` | Canvas 倾斜文字渲染器（支持描边） |
-| `CollageLabel.svelte` | 碎片化金底黑字标签（维度名等） |
-| `CallingCardText.svelte` | 倾斜字母 + 黑底红边白辉光效果 |
-| `CardTitle.svelte` | SVG 卡片标题（SkillNebula 用） |
-| `RadarChart.svelte` | SVG 五角星雷达图（交互式） |
-| `SkillNebula.svelte` | Three.js 3D 轨道卡片星云 |
-| `PhanSiteProgress.svelte` | 任务进度条（"poll" 风格） |
-| `Calendar.svelte` | P5 风格日期/天气组件 |
+| `src/lib/MenuItem.svelte` | 逐字符几何化菜单标签渲染 |
+| `src/lib/KeyHint.svelte` | 键位提示方块（白底黑框 + 键名） |
+| `src/lib/PromptWord.svelte` | Canvas 倾斜文字渲染器（支持描边） |
+| `src/lib/CollageLabel.svelte` | 碎片化金底黑字标签（维度名等） |
+| `src/lib/CallingCardText.svelte` | 倾斜字母 + 黑底红边白辉光效果 |
+| `src/lib/components/CardTitle.svelte` | SVG 卡片标题（SkillNebula 用） |
+| `src/lib/components/RadarChart.svelte` | SVG 五角星雷达图（交互式） |
+| `src/lib/components/SkillNebula.svelte` | Three.js 3D 轨道卡片星云 |
+| `src/lib/PhanSiteProgress.svelte` | 任务进度条（"poll" 风格） |
+| `src/lib/Calendar.svelte` | P5 风格日期/天气组件 |
 
 ---
 

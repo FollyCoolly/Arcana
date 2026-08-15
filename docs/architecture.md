@@ -1,8 +1,11 @@
 # Arcana 架构设计文档
 
 > **版本**: v0.1.0
-> **最后更新**: 2026-04-29
-> **状态**: Active
+> **最后更新**: 2026-08-15
+> **状态**: Current implementation
+
+> [!IMPORTANT]
+> 本文描述当前已实现的 JSON 架构，不是下一阶段的数据平台目标。SQLite、RecordData、Status 新评分模型、Achievement 用户状态与 PackForest 的目标设计见 [`docs/design/`](./design/README.md)。迁移完成前请勿把两套 Schema 混用。
 
 Arcana 是一个 Persona 5 风格的游戏化人生管理桌面应用，也就是给 “Earth Online” 加一层用户界面。当前实现已经从早期的 Status MVP 演进为一个本地优先的桌面 HUD：前端负责高表现力的菜单与模块屏幕，Rust 后端负责本地 JSON 数据、校验、系统指标计算、AI agent 与结构化数据入口。
 
@@ -14,7 +17,7 @@ Arcana 采用 **Local-First + Tauri Shell + Shared Services** 架构。
 
 核心原则：
 
-- **本地优先**：运行时数据存在本地 JSON 文件中，不依赖数据库；`data/` 是开发仓库中的示例/运行数据，真实安装可通过 `ARCANA_DATA_DIR` 或 `~/.arcana/settings.json` 指向用户数据目录。
+- **本地优先**：运行时数据存在用户数据目录中的 JSON 文件，不依赖数据库；默认目录为 `~/.arcana/data`，也可通过 `ARCANA_DATA_DIR` 或 `~/.arcana/settings.json` 配置。仓库中的 `data-example/` 是初始化模板，`data/` 是被忽略的本地开发目录。
 - **共享业务层**：Tauri IPC、独立 AI agent、`arcana-data` CLI 都复用 `src-tauri/src/services/`，避免多入口各写一套数据规则。
 - **数据驱动 UI**：Status、Missions、Achievements、Skills、Items、Gallery 都从 JSON 数据和 content packs 渲染，不在 UI 中硬编码用户进度。
 - **AI 可审计写入**：AI 写 missions/status/achievement progress 后必须写 `ai_changelog.json`，更新类变更保留 `old_value`。
@@ -44,9 +47,9 @@ flowchart TB
     end
 
     subgraph Data["Local JSON data"]
-        DataFiles["data/*.json\nmissions, status, progress, changelog, memory"]
-        Packs["data/packs/<pack_id>/\nmanifest, achievements, skills"]
-        Sessions["data/sessions/\nagent JSONL history"]
+        DataFiles["<data_dir>/*.json\nmissions, status, progress, changelog, memory"]
+        Packs["<data_dir>/packs/<pack_id>/\nmanifest, achievements, skills"]
+        Sessions["<data_dir>/sessions/\nagent JSONL history"]
     end
 
     Frontend -->|"invoke(...)"| TauriCommands
@@ -77,7 +80,7 @@ flowchart TB
 | 数据 | 本地 JSON | 无数据库；schema 文档在 `docs/schema/` |
 | 工具 | Python scripts | 数据导入、schema/数据校验 |
 
-当前 `package.json` 中没有 D3、vis.js、Chart.js；技能和图表渲染由项目内 Svelte 组件实现。当前 `Cargo.toml` 中也没有 `rmcp` 依赖，结构化 AI 数据入口是 `arcana-data` CLI 和 Rust agent tools。
+当前 `package.json` 中没有 D3、vis.js、Chart.js；技能和图表渲染由项目内 Svelte 组件实现。结构化 AI 数据入口是 `arcana-data` CLI 和 Rust agent tools。
 
 ---
 
@@ -135,7 +138,7 @@ flowchart TB
 | 模块 | 职责 |
 | --- | --- |
 | `context.rs` | 汇总 missions/status/metric definitions/achievement progress/memory 给 AI |
-| `file_access.rs` | 沙箱读取 `data/` 下文件 |
+| `file_access.rs` | 沙箱读取 `<data_dir>` 下文件 |
 | `mission.rs` | 更新/创建 mission 和 main_menu 配置 |
 | `status.rs` | 更新 status metric values，并校验 metric ID |
 | `achievement.rs` | 更新 achievement progress，追加 progress detail |
@@ -166,7 +169,7 @@ Data dir resolution 优先级：
 2. `~/.arcana/settings.json` 的 `data_dir`
 3. 默认 `~/.arcana/data`，不存在则创建
 
-开发仓库中的 `data/` 仍用于本地开发、示例数据和脚本工具。
+开发仓库中的 `data-example/` 用于初始化和示例；被忽略的 `data/` 仅供本地开发使用。
 
 ### 3.5 AI Agent & Data CLI
 
@@ -209,8 +212,6 @@ Agent 当前工具集：
 
 `arcana-data` CLI 提供相同方向的结构化操作：`context`、`read`、`mission update/create/update-menu`、`status update`、`achievement update`、`changelog write`、`memory update`。
 
-历史文档 `docs/ai_agent_integration.md` 提到的 MCP Server 是早期/规划设计；当前代码实现中没有 `mcp-server` binary 或 `rmcp` 依赖。
-
 ---
 
 ## 4. 当前目录结构
@@ -247,32 +248,28 @@ src-tauri/src/
     agent_telegram.rs
     arcana_data.rs
 
-data/
+data/                         # ignored local development data
+
+data-example/                 # tracked initialization templates
   packs/<pack_id>/            # Content packs: manifest, achievements, skills
-  gallery/
-  test_recipes/
   achievement_progress.json
-  ai_changelog.json
   gallery_sources.json
   item_sources.json
   loaded_packs.json
-  mission_memory.json
   missions.json
   mission_archive.json
-  recipe_sources.json
   status_metric_definitions.json
   status.json
-  ui_events.json
   user_profile.json
   weather.json
 
 docs/
   architecture.md
-  ai_agent_integration.md
-  directory_structure.md
+  design/                      # 下一阶段目标设计
+  screenshots/
+  schema/                      # 当前 JSON Schema
   ui_design_spec.md
   visual_style_guide.md
-  schema/
 
 scripts/
   validate_data.py
@@ -291,8 +288,8 @@ static/
 | --- | --- | --- | --- |
 | Status | `status.json`, `status_metric_definitions.json`, `user_profile.json`, system metrics | `commands/status.rs`, `services/status.rs` | `StatusScreen.svelte`, `StatusDetailView.svelte`, `RadarChart.svelte` |
 | Missions | `missions.json`, `mission_archive.json`, `mission_memory.json` | `commands/missions.rs`, `services/mission.rs`, `services/memory.rs` | `MissionsScreen.svelte`, `PhanSiteProgress.svelte` |
-| Achievements | `data/packs/*/achievements.json`, `achievement_progress.json`, `loaded_packs.json` | `commands/achievements.rs`, `services/achievement.rs` | `AchievementsScreen.svelte` |
-| Skills | `data/packs/*/skills.json`, achievement progress | `commands/skills.rs` | `SkillsScreen.svelte`, `SkillNebula.svelte` |
+| Achievements | `<data_dir>/packs/*/achievements.json`, `achievement_progress.json`, `loaded_packs.json` | `commands/achievements.rs`, `services/achievement.rs` | `AchievementsScreen.svelte` |
+| Skills | `<data_dir>/packs/*/skills.json`, achievement progress | `commands/skills.rs` | `SkillsScreen.svelte`, `SkillNebula.svelte` |
 | Items | `item_sources.json` + source files | `commands/items.rs` | `ItemsScreen.svelte` |
 | Gallery | `gallery_sources.json` + source files, image cache | `commands/gallery.rs`, `imgproxy` protocol | `GalleryScreen.svelte` |
 | UI Events | `ui_events.json` | `commands/ui_events.rs`, `services/ui_events.rs` | root page event polling/listening |
@@ -310,10 +307,10 @@ Status 使用三层数据模型：
 
 ### 5.2 Content Pack System
 
-Content pack 位于 `data/packs/<pack_id>/`：
+Content pack 位于 `<data_dir>/packs/<pack_id>/`：
 
 ```text
-data/packs/<pack_id>/
+<data_dir>/packs/<pack_id>/
   manifest.json
   achievements.json
   skills.json
@@ -390,7 +387,7 @@ flowchart LR
     Skill["Codex skill / script"] --> CLI["arcana-data command"]
     CLI --> Services["services/*"]
     Services --> Validate["storage::validate"]
-    Validate --> JSON["data/*.json"]
+    Validate --> JSON["user data directory/*.json"]
 ```
 
 ---
@@ -414,7 +411,7 @@ Schema 文档在 `docs/schema/`：
 | 层 | 位置 | 覆盖 |
 | --- | --- | --- |
 | Rust shared validation | `src-tauri/src/storage/validate.rs` | missions、achievement progress、ai changelog、status、mission memory |
-| Python hook/tooling | `scripts/validate_data.py` | Rust 覆盖项 + loaded packs + content pack manifest/achievements/skills + changelog freshness warning |
+| Legacy project hook | `scripts/validate_data.py` | 仅处理仓库内 `data/` 文件；覆盖 loaded packs、Pack 文件和 changelog freshness warning，不处理配置的用户数据目录 |
 
 Rust 写入路径使用 `write_and_validate` 时会在校验失败后恢复旧文件。Python validator 用于 Codex/脚本写入后的快速反馈。
 
@@ -430,18 +427,17 @@ Rust 写入路径使用 `write_and_validate` 时会在校验失败后恢复旧�
 
 ## 8. 关键设计决策
 
-### 8.1 为什么继续使用 JSON 而不是数据库
+> [!NOTE]
+> 本节解释当前实现为何形成。关于 SQLite、RecordData、Git JSON、Status 新评分和外部 Agent Skill 的后续决定，统一以 [`docs/design/`](./design/README.md) 为准；特别是 8.1 和 8.3 不再代表下一阶段方向。
+
+### 8.1 为什么当前实现使用 JSON
 
 - 用户可读、可备份、可手动修复。
 - content packs 天然适合文件夹结构。
 - 当前数据规模较小，JSON 读写足够。
-- AI 写入需要审计和回滚语义，文件级 changelog 已能覆盖当前需求。
+- AI 写入需要审计和回滚语义，文件级 changelog 覆盖了当前实现的需求。
 
-未来迁移到 SQLite 或嵌入式数据库的信号：
-
-- 单文件数据超过数万条，需要索引/分页。
-- Gallery/Items 需要复杂搜索、聚合或全文检索。
-- 多进程并发写入成为主路径。
+这些是现状说明，不是继续沿用 JSON 运行时的目标决策；下一阶段已确定使用 SQLite 运行时与 Git 同步 JSON，见 [`docs/design/data_platform.md`](./design/data_platform.md)。
 
 ### 8.2 为什么抽出 `services/`
 
@@ -492,7 +488,6 @@ cargo fmt --manifest-path src-tauri/Cargo.toml --check
 cargo build --manifest-path src-tauri/Cargo.toml --bin agent-cli
 cargo build --manifest-path src-tauri/Cargo.toml --bin agent-telegram
 cargo build --manifest-path src-tauri/Cargo.toml --bin arcana-data
-python scripts/validate_data.py data/missions.json
 ```
 
 PR 前最低验证：
@@ -515,8 +510,7 @@ cargo fmt --manifest-path src-tauri/Cargo.toml --check
 ## 10. 相关文档
 
 - [README](../README.md)
-- [AI Agent 集成方案](./ai_agent_integration.md)
-- [目录结构演变](./directory_structure.md)
+- [下一阶段目标架构](./design/README.md)
 - [视觉风格指南](./visual_style_guide.md)
 - [UI 设计规范](./ui_design_spec.md)
 - [Schema 目录](./schema/README.md)

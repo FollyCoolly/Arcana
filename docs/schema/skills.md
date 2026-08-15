@@ -1,10 +1,13 @@
 # Skills Schema
 
+> **状态**：Current JSON v1
+> **目标方向**：[`docs/design/achievements_skills_packs.md`](../design/achievements_skills_packs.md)。目标模型继续让 Skill 从 Achievement 派生，但只读取 `achieved` 状态，不再把 `tracked` 状态视为已解锁。
+
 技能树定义存在于每个内容包中，描述技能的等级计算规则和节点。积分和关键成就标记在技能树节点和等级门槛上。
 
 ## 文件路径
 
-- `data/packs/<pack_id>/skills.json`：技能树定义（每包）
+- `<data_dir>/packs/<pack_id>/skills.json`：技能树定义（每包）
 
 ## 核心设计决策
 

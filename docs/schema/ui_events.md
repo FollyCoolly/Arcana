@@ -1,10 +1,13 @@
 # UI Events Schema
 
+> **状态**：Current JSON v1 / Local only
+> 目标架构仍允许本机 UI 事件机制，但它不属于用户同步数据，具体实现可以在迁移时替换。参见 [`docs/design/data_platform.md`](../design/data_platform.md)。
+
 UI 待消费事件队列。数据变更方写入事件，前端读取后清除。
 
 ## 文件路径
 
-- `data/ui_events.json`
+- `<data_dir>/ui_events.json`
 
 ## 顶层结构
 

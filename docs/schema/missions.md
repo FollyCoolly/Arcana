@@ -1,5 +1,8 @@
 # Missions Schema
 
+> **状态**：Current JSON v1
+> **目标替代**：[`docs/design/missions_memory.md`](../design/missions_memory.md)。目标模型统一 active/completed/archived Mission，将未接受和已拒绝的 MissionSuggestion 留在本机，并把主菜单展示移出 Mission 实体。
+
 Mission 模块管理用户的长期目标和重要任务。日常追踪需求由 AI 通过 achievement progress 处理，不在此模块中显式建模。
 
 ## 设计要点
@@ -11,8 +14,8 @@ Mission 模块管理用户的长期目标和重要任务。日常追踪需求由
 
 ## 文件路径
 
-- `data/missions.json`：当前任务板，仅保存 `proposed` / `active` mission，以及主菜单展示配置
-- `data/mission_archive.json`：历史档案，仅保存 `completed` / `archived` / `rejected` mission，用于历史回顾和 AI 去重
+- `<data_dir>/missions.json`：当前任务板，仅保存 `proposed` / `active` mission，以及主菜单展示配置
+- `<data_dir>/mission_archive.json`：历史档案，仅保存 `completed` / `archived` / `rejected` mission，用于历史回顾和 AI 去重
 
 ## `missions.json`
 

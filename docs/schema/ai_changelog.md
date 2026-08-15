@@ -1,10 +1,13 @@
 # AI Changelog Schema
 
+> **状态**：Current JSON v1 / Target deprecated
+> 新数据平台不把 `ai_changelog.json` 迁入核心。Git commit、同步 diff、迁移备份和显式撤销承担长期审计与回滚；本文件仅解释迁移前的当前行为。参见 [`docs/design/data_platform.md`](../design/data_platform.md)。
+
 记录 AI agent skill 对数据文件的所有修改，支持审计和回滚。
 
 ## 文件路径
 
-- `data/ai_changelog.json`
+- `<data_dir>/ai_changelog.json`
 
 ## 顶层结构
 

@@ -1,5 +1,8 @@
 # Items Schema
 
+> **状态**：Current external-source schema
+> 第一阶段目标架构不迁移 Items 数据；Obsidian/Markdown 继续作为权威来源，Arcana 通过适配器读取。参见 [`docs/design/data_platform.md`](../design/data_platform.md)。
+
 Items 模块管理个人物品清单。Rust 直读 Obsidian MD 文件（解析 YAML frontmatter），Obsidian 为唯一数据源。
 
 ## `item_sources.json`

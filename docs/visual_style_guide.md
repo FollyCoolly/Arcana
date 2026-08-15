@@ -1,6 +1,6 @@
 # Arcana - 视觉风格指南（P5-Inspired）
 
-> **最后更新**: 2026-04-30
+> **最后更新**: 2026-08-15
 > **状态**: 反映当前代码实现
 
 ---
@@ -213,10 +213,10 @@ font-family: "Source Han Sans SC", "Noto Sans SC", "方正兰亭黑_GBK", "Micro
 | `src/routes/+page.svelte` | Design tokens、分层结构、菜单项、返回按钮、字体栈 |
 | `src/app.css` | Tailwind v4 导入、全局 font-size |
 | `src/lib/components/RadarChart.svelte` | 雷达图色彩（金、灰变体） |
-| `src/lib/components/MenuItem.svelte` | 菜单项字体 |
-| `src/lib/components/CollageLabel.svelte` | 标签字体 |
-| `src/lib/components/PromptWord.svelte` | Canvas 文字渲染 |
-| `src/lib/components/KeyHint.svelte` | 按键提示字体 |
+| `src/lib/MenuItem.svelte` | 菜单项字体 |
+| `src/lib/CollageLabel.svelte` | 标签字体 |
+| `src/lib/PromptWord.svelte` | Canvas 文字渲染 |
+| `src/lib/KeyHint.svelte` | 按键提示字体 |
 | `src/lib/screens/StatusScreen.svelte` | Status 页装饰星形色彩 |
 | `src/lib/screens/SkillsScreen.svelte` | 技能节点色彩、`--rm-gold` 局部覆写 |
 | `src/lib/screens/MissionsScreen.svelte` | 任务行动效 |
@@ -224,4 +224,4 @@ font-family: "Source Han Sans SC", "Noto Sans SC", "方正兰亭黑_GBK", "Micro
 | `src/lib/screens/ItemsScreen.svelte` | 物品页动效 |
 | `src/lib/screens/GalleryScreen.svelte` | 画廊页动效 |
 | `src/lib/screens/StatusDetailView.svelte` | 状态详情动效 |
-| `src/lib/components/PhanSiteProgress.svelte` | 任务进度条动效 |
+| `src/lib/PhanSiteProgress.svelte` | 任务进度条动效 |

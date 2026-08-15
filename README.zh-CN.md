@@ -13,6 +13,9 @@
 
 Arcana 是一个 AI 辅助的桌面 HUD，用来把现实生活中的进展整理成结构化的游戏式系统：状态维度、任务、成就、技能、物品库存和媒体历史。它将数据以本地 JSON 文件保存，并通过 AI 助手理解更新、提出任务、追踪进度，让整套系统长期保持连贯。
 
+> [!NOTE]
+> 上述内容描述当前实现。已经确定的下一阶段架构会把运行时数据迁入 SQLite，同时保留确定性、可读的 JSON，通过个人私有 Git 仓库同步。参见[目标数据平台设计](docs/design/README.md)。
+
 Arcana **不是**一个靠连续打卡和复选框驱动的习惯追踪器，也不是玩具式的数值表。它借用了游戏的视觉语言和动机循环，但底层数据都是真实的：个人里程碑、当前目标、拥有的物品、消费过的媒体，以及可衡量的状态信号。目标不是假装生活是一场游戏，而是给现实生活一个更清晰、更锋利的界面。
 
 ---
@@ -121,8 +124,8 @@ Arcana 内置 AI 助手，可作为个人生活助手运行，支持多种入口
 
 | 入口 | 说明 |
 |------|------|
-| **外部 AI harness** | 主要入口——Claude Code、Codex、OpenCode、OpenClaw、Hermes Agent 或任何支持 slash command 的 agent。直接在 AI 编程工具里运行 `/velvet-room` 或 `/phan-site`。 |
-| **Telegram** | 可选的移动端 / 远程访问机器人（`agent-telegram`），按需编译和运行。未来可能支持更多 IM 渠道。 |
+| **外部 AI harness** | 主要入口。项目级 Skill 当前位于 `.claude/skills`；其他 harness 可以调用 `arcana-data`。 |
+| **Telegram** | 可选的移动端 / 远程访问机器人（`agent-telegram`），按需编译和运行。 |
 | **Data CLI** | AI 技能和脚本使用的结构化数据操作工具（`arcana-data`）。 |
 
 所有入口共享同一套服务层（`src-tauri/src/services/`）和数据格式，因此任何入口写入的更新都会在其他地方立即可见。
@@ -144,7 +147,7 @@ AI 助手可以：
 - **框架**：[Tauri v2](https://v2.tauri.app/)（Rust 后端 + webview 前端）
 - **前端**：Svelte 5 + SvelteKit v2 + TypeScript + Tailwind CSS v4 + Three.js
 - **后端**：Rust（IPC commands、AI 助手、JSON 数据层）
-- **数据**：本地 JSON 文件（`data/`，gitignored），无数据库
+- **数据**：当前实现使用配置的用户数据目录中的本地 JSON；`data-example/` 保存受跟踪的初始化模板，目标架构使用本地 SQLite 与 Git 同步 JSON
 - **AI**：直接集成 Anthropic API，并自建工具调用循环
 
 ---
@@ -158,7 +161,6 @@ src/                    # SvelteKit 前端
       ├── screens/      #   页面组件（Status, Achievements, Skills, Items, Gallery, Missions）
       ├── components/   #   共享 UI 组件（RadarChart, SkillNebula 等）
       ├── types/        #   TypeScript 类型定义
-      ├── stores/       #   Svelte stores
       └── utils/        #   前端工具函数
 src-tauri/src/          # Rust 后端
   ├── commands/         #   Tauri IPC commands（status, achievements, skills, missions, items, gallery, weather）
@@ -167,10 +169,10 @@ src-tauri/src/          # Rust 后端
   ├── services/         #   共享业务逻辑（AI 助手、arcana-data CLI、Tauri commands 共用）
   ├── agent/            #   AI 助手子系统（runner, LLM, tools, prompt, config, session）
   └── bin/              #   独立二进制：agent_cli, agent_telegram, arcana_data
-data/                   # 运行时 JSON 数据（gitignored）
+data/                   # 忽略的本地开发数据
+data-example/           # `arcana-data init` 复制的受跟踪模板
   ├── packs/<pack_id>/  #   内容包（manifest.json, achievements.json, skills.json）
-  ├── sessions/         #   AI 助手 JSONL 会话历史
-  └── *.json            #   missions, status, achievement_progress, mission_memory 等
+  └── *.json            #   missions、status、achievement_progress 等
 docs/                   # 架构文档、schema 规范、UI 设计指南
   └── schema/           #   JSON schema 定义
 scripts/                # Python 工具脚本（数据导入、schema 校验）
@@ -195,7 +197,7 @@ cargo build --manifest-path src-tauri/Cargo.toml --bin arcana-data
 npm run tauri dev
 ```
 
-应用打开后，新手任务已在任务界面中自动激活。在任意支持 slash command 的 AI coding agent（Claude Code、OpenCode、Codex、OpenClaw、Hermes Agent 等）中运行 `/velvet-room`，让 AI 带你完成后续配置。
+应用打开后，新手任务已在任务界面中自动激活。在能够加载项目级 `.claude/skills` 的 harness 中运行 `/velvet-room`；其他 harness 在插件包装完成前可以使用结构化的 `arcana-data` CLI。
 
 > [!NOTE]
 > 如果你需要使用 agent 二进制——主要是 `agent-telegram`，它会启动一个监听服务，让你通过 Telegram 远程控制本地助手——则需要额外配置 LLM provider。通过环境变量（`ANTHROPIC_API_KEY`）或配置文件（`~/.arcana/agent_config.json`）设置 API key 即可。详见 [AI 助手](#ai-助手)。
@@ -281,13 +283,12 @@ Arcana 提供了一组 Python 脚本，用于导入个人数据、生成内容�
 | `scripts/fetch_douban.py` | 获取 Douban 电影、剧集和书籍；支持 `--status all`。 |
 | `scripts/dev/process_assets.py` | 调整并准备 `static/ui/` 下的 UI 资源。 |
 | `scripts/dev/remove_bg.py` | 为单个图片或文件夹批量移除背景。 |
-| `scripts/validate_data.py` | 校验运行时 JSON 数据和内容包 schema 规则。 |
+| `scripts/validate_data.py` | 仅用于仓库本地 `data/` JSON 的旧编辑后 hook；正常 CLI/Tauri 写入使用 Rust 校验。 |
 
 ```bash
 python scripts/fetch_bangumi.py
 python scripts/fetch_steam.py --detailed
 python scripts/fetch_douban.py --status all
-python scripts/validate_data.py data/missions.json
 ```
 
 ---
@@ -295,52 +296,20 @@ python scripts/validate_data.py data/missions.json
 ## 文档
 
 - [Architecture](docs/architecture.md)：Tauri、数据层、前端和 AI 助手架构。
-- [Directory Structure](docs/directory_structure.md)：项目布局和历史结构说明。
-- [Schema Reference](docs/schema/README.md)：missions、achievements、skills、status、items、gallery、changelog、memory 和 UI events 的详细 JSON schema。
+- [目标数据平台设计](docs/design/README.md)：规划中的 SQLite 运行时、Git JSON 同步、RecordData、Status、Achievement、PackForest、Mission 与 Memory 架构。
+- [Schema Reference](docs/schema/README.md)：missions、achievements、skills、status、items、changelog、memory 和 UI events 的详细 JSON schema。
 - [Visual Style Guide](docs/visual_style_guide.md)：Persona 5 风格设计原则、调色板、字体和交互规则。
 - [UI Design Spec](docs/ui_design_spec.md)：主菜单和子界面的布局/交互规范。
-- [AI 助手集成方案](docs/ai_agent_integration.md)：MCP/Nanobot 集成方案和 AI 助手平台调研记录。
 
 ---
 
-## 设计决策
+## 当前实现说明
 
-- **Tauri + JSON，而非 Electron + SQLite**：更小体积、更好性能，同时保留可读、可版本控制的数据文件。
-- **内容包体系**：成就和技能通过可插拔内容包加载，支持社区扩展。
+- **当前版本使用 Tauri + JSON**：现有代码以 JSON 保存运行时数据；目标架构保留 Tauri，将运行时状态迁入 SQLite，并导出可读 JSON 用于 Git 同步。
+- **内容包体系**：成就和技能通过用户可扩展的内容包加载。
 - **AI 助手与 UI 解耦**：AI 助手可以独立于桌面 GUI 运行（CLI / Telegram），并共享同一套数据层。
-- **前置条件驱动的进度系统**：成就前置条件在数据模型中保持为经过校验的 DAG，而技能在 UI 中呈现为紧凑的蜂窝状节点图，不是传统连线图。
+- **前置条件校验**：当前 Achievement 模型把 prerequisites 校验为 DAG；Skill 在 UI 中呈现为紧凑的蜂窝状节点图。
 - **共享服务层**：`services/` 集中任务、状态、成就、记忆和 changelog 等业务逻辑，供 Tauri commands、`arcana-data` 和 Rust AI 助手共同使用。
-
----
-
-## 未来想法
-
-### UI 与体验
-
-- 首次设置向导
-- 全局界面音效
-- 数据变更揭示动画：首次打开时展示上次会话以来发生的变化
-- 接受任务和完成任务时的电影感动画
-
-### 功能
-
-- 技能塔罗牌生成器：为每个追踪中的技能自动生成 Persona 风格卡牌，可以考虑接入生成模型
-- 图鉴增加音乐追踪，与书籍、动画、电影、游戏并列
-- AI 导航伙伴：一个常驻屏幕的助手，灵感来自 P5 的 Futaba / Morgana（默认形象参考《Steins;Gate》的 Kurisu）
-
-### 审计与透明度
-
-- 面向用户的 changelog 查看器：在 UI 中展示 `ai_changelog.json`，让用户审查、确认和回滚 AI 驱动的数据变更
-- AI 修改的 diff 视图和一键回滚
-
-### 集成与平台
-
-- 支持更多 IM 渠道（如 Discord、WeChat）以及 Anthropic 之外的 LLM 服务商
-- 为图鉴和状态系统添加更多数据源导入器
-- 与外部 AI 知识管理系统做更深集成
-- 移动端只读看板：用于快速查看状态雷达图和任务进度的轻量 web view
-- 健康数据自动导入：从 Apple Health / Google Fit / Garmin 同步，保持状态指标更新
-- 社区内容包仓库：允许其他人发布和分享成就包
 
 ---
 
