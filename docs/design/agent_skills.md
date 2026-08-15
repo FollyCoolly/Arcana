@@ -77,7 +77,6 @@ pack list|show|scaffold|validate|write|asset-put|asset-delete|enable|disable
 status list-dimensions|evaluate|select
 batch apply
 sync status|import|export|pull|push|run
-init
 ```
 
 实际 flag 和请求体由 CLI `--help --json` 生成文档；Skill 不复制完整 JSON Schema，而是在需要时查询 capabilities/schema，避免随代码漂移。

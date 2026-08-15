@@ -194,8 +194,10 @@ pub trait ArcanaRepositoryReader {
     fn dashboard_mission_selections(&self) -> RepositoryResult<DashboardMissionSelections>;
 }
 
-/// Mutation surface available only inside a repository transaction.
-pub trait ArcanaRepositoryTransaction {
+/// Read/write surface available only inside a repository transaction.
+/// Read-modify-write commands must use these read methods after the
+/// transaction begins, never read through the outer repository first.
+pub trait ArcanaRepositoryTransaction: ArcanaRepositoryReader {
     fn put_pack(&mut self, pack: Pack) -> RepositoryResult<()>;
     fn delete_pack(&mut self, pack_id: &str) -> RepositoryResult<()>;
     fn set_pack_enabled(&mut self, pack_id: &str, enabled: bool) -> RepositoryResult<()>;

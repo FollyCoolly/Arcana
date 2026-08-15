@@ -41,6 +41,15 @@ impl SqliteRepository {
         })?;
         Ok(Self { connection })
     }
+
+    pub fn checkpoint_and_close(self) -> RepositoryResult<()> {
+        self.connection
+            .execute_batch("PRAGMA wal_checkpoint(TRUNCATE)")
+            .map_err(map_sqlite_error)?;
+        self.connection
+            .close()
+            .map_err(|(_, error)| map_sqlite_error(error))
+    }
 }
 
 impl ArcanaRepositoryReader for SqliteRepository {
@@ -103,6 +112,28 @@ impl SqliteRepositoryTransaction<'_> {
 
     fn mark_synced_change(&mut self) {
         self.synced_data_changed = true;
+    }
+}
+
+impl ArcanaRepositoryReader for SqliteRepositoryTransaction<'_> {
+    fn load_synced_snapshot(&self) -> RepositoryResult<SyncedRepositorySnapshot> {
+        load_synced_snapshot(self.connection())
+    }
+
+    fn get_record(&self, definition_id: &str) -> RepositoryResult<Option<Record>> {
+        load_record(self.connection(), definition_id)
+    }
+
+    fn list_mission_suggestions(&self) -> RepositoryResult<Vec<MissionSuggestion>> {
+        load_mission_suggestions(self.connection())
+    }
+
+    fn status_dimension_selection(&self) -> RepositoryResult<Vec<StatusDimensionSelection>> {
+        load_status_dimension_selection(self.connection())
+    }
+
+    fn dashboard_mission_selections(&self) -> RepositoryResult<DashboardMissionSelections> {
+        load_dashboard_mission_selections(self.connection())
     }
 }
 

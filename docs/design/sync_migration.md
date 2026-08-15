@@ -132,6 +132,7 @@ arcana-data init --repo <repository_dir> [--runtime <runtime_dir>]
 
 - 普通 read/write command 获取 shared lock。SQLite WAL 继续负责普通并发事务。
 - Git import/export、数据库替换、SQLite migration 和首次初始化获取 exclusive lock。
+- 每次新建普通 Repository connection 前先短暂获取 exclusive lock，完成 application ID、migration checksum、pending migration 和 integrity preflight；释放后再以 shared lock 执行实际 command。这样 migration 不会在普通 shared lock 内发生。
 - exclusive lock 持有期间禁止新命令打开或访问活动数据库；这是 Windows 上安全替换数据库文件的必要条件。
 - 普通命令默认等待 5 秒后报告 busy；显式 sync/migrate 命令可以显示等待状态并允许用户取消。
 - 所有 UI、CLI 和 Agent Skill 入口使用同一锁实现，不能各自创建锁协议。

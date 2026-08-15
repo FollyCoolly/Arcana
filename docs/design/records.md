@@ -89,6 +89,8 @@ RecordDefinition 第一版只包含：
 - event 必填 `occurred_at` 表示事件发生时间。
 - `recorded_at` 表示信息进入 Arcana 的时间。
 - `recorded_at` 由正常写入命令填写；scalar、collection item 和 event 都保存该字段。
+- 正常 `set` / `correct` / `increment` 请求不接受调用方伪造 `recorded_at`；Application Command 在事务执行时填写当前时间。同步 import 按已验证 snapshot 保留原时间。
+- scalar `increment` 可以显式提供新的 `effective_at`；省略时沿用当前 scalar 的 `effective_at`，只更新值和 `recorded_at`。
 - 数值单位在 RecordDefinition 中保存为可读字符串；第一版不增加独立单位编码系统。
 
 ## 6. 缺失与历史

@@ -1,9 +1,9 @@
 # Arcana 目标设计文档
 
-> **状态**：Target / 领域模型与 SQLite Repository 已开始实现
+> **状态**：Target / 本机数据平台实现中
 > **最后更新**：2026-08-15
 
-本目录描述 Arcana 下一阶段的数据平台与领域模型。领域模型、DDL、SQLite migration runner 和 Repository adapter 已落地，但 UI、CLI 与同步 Codec 尚未切换，因此当前程序还没有完整支持这里的结构。
+本目录描述 Arcana 下一阶段的数据平台与领域模型。领域模型、DDL、SQLite migration runner、Repository adapter、本机运行时锁、`basic` Pack 初始化和第一批 scalar Record Commands 已落地，但 UI、CLI 与同步 Codec 尚未切换，因此当前程序还没有完整支持这里的结构。
 
 尚未切换的 UI/CLI 行为仍以 [`docs/architecture.md`](../architecture.md) 与 [`docs/schema/`](../schema/README.md) 为准；新入口只实现本目录的目标模型，不导入或兼容旧 JSON。完成入口切换后删除旧实现与旧 Schema 文档。若两组文档冲突：
 
@@ -45,13 +45,13 @@
 - AssistantMemory 同步长期语义记忆，不同步完整 Agent Session。
 - 外部 Agent Skill 以 `plugins/arcana/skills` 为唯一源码，只通过版本化 `arcana-data` 合约修改数据，并受 fixture/eval 质量门约束。
 
-### 下一阶段实现顺序
+### 实现进度与顺序
 
-1. Rust Domain Model、校验器和 Repository interface。
-2. SQLite Repository command、进程间锁和运行时路径切换。
-3. 确定性 Git JSON Codec、import/export 和 sync state。
-4. Status evaluator、Achievement/Skill 查询与 Mission/Memory command。
-5. Tauri UI、`arcana-data` contract 和 canonical Agent Skill；切换时直接停止使用旧 JSON。
+1. 已完成：Rust Domain Model、校验器、Repository interface、SQLite DDL/migration/adapter。
+2. 进行中：进程间锁、运行时初始化与 Application Commands；scalar Record 的 get/set/correct/increment/delete 已完成，collection/event 和其他领域命令待实现。
+3. 待实现：确定性 Git JSON Codec、import/export 和 sync state。
+4. 待实现：Status evaluator、Achievement/Skill 查询与 Mission/Memory command。
+5. 待实现：Tauri UI、`arcana-data` contract 和 canonical Agent Skill；切换时直接停止使用旧 JSON。
 
 ### 暂不处理
 
