@@ -1,6 +1,6 @@
-# 数据平台、同步与迁移
+# 数据平台、同步与版本
 
-> **状态**：Target / 同步、存储与迁移协议已确定
+> **状态**：Target / 同步、存储与版本协议已确定
 > **最后更新**：2026-08-15
 
 ## 1. 存储职责
@@ -21,7 +21,7 @@ SQLite Adapter <-> Domain Model <-> Sync Repository Codec
 ## 2. 为什么选择 SQLite
 
 - Tauri UI、CLI 和外部 Skill 可能从不同进程写入，需要事务和并发控制。
-- 数据迁移、引用完整性和索引不应由各模块自行实现。
+- 数据库版本升级、引用完整性和索引不应由各模块自行实现。
 - SQLite 成熟、跨平台、无需独立服务，并且便于备份和原子替换。
 - 领域层仍提供强类型 Repository / Document 风格 API，业务模块不直接拼 SQL。
 
@@ -115,16 +115,16 @@ SQLite Adapter <-> Domain Model <-> Sync Repository Codec
 - `achieved` 状态不会因 Record 变化自动消失，但允许显式撤销。
 - 关闭或删除 Pack 不自动删除用户 Record 或用户成就状态；引用该 Pack Dimension 的本机 UI 选择应报告配置错误。
 
-## 7. Git 同步与首次迁移
+## 7. Git 同步与首次初始化
 
-仓库 managed paths、OS file lock、防覆盖 revision/digest、import/export、fast-forward Git 命令、SQLite migration runner、旧 JSON 映射、报告和回滚完整定义在 [`sync_migration.md`](./sync_migration.md)。
+仓库 managed paths、OS file lock、防覆盖 revision/digest、import/export、fast-forward Git 命令、SQLite migration runner 和失败恢复完整定义在 [`sync_migration.md`](./sync_migration.md)。
 
 核心约束：
 
 - SQLite 与 Git managed paths 同时变化时停止并暴露 `both_changed`，不能选择一侧覆盖另一侧。
 - 自动 pull 只允许 fast-forward；不自动 merge、rebase 或解决冲突。
-- 首次迁移先 plan、备份和验证，再原子切换；不删除旧 JSON，也不自动 commit/push。
-- tracked Achievement 迁移后不再计分，Skill/Status 行为变化必须逐项写入报告。
+- 新数据平台只支持创建全新的 v1 用户仓库与 SQLite；不读取、不转换旧版应用 JSON，也不提供旧数据回滚入口。
+- UI/CLI 切换前旧实现可以继续存在于代码树中，但新旧数据层不得同时作为权威写入源；切换完成后旧 JSON 只是不受 Arcana 管理的普通文件。
 
 ## 8. SQLite 物理结构
 
@@ -137,4 +137,4 @@ Record、Pack Definition、连接设置、事务和 Git JSON 转换见 [`sqlite_
 - [`achievements_skills_packs.md`](./achievements_skills_packs.md)：Pack、Achievement 和 Skill。
 - [`missions_memory.md`](./missions_memory.md)：Mission、Suggestion、Dashboard 和 Memory。
 - [`sqlite_storage.md`](./sqlite_storage.md)：完整 SQLite DDL 与事务语义。
-- [`sync_migration.md`](./sync_migration.md)：锁、同步、版本、迁移和回滚。
+- [`sync_migration.md`](./sync_migration.md)：锁、同步、版本、初始化和失败恢复。

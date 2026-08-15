@@ -1,4 +1,4 @@
-# Git 同步、版本与迁移协议
+# Git 同步、版本与数据库初始化协议
 
 > **状态**：Target / 实现协议已确定
 > **最后更新**：2026-08-15
@@ -97,8 +97,7 @@ arcana-data init --repo <repository_dir> [--runtime <runtime_dir>]
 
 - 第一版仓库和 Pack Schema 均为整数 `1`。
 - 应用遇到高于自身支持范围的版本必须拒绝导入，不能尽力猜测。
-- 旧版本先在内存 Domain Model 中迁移并完整校验；只有显式 export 才写回新格式。
-- Schema migration 只能改变表示方式，不能静默删除语义字段。无法无损转换时产生 blocker，要求用户决定。
+- 第一版只接受精确的仓库/Pack Schema `1`。其他版本一律拒绝导入；未来若增加同步格式升级，必须作为独立、显式且经过 round-trip 验证的 Codec 实现。
 - Pack 不保存内容发布版本；个人内容历史由 Git 表达。
 - 运行时 SQLite 使用应用内置、不可修改的有序 migration，不复用同步 JSON 的 Schema 版本。
 
@@ -113,7 +112,7 @@ arcana-data init --repo <repository_dir> [--runtime <runtime_dir>]
 }
 ```
 
-两个值都必须是解析后的绝对目录路径；Windows JSON 路径中的反斜杠按 JSON 规则转义。`repository_dir` 在 init/migration 成功前可以缺失，`runtime_dir` 缺失时默认使用 `~/.arcana/runtime`。配置不保存 user ID、Git credential、branch、remote 或同步 revision；这些分别由“一仓库一用户”、系统 Git 和 SQLite `sync_state` 表达。数据平台不得删除同一 settings 文件中其他模块拥有的本机配置 key。
+两个值都必须是解析后的绝对目录路径；Windows JSON 路径中的反斜杠按 JSON 规则转义。`repository_dir` 在 init 成功前可以缺失，`runtime_dir` 缺失时默认使用 `~/.arcana/runtime`。配置不保存 user ID、Git credential、branch、remote 或同步 revision；这些分别由“一仓库一用户”、系统 Git 和 SQLite `sync_state` 表达。数据平台不得删除同一 settings 文件中其他模块拥有的本机配置 key。
 
 运行时布局固定为：
 
@@ -132,7 +131,7 @@ arcana-data init --repo <repository_dir> [--runtime <runtime_dir>]
 这些文件一律不进入用户同步仓库。`arcana.lock` 必须使用操作系统 advisory file lock，不能把“锁文件存在”当作已加锁；进程崩溃后 OS 会自动释放。
 
 - 普通 read/write command 获取 shared lock。SQLite WAL 继续负责普通并发事务。
-- Git import/export、数据库替换、SQLite migration 和首次迁移获取 exclusive lock。
+- Git import/export、数据库替换、SQLite migration 和首次初始化获取 exclusive lock。
 - exclusive lock 持有期间禁止新命令打开或访问活动数据库；这是 Windows 上安全替换数据库文件的必要条件。
 - 普通命令默认等待 5 秒后报告 busy；显式 sync/migrate 命令可以显示等待状态并允许用户取消。
 - 所有 UI、CLI 和 Agent Skill 入口使用同一锁实现，不能各自创建锁协议。
@@ -212,89 +211,33 @@ push 被拒绝或本地/远端 diverged 时保留本地 commit，并给出普通
 - migration 失败回滚事务并继续使用原数据库，不自动删除备份。
 - 数据库设置固定 `PRAGMA application_id = 0x41524341`（ASCII `ARCA`）；打开其他 application ID 的数据库时拒绝写入。
 
-## 9. 首次旧 JSON 迁移
+## 9. 新数据平台初始化与切换
 
-CLI：
+新系统没有旧 JSON 导入器，也不提供 `migrate plan/apply/rollback` 命令。首次使用只允许两条路径：
 
-```text
-arcana-data migrate plan --source <old_data_dir> --repo <target_repo>
-arcana-data migrate apply --source <old_data_dir> --repo <target_repo>
-arcana-data migrate verify --repo <target_repo>
-arcana-data migrate rollback --backup <backup_id>
-```
+- `arcana-data init` 创建全新的 v1 Git 仓库、标准 `basic` Pack 和空 SQLite；
+- 已存在的有效 v1 同步仓库通过 `sync import` 创建新的本机 SQLite。
 
-`plan` 完全只读，并生成机器可读 JSON 与人类可读 Markdown 报告。`apply` 只有在没有 blocker 时执行；它不 commit/push，也不删除旧数据。
+初始化必须先在临时位置生成仓库内容和 SQLite，完成 Domain 校验、`foreign_key_check`、`integrity_check` 与 JSON → SQLite → JSON round-trip 后，再写入本机路径配置。目标已有 Arcana managed paths 时，`init` 拒绝覆盖并要求使用 `sync import`。
 
-目标目录不存在或为空时，`apply` 可以创建目录并执行本地 `git init`；非空目标必须已经是 Git working tree，避免在任意目录中隐式建立嵌套仓库。
+旧版应用 JSON 不参与探测、映射、备份或验证。UI/CLI/Skill 切换到新 Repository 后，旧 `data_dir` 不再是 Arcana 数据源；旧文件不会被新系统修改或删除，用户如需保留只能按普通文件自行归档。
 
-目标仓库已经包含 Arcana managed paths 时，`plan` 必须将其列为 blocker，除非完整导入后证明与计划输出语义等价；迁移器不能把“首次迁移”当成覆盖现有仓库的许可。
+## 10. 验证标准
 
-### 9.1 映射
-
-| 旧数据 | 目标 |
-| --- | --- |
-| `user_profile.username` | `identity.nickname` scalar Record |
-| `user_profile.birth_date` | `identity.birth_date` scalar Record |
-| status 用户 metric definition/value | `legacy_status.<old_id>` RecordDefinition 与 scalar Record |
-| status Dimension | `legacy_status` Pack DimensionDefinition |
-| loaded Pack manifest | 增加 `schema_version: 1`，移除旧内容 version |
-| Pack Achievement | 新 `achievements.json`，保留稳定 ID |
-| achievement progress | 最小 `achievement-states.json`；丢弃 note/progress detail 等冗余字段 |
-| Pack Skill | 固定四 threshold、无 node ID/key gate 的新 `skills.json` |
-| active/completed/archived mission | 统一 `missions.json` |
-| proposed/rejected mission | 本机 `mission_suggestions` |
-| main_menu | 本机 `dashboard_mission_slots` |
-| focus/pattern/context memory | 精炼后的 `assistant-memory.json` entry |
-| completed mission log | 不迁移，直接查询 Mission |
-| last generation、UI event、cache | 不迁移 |
-| Gallery/Items source path | 本机外部适配器配置，不进入 Git |
-| `ai_changelog.json` | 不迁移；旧文件只保留在备份 |
-
-新建用户仓库时应用写入并默认启用标准 `basic` Pack。首次迁移若遇到 username 或 birth date，则迁移器也必须写入并启用该 Pack，以提供两个 identity Definition；目标仓库已存在同 ID 但结构不兼容的 Pack 时产生 blocker，不能覆盖。旧 Pack 内绝对 card image 或应用根路径不能直接迁移：迁移器尝试复制到 Pack `assets/`；无法安全解析、格式不受支持或内容校验失败时移除字段并警告。
-
-### 9.2 旧 Status 公式
-
-每个旧 metric 变成一个子 Score。先令 `x` 为对应数值表达式：通常是 `record('legacy_status.<old_id>')`；旧 `bmi` 没有持久化值、但 height/weight 均可迁移时，使用 `record('legacy_status.weight_kg') * 10000 / (record('legacy_status.height_cm') * record('legacy_status.height_cm'))` 保留当前 BMI fallback。随后按旧配置生成：
-
-- `target_max`：`x / target_max * 100`
-- `target_min`：`target_min / x * 100`
-- 健康范围：`min(x / target_min, 1, target_max / x) * 100`
-- 无 target：`x`
-
-旧 threshold 按 `old_threshold / Σ(weights) * 100` 转换。结果不满足 `0 < t2 < t3 < t4 < t5 <= 100` 时产生 blocker，不做 clamp 猜测。
-
-`scoring_brackets` 和旧 `sys_*` 引用无法由第一版表达式无损转换，必须作为 blocker 列出。用户可以在迁移前修改配置，或显式使用 `--skip-unsupported-dimensions` 跳过整项 Dimension；迁移器绝不静默删除单个 Score。
-
-### 9.3 Skill 与 Memory
-
-- Skill 只迁移 points 和四个 `points_required`；删除 key gate 会改变等级时，报告迁移前后 points/level 和具体原因。
-- 旧 `max_level != 5` 是 blocker。
-- tracked Achievement 只保留 status；achieved 保留合法 achieved_at。只有 achieved 在迁移后计分。
-- Memory 迁移 ID 使用固定 UUID namespace + 旧文件路径/字段位置生成 UUIDv5，保证重复 plan/apply 得到相同结果。
-- conversation context 只有在内容仍具有跨会话价值时迁移为 summary；原始、临时或重复条目在报告中列为 skipped，不受固定数量限制。
-
-## 10. 验证与迁移报告
-
-成功条件：
-
-- 所有目标 JSON、Pack asset 和 SQLite Schema 校验通过；
+- 所有目标 JSON、Pack asset、Domain Model 和 SQLite Schema 校验通过；
 - managed files 重复 export 字节完全相同；
-- JSON → SQLite → JSON 语义等价；
+- JSON → SQLite → JSON 规范化语义等价；
 - 实体计数、稳定 ID、引用、用户状态集合以及 asset 路径/bytes digest 一致；
-- 新旧 Mission 状态数量一致；
-- 每个 Skill 输出迁移前后 points/level；
-- 每个可迁移 Status Dimension 输出若干 fixture value 下的新旧 score 对比；
-- 所有 dropped、skipped、unresolved 和行为变化逐项列出，不能只给汇总数字。
+- unresolved Record/Achievement 状态逐项报告，不能静默丢弃；
+- 本机选择、Dashboard slot 与 MissionSuggestion 不得意外进入同步 snapshot。
 
-报告和备份保存在本机 migration backup 目录，不进入用户同步仓库。
+## 11. 备份与失败恢复
 
-## 11. 备份与回滚
-
-- apply 前备份旧 JSON、已有 SQLite、配置文件、目标仓库 HEAD/managed digest，并生成 SHA-256 manifest。
-- 新数据库和目标 JSON 始终先写临时路径，通过验证后再切换活动指针。
-- rollback 恢复旧活动数据库和本机配置；首次从旧 JSON 迁移时恢复旧数据目录指向，旧版本应用可继续使用。
-- rollback 不自动 reset 或删除 Git commit，避免覆盖用户在迁移后的人工修改；报告提供原 HEAD，用户按普通 Git revert/checkout 处理。
-- 任何备份清理由用户显式执行，迁移器不设置自动过期删除。
+- 新数据库和同步输出始终先写临时路径，通过验证后再切换活动指针。
+- 对已有 Arcana SQLite 执行未来 pending migration 前，checkpoint 并备份数据库、`-wal`、`-shm` 和当前 migration checksum 清单。
+- SQLite migration 失败时回滚事务并继续使用原数据库；Git export 中断时按 export journal 完成或恢复整组 managed files。
+- 恢复流程不自动 reset、rebase 或删除 Git commit；Git 历史仍由用户按普通 Git 工具处理。
+- 任何长期备份清理由用户显式执行，不设置自动过期删除。
 
 ## 12. RecordDefinition 内容演进
 

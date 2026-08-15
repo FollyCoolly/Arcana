@@ -43,9 +43,12 @@ log = "0.4"
 env_logger = "0.11"
 serde_yaml = "0.9"
 regex = "1"
+chrono = { version = "0.4", default-features = false, features = ["std"] }
 percent-encoding = "2"
 clap = { version = "4", features = ["derive"] }
 fs2 = "0.4"
+rusqlite = { version = "0.40.2", features = ["bundled"] }
+sha2 = "0.10"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2-app-kit = { version = "0.3", features = ["NSApplication", "NSRunningApplication", "NSWindow"] }

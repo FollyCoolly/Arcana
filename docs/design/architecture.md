@@ -117,9 +117,9 @@ canonical Skill 源码、CLI contract、harness 分发和质量门见 [`agent_sk
 
 ## 8. 当前实现到目标架构
 
-迁移期间必须保留两套文档语义：
+入口切换完成前必须区分两套文档语义：
 
 - [`../architecture.md`](../architecture.md) 描述当前 JSON 实现；
 - 本文描述迁移目标。
 
-实现顺序应从领域模型、Repository 和同步仓库 Codec 开始，再迁移 UI/CLI/Skill。不能先让某个模块直接使用新库、其他模块继续修改旧 JSON，从而形成两个权威数据源。
+实现顺序从领域模型、Repository 和同步仓库 Codec 开始，再一次性切换 UI/CLI/Skill。新系统不导入旧 JSON；不能先让某个入口使用 SQLite、其他入口继续修改旧 JSON，从而形成两个权威数据源。切换后删除旧存储调用与旧 Schema 文档。

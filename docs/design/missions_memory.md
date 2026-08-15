@@ -83,7 +83,7 @@ AssistantMemory 可以同步，并使用普通 Git 冲突处理方式。
 字段与校验：
 
 - 文件缺失表示没有 Mission；文件存在时 `missions` 必填、非空并按 `id` 排序。
-- 新 Mission ID 由系统生成 UUIDv7；首次迁移保留合法的旧 ID。ID 在仓库内唯一且一经引用不能原地修改。
+- 新 Mission ID 由系统生成 UUIDv7。手动编辑同步 JSON 时必须保留稳定 ID；ID 在仓库内唯一且一经引用不能原地修改。
 - `title`、`status` 和 `created_at` 必填；`description` 可选。
 - `status` 只能是 `active`、`completed`、`archived`。
 - `progress` 可选，必须是 0～100 的整数。完成命令把已存在的 progress 设为 100；手动 JSON 中 completed Mission 若提供 progress，也必须为 100。
@@ -144,7 +144,7 @@ Dashboard Mission 展示使用固定 slot：`countdown`、`progress`、`hint_1`�
 ```
 
 - 文件缺失表示没有 Memory；文件存在时 `memories` 必填、非空并按 `id` 排序。
-- 新 ID 使用 UUIDv7；旧 Memory 迁移使用由来源位置生成的确定性 UUIDv5，保证重复迁移结果一致。
+- 新 ID 使用 UUIDv7；手动编辑同步 JSON 时必须保留稳定 ID。
 - `kind` 必须是 `focus`、`preference`、`constraint`、`habit`、`summary`、`reminder`、`observation` 之一。
 - `content` 必填且非空，只保存经过精炼、预计跨会话仍有价值的自然语言语义。
 - `created_at` 和 `updated_at` 必填，使用带时区偏移的 RFC 3339，且 updated 不早于 created。

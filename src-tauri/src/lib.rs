@@ -1,5 +1,6 @@
 pub mod agent;
 mod commands;
+pub mod domain;
 pub mod models;
 pub mod services;
 pub mod storage;

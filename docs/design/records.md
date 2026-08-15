@@ -52,7 +52,7 @@ RecordDefinition 第一版只包含：
 
 它们使用与其他事实相同的 Record、SQLite Repository 和 Git JSON 格式。应用只在消费层约定这两个 ID：昵称缺失时显示产品默认值，生日缺失时不计算游戏天数。停用 `basic` Pack 不删除已有 Record。
 
-创建新用户仓库时应用写入并默认启用标准 `basic` Pack；它仍是仓库中的普通、可编辑 Pack，而不是应用数据库里的隐藏 Definition。首次旧数据迁移的生成规则见 [`sync_migration.md`](./sync_migration.md)。
+创建新用户仓库时应用写入并默认启用标准 `basic` Pack；它仍是仓库中的普通、可编辑 Pack，而不是应用数据库里的隐藏 Definition。新系统不从旧版 Profile JSON 生成这两个 Record；用户在新仓库中按需重新填写。
 
 ## 3. 第一版数据形态
 

@@ -1,9 +1,22 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use std::path::PathBuf;
 
-#[derive(Debug, Default, Deserialize)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 pub struct ArcanaSettings {
+    /// Legacy JSON v1 location. The new data platform ignores it; current
+    /// commands still need it until their entry points switch to SQLite.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub data_dir: Option<String>,
+    /// Target Git synchronization repository. Not used by current commands yet.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub repository_dir: Option<String>,
+    /// Target SQLite/lock/backup directory. Not used by current commands yet.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub runtime_dir: Option<String>,
+    /// Settings owned by other modules must survive a data-platform path update.
+    #[serde(default, flatten)]
+    pub extra: BTreeMap<String, serde_json::Value>,
 }
 
 /// Load settings from `~/.arcana/settings.json`.
@@ -47,6 +60,11 @@ pub fn default_data_dir() -> Option<PathBuf> {
     home_dir().map(|h| h.join(".arcana").join("data"))
 }
 
+/// Default target runtime directory. It remains separate from the Git repository.
+pub fn default_runtime_dir() -> Option<PathBuf> {
+    home_dir().map(|h| h.join(".arcana").join("runtime"))
+}
+
 fn settings_path() -> Option<PathBuf> {
     home_dir().map(|h| h.join(".arcana").join("settings.json"))
 }
@@ -75,5 +93,28 @@ mod tests {
         if let Some(home) = home_dir() {
             assert_eq!(p, home);
         }
+    }
+
+    #[test]
+    fn target_paths_can_coexist_with_legacy_data_dir() {
+        let settings: ArcanaSettings = serde_json::from_str(
+            r#"{
+                "data_dir": "~/old-data",
+                "repository_dir": "~/arcana-user-data",
+                "runtime_dir": "~/arcana-runtime",
+                "weather_city": "Shanghai"
+            }"#,
+        )
+        .unwrap();
+        assert_eq!(settings.data_dir.as_deref(), Some("~/old-data"));
+        assert_eq!(
+            settings.repository_dir.as_deref(),
+            Some("~/arcana-user-data")
+        );
+        assert_eq!(settings.runtime_dir.as_deref(), Some("~/arcana-runtime"));
+        assert_eq!(
+            settings.extra.get("weather_city"),
+            Some(&serde_json::json!("Shanghai"))
+        );
     }
 }

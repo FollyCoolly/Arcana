@@ -58,7 +58,7 @@ plugins/arcana/
 - Agent 只判断 `ok`、稳定 error code 和结构化 details，不解析人类错误文本。
 - `capabilities` 返回 CLI contract、仓库 Schema、Pack Schema 和支持命令版本；Skill 开始写操作前必须检查兼容性。
 - 读命令支持精确 ID、namespace、Pack 和状态过滤，避免每次把完整用户仓库塞入上下文。
-- 所有普通领域数据修改命令支持 `--dry-run`，返回将修改的实体和验证结果但不提交；首次迁移使用独立的 `plan` / `apply` 协议。
+- 所有普通领域数据修改命令支持 `--dry-run`，返回将修改的实体和验证结果但不提交；新仓库使用独立的 `init` 命令，不提供旧 JSON 数据迁移命令。
 - 多实体更新使用 `batch apply --file <json>`，在一个 SQLite 事务中全部成功或全部回滚。
 - CLI 不暴露任意 SQL、任意文件写入或“跳过验证”参数。
 
@@ -77,7 +77,7 @@ pack list|show|scaffold|validate|write|asset-put|asset-delete|enable|disable
 status list-dimensions|evaluate|select
 batch apply
 sync status|import|export|pull|push|run
-migrate plan|apply|verify|rollback
+init
 ```
 
 实际 flag 和请求体由 CLI `--help --json` 生成文档；Skill 不复制完整 JSON Schema，而是在需要时查询 capabilities/schema，避免随代码漂移。

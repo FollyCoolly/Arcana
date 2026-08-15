@@ -1,11 +1,11 @@
 # Arcana 目标设计文档
 
-> **状态**：Target / 实现规范已闭环，尚未落地代码
+> **状态**：Target / 领域模型与 SQLite Repository 已开始实现
 > **最后更新**：2026-08-15
 
-本目录描述 Arcana 下一阶段的数据平台与领域模型。它用于指导后续实现，不代表当前程序已经支持其中的结构。
+本目录描述 Arcana 下一阶段的数据平台与领域模型。领域模型、DDL、SQLite migration runner 和 Repository adapter 已落地，但 UI、CLI 与同步 Codec 尚未切换，因此当前程序还没有完整支持这里的结构。
 
-当前代码和现有 JSON 文件仍以 [`docs/architecture.md`](../architecture.md) 与 [`docs/schema/`](../schema/README.md) 为准；新代码迁移完成后，再用本目录的目标模型替换旧 Schema 文档。若两组文档冲突：
+尚未切换的 UI/CLI 行为仍以 [`docs/architecture.md`](../architecture.md) 与 [`docs/schema/`](../schema/README.md) 为准；新入口只实现本目录的目标模型，不导入或兼容旧 JSON。完成入口切换后删除旧实现与旧 Schema 文档。若两组文档冲突：
 
 - 判断当前程序行为时，以当前架构文档和代码为准；
 - 设计或实现新数据平台时，以本目录为准；
@@ -13,11 +13,11 @@
 
 ## 阅读顺序
 
-1. [`architecture.md`](./architecture.md)：目标架构、依赖方向和迁移边界。
-2. [`data_platform.md`](./data_platform.md)：SQLite、本地 JSON/Git 同步、所有权与迁移原则。
+1. [`architecture.md`](./architecture.md)：目标架构、依赖方向和切换边界。
+2. [`data_platform.md`](./data_platform.md)：SQLite、本地 JSON/Git 同步、所有权与初始化原则。
 3. [`records.md`](./records.md)：统一事实层与 RecordDefinition/Record 语义。
 4. [`sqlite_storage.md`](./sqlite_storage.md)：SQLite 运行时表、约束、事务和同步转换。
-5. [`sync_migration.md`](./sync_migration.md)：仓库布局、锁、Git 同步、版本、迁移和回滚。
+5. [`sync_migration.md`](./sync_migration.md)：仓库布局、锁、Git 同步、版本和数据库恢复。
 6. [`status.md`](./status.md)：Pack Dimension、五项 UI 选择、子 Score 表达式、加权平均与等级。
 7. [`achievements_skills_packs.md`](./achievements_skills_packs.md)：Achievement 用户状态、Skill、PackForest。
 8. [`missions_memory.md`](./missions_memory.md)：Mission、MissionSuggestion 与 AssistantMemory。
@@ -48,11 +48,10 @@
 ### 下一阶段实现顺序
 
 1. Rust Domain Model、校验器和 Repository interface。
-2. SQLite migration、事务 command 与进程间锁。
+2. SQLite Repository command、进程间锁和运行时路径切换。
 3. 确定性 Git JSON Codec、import/export 和 sync state。
-4. 旧 JSON migration plan/apply/verify/rollback。
-5. Status evaluator、Achievement/Skill 查询与 Mission/Memory command。
-6. Tauri UI、`arcana-data` contract 和 canonical Agent Skill。
+4. Status evaluator、Achievement/Skill 查询与 Mission/Memory command。
+5. Tauri UI、`arcana-data` contract 和 canonical Agent Skill；切换时直接停止使用旧 JSON。
 
 ### 暂不处理
 
@@ -68,4 +67,4 @@
 1. 先在本目录更新目标语义，再修改 Schema 和代码。
 2. 每个持久化字段必须能回答：谁拥有、是否同步、如何验证、删除后怎样处理。
 3. 派生数据原则上不持久化；若需要缓存，必须标明可重建和失效规则。
-4. 示例 JSON、DDL 和约束属于实现合约；修改它们时必须同步更新迁移、验证和兼容说明。
+4. 示例 JSON、DDL 和约束属于实现合约；修改它们时必须同步更新版本、验证和兼容说明。
