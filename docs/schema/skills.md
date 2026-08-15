@@ -1,7 +1,7 @@
 # Skills Schema
 
 > **状态**：Current JSON v1
-> **目标方向**：[`docs/design/achievements_skills_packs.md`](../design/achievements_skills_packs.md)。目标模型继续让 Skill 从 Achievement 派生，但只读取 `achieved` 状态，不再把 `tracked` 状态视为已解锁。
+> **目标替代**：[`docs/design/achievements_skills_packs.md`](../design/achievements_skills_packs.md)。目标 Skill 固定为 Lv0–Lv5，用四个积分阈值描述 Lv2–Lv5；节点直接以 `achievement_id` 标识，不再保存 `max_level`、`node_id` 或关键成就门槛，并且只读取 `achieved` 状态。
 
 技能树定义存在于每个内容包中，描述技能的等级计算规则和节点。积分和关键成就标记在技能树节点和等级门槛上。
 

@@ -1,6 +1,6 @@
 # Arcana 目标设计文档
 
-> **状态**：Target / 尚未全部实现
+> **状态**：Target / 实现规范已闭环，尚未落地代码
 > **最后更新**：2026-08-15
 
 本目录描述 Arcana 下一阶段的数据平台与领域模型。它用于指导后续实现，不代表当前程序已经支持其中的结构。
@@ -9,40 +9,50 @@
 
 - 判断当前程序行为时，以当前架构文档和代码为准；
 - 设计或实现新数据平台时，以本目录为准；
-- 尚未确定的内容不得由实现者自行扩大范围，应先更新文档中的“未决问题”。
+- 实现中若发现规范缺口，不得由实现者在代码里隐式决定；应先补充本目录并说明兼容影响。
 
 ## 阅读顺序
 
 1. [`architecture.md`](./architecture.md)：目标架构、依赖方向和迁移边界。
 2. [`data_platform.md`](./data_platform.md)：SQLite、本地 JSON/Git 同步、所有权与迁移原则。
-3. [`record_data.md`](./record_data.md)：统一事实层与 RecordSet/RecordData 语义。
-4. [`status.md`](./status.md)：Pack Dimension、五项 UI 选择、子 Score 表达式、加权平均与等级。
-5. [`achievements_skills_packs.md`](./achievements_skills_packs.md)：Achievement 用户状态、Skill、PackForest。
-6. [`missions_memory.md`](./missions_memory.md)：Mission、MissionSuggestion 与 AssistantMemory。
+3. [`records.md`](./records.md)：统一事实层与 RecordDefinition/Record 语义。
+4. [`sqlite_storage.md`](./sqlite_storage.md)：SQLite 运行时表、约束、事务和同步转换。
+5. [`sync_migration.md`](./sync_migration.md)：仓库布局、锁、Git 同步、版本、迁移和回滚。
+6. [`status.md`](./status.md)：Pack Dimension、五项 UI 选择、子 Score 表达式、加权平均与等级。
+7. [`achievements_skills_packs.md`](./achievements_skills_packs.md)：Achievement 用户状态、Skill、PackForest。
+8. [`missions_memory.md`](./missions_memory.md)：Mission、MissionSuggestion 与 AssistantMemory。
+9. [`agent_skills.md`](./agent_skills.md)：外部 Agent Skill、CLI 合约、分发和质量门。
 
 ## 设计状态
 
 ### 已确定
 
-- 一个数据仓库对应一个用户；不建立 Profile 或 `profile_id`。
-- SQLite 是本地运行时存储；确定性 JSON 是 Git 同步和人工编辑格式。
-- RecordData 是全局、相对扁平、用户所有的事实层。
+- 一个数据仓库对应一个用户；不建立 Profile、`profile_id` 或独立 UserSettings。
+- SQLite 是本地运行时存储；确定性 JSON 与 Pack asset 是 Git 同步格式，其中 JSON 可供人工阅读和编辑。
+- Record 是全局、相对扁平、用户所有的事实层。
+- RecordDefinition 随 Pack 发放，并由已启用 Pack 派生出运行时注册表；不复制成全局持久化定义。
+- RecordDefinition ID 使用 `<namespace>.<name>`；用户 Record 聚合在 `records/<namespace>.json`。namespace 与 Pack 相互独立。
+- Pack 的结构化 JSON、asset 和 namespace Record 文件 Schema、基础类型、排序与 Definition 合并规则已经确定。
+- Record/Pack Definition 的 SQLite 表、索引、事务和 unresolved 保留方式已经确定。
+- `identity.nickname` 和 `identity.birth_date` 是 `basic` Pack 提供的普通 RecordDefinition；不存在特殊用户设置实体。
+- 仓库根清单 `arcana.json` 只包含 `schema_version` 和 `enabled_pack_ids`。
 - Status 固定为 Dimension + 子 Score 两层，Dimension 使用加权平均。
-- Achievement 由 Agent 根据自然语言要求与 RecordData 判断，不建立完成规则 DSL。
+- Status 第一版表达式只读取数值 scalar Record，支持四则运算与 `min`/`max`/`abs`/`clamp`；Dimension Schema 和本机五项选择结构已经确定。
+- Achievement 由 Agent 根据自然语言要求与 Record 判断，不建立完成规则 DSL。
 - Achievement 只保留 `tracked` / `achieved` 最小用户状态；只有 `achieved` 计分。
 - Pack 具有单父级层次，但父子关系只用于组织，不构成运行依赖。
 - 未接受的 MissionSuggestion 只保留在本机；接受后的 Mission 才同步。
 - AssistantMemory 同步长期语义记忆，不同步完整 Agent Session。
+- 外部 Agent Skill 以 `plugins/arcana/skills` 为唯一源码，只通过版本化 `arcana-data` 合约修改数据，并受 fixture/eval 质量门约束。
 
-### 实现前仍需定稿
+### 下一阶段实现顺序
 
-- SQLite 物理表、索引、迁移版本表和事务 API。
-- Git JSON 的最终目录与每个文件的精确 JSON Schema。
-- RecordSet 兼容判定以及破坏性迁移的声明格式。
-- Status 安全表达式第一版的最小运算符和函数白名单。
-- AssistantMemory 的稳定 ID、精炼、合并和清理策略。
-- 旧数据迁移工具的完整字段映射与验收测试。
-- 外部 Agent Skills 的更新和插件分发方式。
+1. Rust Domain Model、校验器和 Repository interface。
+2. SQLite migration、事务 command 与进程间锁。
+3. 确定性 Git JSON Codec、import/export 和 sync state。
+4. 旧 JSON migration plan/apply/verify/rollback。
+5. Status evaluator、Achievement/Skill 查询与 Mission/Memory command。
+6. Tauri UI、`arcana-data` contract 和 canonical Agent Skill。
 
 ### 暂不处理
 
@@ -58,4 +68,4 @@
 1. 先在本目录更新目标语义，再修改 Schema 和代码。
 2. 每个持久化字段必须能回答：谁拥有、是否同步、如何验证、删除后怎样处理。
 3. 派生数据原则上不持久化；若需要缓存，必须标明可重建和失效规则。
-4. 示例 JSON 只表达领域结构，不提前承诺尚未确定的 SQLite 物理表。
+4. 示例 JSON、DDL 和约束属于实现合约；修改它们时必须同步更新迁移、验证和兼容说明。

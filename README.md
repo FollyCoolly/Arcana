@@ -295,7 +295,7 @@ python scripts/fetch_douban.py --status all
 ## Documentation
 
 - [Architecture](docs/architecture.md) — Tauri, data layer, frontend, and agent architecture.
-- [Target Data Platform Design](docs/design/README.md) — planned SQLite runtime, Git JSON sync, RecordData, Status, Achievement, PackForest, Mission, and memory architecture.
+- [Target Data Platform Design](docs/design/README.md) — approved SQLite runtime, Git JSON sync, RecordDefinition/Record, Status, Achievement, PackForest, Mission, and memory architecture.
 - [Schema Reference](docs/schema/README.md) — detailed JSON schemas for missions, achievements, skills, status, items, changelog, memory, and UI events.
 - [Visual Style Guide](docs/visual_style_guide.md) — Persona 5-inspired design principles, palette, typography, and interaction rules.
 - [UI Design Spec](docs/ui_design_spec.md) — main menu and sub-screen layout/interaction spec.

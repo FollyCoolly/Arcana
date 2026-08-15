@@ -1,7 +1,7 @@
 # Missions Schema
 
 > **状态**：Current JSON v1
-> **目标替代**：[`docs/design/missions_memory.md`](../design/missions_memory.md)。目标模型统一 active/completed/archived Mission，将未接受和已拒绝的 MissionSuggestion 留在本机，并把主菜单展示移出 Mission 实体。
+> **目标替代**：[`docs/design/missions_memory.md`](../design/missions_memory.md)。目标 `missions.json` 统一保存 active/completed/archived Mission；未接受或已拒绝的 MissionSuggestion 和主菜单展示槽只保存在本机 SQLite。目标 Mission 移除 `short_desc`、成就关联和 AI 元数据等非核心字段。
 
 Mission 模块管理用户的长期目标和重要任务。日常追踪需求由 AI 通过 achievement progress 处理，不在此模块中显式建模。
 
@@ -137,9 +137,11 @@ AI 生成的 mission ID 使用 `ai_<YYYYMMDD>_<slug>` 前缀（如 `ai_20260331_
 AI 通过 `ai_metadata` 字段存储生成元数据：
 
 ```json
-"ai_metadata": {
-  "generation_id": "2026-03-31",
-  "generation_reason": "拆解活跃任务: learn_rust"
+{
+  "ai_metadata": {
+    "generation_id": "2026-03-31",
+    "generation_reason": "拆解活跃任务: learn_rust"
+  }
 }
 ```
 

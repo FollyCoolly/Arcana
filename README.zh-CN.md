@@ -296,7 +296,7 @@ python scripts/fetch_douban.py --status all
 ## 文档
 
 - [Architecture](docs/architecture.md)：Tauri、数据层、前端和 AI 助手架构。
-- [目标数据平台设计](docs/design/README.md)：规划中的 SQLite 运行时、Git JSON 同步、RecordData、Status、Achievement、PackForest、Mission 与 Memory 架构。
+- [目标数据平台设计](docs/design/README.md)：已经定稿的 SQLite 运行时、Git JSON 同步、RecordDefinition/Record、Status、Achievement、PackForest、Mission 与 Memory 架构。
 - [Schema Reference](docs/schema/README.md)：missions、achievements、skills、status、items、changelog、memory 和 UI events 的详细 JSON schema。
 - [Visual Style Guide](docs/visual_style_guide.md)：Persona 5 风格设计原则、调色板、字体和交互规则。
 - [UI Design Spec](docs/ui_design_spec.md)：主菜单和子界面的布局/交互规范。

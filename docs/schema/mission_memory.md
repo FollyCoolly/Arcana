@@ -1,7 +1,7 @@
 # Mission Memory Schema
 
 > **状态**：Current JSON v1
-> **目标替代**：[`docs/design/missions_memory.md`](../design/missions_memory.md)。目标 AssistantMemory 只同步长期语义信息；`completed_mission_log`、`last_generation` 和完整会话不再属于同步记忆。
+> **目标替代**：[`docs/design/missions_memory.md`](../design/missions_memory.md)。目标根级 `assistant-memory.json` 保存带稳定 ID、类型、正文和时间戳的长期语义条目；`completed_mission_log`、`last_generation` 和完整会话不再属于同步记忆。
 
 AI agent 的持久记忆，跨会话保留用户偏好和上下文，供 `phan-site`（任务生成）和 `velvet-room`（进度汇报）共同使用。
 
@@ -14,9 +14,9 @@ AI agent 的持久记忆，跨会话保留用户偏好和上下文，供 `phan-s
 ```json
 {
   "version": 1,
-  "last_generation": { ... } | null,
+  "last_generation": null,
   "focus_areas": [],
-  "patterns": { ... },
+  "patterns": {},
   "conversation_context": [],
   "completed_mission_log": []
 }

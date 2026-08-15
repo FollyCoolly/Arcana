@@ -3,7 +3,7 @@
 本目录用于维护 Arcana 的数据结构规范文档，重点描述本地 JSON 文件的字段定义、约束和演进方式。
 
 > [!IMPORTANT]
-> 本目录当前描述已实现的 v1 JSON 文件。下一阶段的 SQLite + Git JSON 目标模型见 [`docs/design/`](../design/README.md)。目标模型的物理 Schema 尚未定稿，因此在迁移完成前不会直接覆盖这里的现行规范。
+> 本目录描述当前已实现的 JSON v1 文件，用于迁移对照，不代表新代码的目标结构。SQLite + Git JSON 目标模型已经在 [`docs/design/`](../design/README.md) 定稿；迁移完成前不直接覆盖这里的现行规范，以免混淆 current 与 target。
 
 ## 目标
 
@@ -41,14 +41,14 @@
 - `username` (`string`, 必填)：显示名或用户名。
 - `birth_date` (`string`, 必填)：出生日期，格式 `YYYY-MM-DD`。
 
-目标架构中该文件迁移为不带 Profile ID 的 optional `UserSettings`，只保留 `nickname?` 和 `birth_date?`。参见 [`docs/design/architecture.md`](../design/architecture.md)。
+目标架构不再保留 Profile 或 UserSettings 实体。迁移时，用户名和生日分别成为 `basic` Pack 定义的 `identity.nickname`、`identity.birth_date` scalar Record。参见 [`docs/design/architecture.md`](../design/architecture.md)。
 
 ## 模块 Schema 索引
 
 | 当前文档 | 当前实现 | 目标方向 |
 | --- | --- | --- |
-| [`status.md`](./status.md) | definitions + `status.json` + 旧评分 | RecordData + Pack Dimension 两层评分 |
-| [`content_packs.md`](./content_packs.md) | loaded pack 列表与三文件 Pack | RecordSet 模板、Dimension 定义与 PackForest |
+| [`status.md`](./status.md) | definitions + `status.json` + 旧评分 | Record + Pack Dimension 两层评分 |
+| [`content_packs.md`](./content_packs.md) | loaded pack 列表与三文件 Pack | RecordDefinition、Dimension 定义与 PackForest |
 | [`achievements.md`](./achievements.md) | tracked/achieved progress map | 精简为最小用户状态，只让 achieved 计分 |
 | [`skills.md`](./skills.md) | Achievement 节点与积分等级 | 只由 achieved Achievement 派生，按 Pack 独立计算 |
 | [`missions.md`](./missions.md) | current/archive + proposed/rejected | 统一 Mission；Suggestion 只在本机 |
@@ -60,14 +60,17 @@
 ## Current → Target 文档映射
 
 - 数据平台与迁移：[`../design/data_platform.md`](../design/data_platform.md)
-- RecordSet / RecordData：[`../design/record_data.md`](../design/record_data.md)
+- RecordDefinition / Record：[`../design/records.md`](../design/records.md)
 - Status：[`../design/status.md`](../design/status.md)
 - Achievement / Skill / Pack：[`../design/achievements_skills_packs.md`](../design/achievements_skills_packs.md)
 - Mission / Memory：[`../design/missions_memory.md`](../design/missions_memory.md)
+- SQLite 物理 Schema：[`../design/sqlite_storage.md`](../design/sqlite_storage.md)
+- Git JSON、同步与迁移：[`../design/sync_migration.md`](../design/sync_migration.md)
+- Agent Skill 接入：[`../design/agent_skills.md`](../design/agent_skills.md)
 
-## 下一步建议
+## 实现顺序
 
-1. 先在 [`docs/design/`](../design/README.md) 定稿目标物理 Schema 和迁移规则。
-2. 同步在 Rust 端定义领域模型、Repository 与反序列化校验。
-3. 模块完成迁移时，再用目标 Schema 替换对应的现行文档，避免文档先于代码宣称已实现。
-4. 前端按 Schema 维护对应 TypeScript 类型，避免手写漂移。
+1. 按目标文档实现 Rust 领域模型、Repository、校验器和迁移器。
+2. 前端按同一 Schema 维护 TypeScript 类型，避免手写漂移。
+3. 逐模块完成迁移和回归测试。
+4. 全量迁移稳定后，将本目录改写为新的 current 文档；在此之前继续保留为旧数据说明。

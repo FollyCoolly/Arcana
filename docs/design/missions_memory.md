@@ -1,6 +1,6 @@
 # Mission 与 AssistantMemory
 
-> **状态**：Target / 领域边界已确定，物理 Schema 尚未定稿
+> **状态**：Target / 领域语义、同步 Schema 与 SQLite 结构已确定
 > **最后更新**：2026-08-15
 
 ## 1. MissionSuggestion 与 Mission
@@ -50,14 +50,120 @@ AssistantMemory 可以同步，并使用普通 Git 冲突处理方式。
 - API key、provider、Telegram 和其他凭证；
 - UI event 和短期缓存。
 
-## 4. 精炼与清理
+## 4. `missions.json`
 
-新模型不使用固定长度 FIFO 无条件丢弃记忆。实现前仍需确定：
+只有用户已经接受的 Mission 进入同步文件：
 
-- Memory entry 的稳定 ID；
-- 相同事实的合并和替换规则；
-- 过时事实如何标记或删除；
-- 摘要何时精炼；
-- 如何避免把临时判断固化为长期用户事实。
+```json
+{
+  "missions": [
+    {
+      "id": "019b1234-89ab-7def-8123-456789abcdef",
+      "title": "完成 Rust Book",
+      "description": "阅读全部章节并完成主要练习。",
+      "status": "active",
+      "progress": 40,
+      "difficulty": "B",
+      "deadline": "2026-12-31",
+      "created_at": "2026-08-15T20:30:00+08:00"
+    },
+    {
+      "id": "019b1234-89ab-7def-8123-456789abcdf0",
+      "title": "完成所有权章节",
+      "status": "completed",
+      "progress": 100,
+      "parent_id": "019b1234-89ab-7def-8123-456789abcdef",
+      "created_at": "2026-08-15T20:35:00+08:00",
+      "completed_at": "2026-08-20T21:00:00+08:00"
+    }
+  ]
+}
+```
 
-这些规则只影响 AssistantMemory，不得替代 RecordData、Mission 或用户成就状态等权威数据。
+字段与校验：
+
+- 文件缺失表示没有 Mission；文件存在时 `missions` 必填、非空并按 `id` 排序。
+- 新 Mission ID 由系统生成 UUIDv7；首次迁移保留合法的旧 ID。ID 在仓库内唯一且一经引用不能原地修改。
+- `title`、`status` 和 `created_at` 必填；`description` 可选。
+- `status` 只能是 `active`、`completed`、`archived`。
+- `progress` 可选，必须是 0～100 的整数。完成命令把已存在的 progress 设为 100；手动 JSON 中 completed Mission 若提供 progress，也必须为 100。
+- `difficulty` 可选，只能是 `S`、`A`、`B`、`C`、`D`。
+- `deadline` 可选，格式为有效 `YYYY-MM-DD`。
+- `parent_id` 可选，必须引用同一文件中的 Mission，不得引用自身，全部 parent 关系必须无环。
+- `created_at`、`completed_at` 使用带时区偏移的 RFC 3339。completed Mission 可以因旧数据时间未知而省略 `completed_at`；archived Mission 若曾完成则保留 `completed_at`，未完成即归档时省略它。active Mission 不得包含 `completed_at`。
+- 不保存 `days_remaining`、`short_desc`、`linked_achievement_id`、`ai_metadata`、Dashboard 展示或更新时间。
+- 未定义字段和 JSON `null` 一律拒绝。
+
+`days_remaining` 从 deadline 与本机当前日期计算。Mission 完成可以成为 Agent 判断 Achievement 的上下文，但不会自动修改 Achievement，也不保存静态跨模块链接。
+
+生命周期命令固定为：`complete` 将状态改为 completed、把已有 progress 设为 100 并记录完成时间；`archive` 可以归档 active 或 completed Mission，且不抹掉 progress 或已有 `completed_at`。显式删除使用 hard delete；仍被子 Mission 的 `parent_id` 引用时拒绝删除，必须先移除或修改这些引用。
+
+## 5. 本机 MissionSuggestion
+
+MissionSuggestion 只存在于本机 SQLite：
+
+- 字段为 `id`、`title`、可选 `description`、`difficulty`、`deadline`、`parent_mission_id`、用户可读的 `reason`、`generated_at` 和 `status`。
+- status 只允许 `pending` 或 `rejected`。
+- 新 ID 使用 UUIDv7。接受时在单一事务中创建同 ID 的 active Mission，并删除 Suggestion；拒绝时保留本机实体用于后续去重。
+- parent Mission、日期和枚举在接受时再次校验；失效 Suggestion 不能直接转成 Mission。
+- Suggestion 不保存模型、prompt、token、generation batch 或完整会话元数据。
+- 用户可以显式删除 rejected Suggestion；不使用固定 TTL 或 FIFO。
+
+同步导入临时数据库时复制本机 Suggestion。若同步 Mission 已经占用相同 ID，丢弃对应 Suggestion，因为它已经在其他设备被接受。
+
+## 6. Dashboard 本机配置
+
+Dashboard Mission 展示使用固定 slot：`countdown`、`progress`、`hint_1`、`hint_2`。每个 slot 最多引用一个 Mission ID，可选保存本机展示 label。
+
+- 配置不进入 Git。
+- 不对 Mission 建硬外键；Mission 完成、删除或同步后缺失时保留 slot 并显示配置错误，用户可以替换或清除。
+- 同步导入新数据库时从旧数据库复制。
+- `days_remaining` 和进度显示始终读取当前 Mission，不复制业务值。
+
+## 7. `assistant-memory.json`
+
+```json
+{
+  "memories": [
+    {
+      "id": "019b2234-89ab-7def-8123-456789abcdef",
+      "kind": "preference",
+      "content": "用户更愿意接受一周内可以完成、结果明确的任务。",
+      "created_at": "2026-08-15T21:00:00+08:00",
+      "updated_at": "2026-08-15T21:00:00+08:00"
+    },
+    {
+      "id": "019b2234-89ab-7def-8123-456789abcdf0",
+      "kind": "reminder",
+      "content": "用户可能已经学会不少菜，但目前不想回忆完整清单；下次更新烹饪记录时可以温和提醒。",
+      "created_at": "2026-08-15T21:05:00+08:00",
+      "updated_at": "2026-08-15T21:05:00+08:00"
+    }
+  ]
+}
+```
+
+- 文件缺失表示没有 Memory；文件存在时 `memories` 必填、非空并按 `id` 排序。
+- 新 ID 使用 UUIDv7；旧 Memory 迁移使用由来源位置生成的确定性 UUIDv5，保证重复迁移结果一致。
+- `kind` 必须是 `focus`、`preference`、`constraint`、`habit`、`summary`、`reminder`、`observation` 之一。
+- `content` 必填且非空，只保存经过精炼、预计跨会话仍有价值的自然语言语义。
+- `created_at` 和 `updated_at` 必填，使用带时区偏移的 RFC 3339，且 updated 不早于 created。
+- 不保存来源会话、模型、置信度、证据对象、过期标记、软删除状态或用户权威事实的副本。
+- 未定义字段和 JSON `null` 一律拒绝。
+
+## 8. Memory 精炼与清理
+
+- 新信息补充或修正同一语义时更新原 entry 并保留 ID，不重复追加近义条目。
+- 多条摘要可以在一次事务中合并为一条：更新保留项并删除冗余项。
+- 明确过时或错误的内容直接删除；Git 历史已经提供恢复能力，不建立软删除或 tombstone。
+- 不设置固定条目数量、FIFO 或自动 TTL。清理由用户或 Agent 在有上下文时显式执行。
+- 临时推测、单次情绪、完整聊天摘要和未经用户支持的判断不进入长期 Memory。
+- Memory 只帮助 Agent 选择询问和建议，不能替代 Record、Mission 或 Achievement 状态等权威实体。
+- Git 冲突按普通文本冲突暴露，不做语义自动合并。
+
+## 9. SQLite
+
+- `missions` 保存统一 Mission，并使用可延迟 self foreign key 校验 parent。
+- `mission_suggestions` 和 `dashboard_mission_slots` 是本机表，不进入 Git。
+- `assistant_memories` 保存同步 Memory 条目。
+- Mission 的 days remaining 与 AssistantMemory 上下文视图均按查询派生，不建立缓存表。

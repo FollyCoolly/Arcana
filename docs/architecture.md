@@ -5,7 +5,7 @@
 > **状态**: Current implementation
 
 > [!IMPORTANT]
-> 本文描述当前已实现的 JSON 架构，不是下一阶段的数据平台目标。SQLite、RecordData、Status 新评分模型、Achievement 用户状态与 PackForest 的目标设计见 [`docs/design/`](./design/README.md)。迁移完成前请勿把两套 Schema 混用。
+> 本文描述当前已实现的 JSON 架构，不是下一阶段的数据平台目标。SQLite、RecordDefinition/Record、Status 新评分模型、Achievement 用户状态与 PackForest 的目标设计见 [`docs/design/`](./design/README.md)。迁移完成前请勿把两套 Schema 混用。
 
 Arcana 是一个 Persona 5 风格的游戏化人生管理桌面应用，也就是给 “Earth Online” 加一层用户界面。当前实现已经从早期的 Status MVP 演进为一个本地优先的桌面 HUD：前端负责高表现力的菜单与模块屏幕，Rust 后端负责本地 JSON 数据、校验、系统指标计算、AI agent 与结构化数据入口。
 
@@ -428,7 +428,7 @@ Rust 写入路径使用 `write_and_validate` 时会在校验失败后恢复旧�
 ## 8. 关键设计决策
 
 > [!NOTE]
-> 本节解释当前实现为何形成。关于 SQLite、RecordData、Git JSON、Status 新评分和外部 Agent Skill 的后续决定，统一以 [`docs/design/`](./design/README.md) 为准；特别是 8.1 和 8.3 不再代表下一阶段方向。
+> 本节解释当前实现为何形成。关于 SQLite、RecordDefinition/Record、Git JSON、Status 新评分和外部 Agent Skill 的后续决定，统一以 [`docs/design/`](./design/README.md) 为准；特别是 8.1 和 8.3 不再代表下一阶段方向。
 
 ### 8.1 为什么当前实现使用 JSON
 

@@ -1,6 +1,6 @@
 # 数据平台、同步与迁移
 
-> **状态**：Target / 物理 Schema 尚未定稿
+> **状态**：Target / 同步、存储与迁移协议已确定
 > **最后更新**：2026-08-15
 
 ## 1. 存储职责
@@ -10,12 +10,12 @@ Arcana 使用两种互补格式：
 | 层 | 格式 | 职责 |
 | --- | --- | --- |
 | 本地运行时 | SQLite | 事务、并发、约束、索引、迁移和可靠读写 |
-| 个人同步 | 确定性 JSON + Git | 人工阅读、手动编辑、版本历史和设备同步 |
+| 个人同步 | 确定性 JSON + Pack asset + Git | 人工阅读、手动编辑、资源分发、版本历史和设备同步 |
 
-SQLite 文件不进入 Git；同步 JSON 不作为应用运行时数据库。二者只能通过同一套 Rust 领域模型转换：
+SQLite 文件不进入 Git；同步仓库中的 JSON 和 Pack asset 不作为应用运行时存储。二者只能通过同一套 Rust 领域模型转换：
 
 ```text
-SQLite Adapter <-> Domain Model <-> Sync JSON Codec
+SQLite Adapter <-> Domain Model <-> Sync Repository Codec
 ```
 
 ## 2. 为什么选择 SQLite
@@ -31,8 +31,7 @@ SQLite Adapter <-> Domain Model <-> Sync JSON Codec
 
 ### 3.1 同步
 
-- `UserSettings`
-- RecordSet 与用户 RecordData
+- Pack 中的 RecordDefinition 与按 namespace 分组的用户 Record
 - 已接受的 Mission
 - 用户成就状态（`tracked` / `achieved`）
 - Pack 内容和 enabled 状态
@@ -52,7 +51,7 @@ SQLite Adapter <-> Domain Model <-> Sync JSON Codec
 
 - Gallery 第一阶段由外部平台拥有；Arcana 只通过适配器读取。
 - Items 第一阶段继续由 Markdown/Obsidian 等外部来源拥有。
-- 外部来源可以暴露为只读 Record 查询，但 unavailable 与数值 0 必须区分。
+- 第一阶段核心不把外部来源伪装成持久化 Record。后续适配器可以增加只读事实查询，但必须明确区分 unavailable 与数值 0；只有用户显式导入后，事实才进入同步 Record。
 
 ### 3.4 只计算
 
@@ -63,7 +62,24 @@ SQLite Adapter <-> Domain Model <-> Sync JSON Codec
 
 ## 4. Git JSON 约束
 
-同步 Codec 必须保证：
+同步仓库根目录包含最小清单 `arcana.json`：
+
+```json
+{
+  "schema_version": 1,
+  "enabled_pack_ids": [
+    "basic",
+    "cooking"
+  ]
+}
+```
+
+- `schema_version` 是整个用户仓库格式的必填整数版本。
+- `enabled_pack_ids` 是必填、去重并按字典序排序的 Pack ID 列表；每个 ID 必须指向仓库内存在且有效的 Pack。
+- `arcana.json` 不保存 Profile、用户业务事实、本机配置、同步游标、导出时间、文件索引、条目数量或校验和。
+- Pack 是可独立分发的内容单元，其 manifest 必须包含独立的 `schema_version`；第一版不保存内容版本，也不使用通用 Envelope 抽象。
+
+同步 Repository Codec 必须保证：
 
 - 对象和列表采用稳定排序；
 - 日期、时间和单位采用规范格式；
@@ -71,9 +87,12 @@ SQLite Adapter <-> Domain Model <-> Sync JSON Codec
 - 可选空字段按 Schema 约定省略；
 - 同一领域状态重复导出得到相同文本；
 - JSON 中不出现 SQLite row id、缓存字段和本机路径；
+- Pack asset 原始 bytes 不转码，并与结构化 Pack 内容一起参与原子 import/export；
 - 任何 API key、token、cookie 或凭证都被拒绝导出。
 
-允许用户手动编辑 JSON，但修改后的数据必须先经过全仓库校验和原子导入。应用应保存最近一次成功导入的 Git tree hash，避免用旧 SQLite 快照覆盖较新的人工编辑。
+允许用户手动编辑 JSON，但修改后的数据必须先经过全仓库校验和原子导入。应用保存最近一次成功 import/export 时全部 managed paths 的内容 digest，避免用旧 SQLite 快照覆盖较新的人工编辑；该 digest 不是 Git commit ID，也不进入同步仓库。
+
+同步 JSON 是便于阅读的明文，Arcana 不对仓库内容额外加密。包含个人 Record、Mission、Achievement 状态和 Memory 的远端仓库应使用 private repository，并由用户自行管理访问权限。HTTPS token、SSH key 和 Git credential 只交给系统 Git/credential manager，绝不写入 `arcana.json`、Pack、SQLite 同步实体或 commit message。
 
 ## 5. 导入与冲突
 
@@ -81,9 +100,9 @@ SQLite Adapter <-> Domain Model <-> Sync JSON Codec
 
 1. 拒绝包含未解决 Git conflict marker 的工作区。
 2. 解析全部 JSON。
-3. 校验 Schema、稳定 ID、唯一性、Pack/RecordSet/Achievement 引用和表达式语法。
-4. 在临时 SQLite 或单个事务中构建完整状态。
-5. 执行 round-trip 导出，并比较实体数量、ID 和引用。
+3. 校验 Schema、稳定 ID、唯一性、Pack/RecordDefinition/Achievement 引用和表达式语法。找不到 Definition 的用户 Record/Achievement 状态标记为 unresolved 并保留，不允许普通更新，但不能因此被静默删除。
+4. 在同一运行时目录创建临时 SQLite，执行全部 migration 并构建完整状态。
+5. 执行 round-trip 导出，并比较实体数量、ID、引用和 Pack asset digest。
 6. 全部成功后原子切换；任一步失败都保留原数据库。
 
 不实现 CRDT、字段级自动合并或“选一个看起来合理的值”。用户按普通 Git 工作流解决冲突后重新导入。
@@ -93,43 +112,29 @@ SQLite Adapter <-> Domain Model <-> Sync JSON Codec
 - 常规删除使用 SQLite hard delete 和普通 Git delete。
 - 不为了个人顺序同步建立永久 operation log 或通用 tombstone。
 - Git commit 提供粗粒度历史，新的核心模型不再依赖 `ai_changelog.json`。
-- `achieved` 状态不会因 RecordData 变化自动消失，但允许显式撤销。
-- 关闭或删除 Pack 不自动删除用户 RecordData 或用户成就状态；引用该 Pack Dimension 的本机 UI 选择应报告配置错误。
+- `achieved` 状态不会因 Record 变化自动消失，但允许显式撤销。
+- 关闭或删除 Pack 不自动删除用户 Record 或用户成就状态；引用该 Pack Dimension 的本机 UI 选择应报告配置错误。
 
-## 7. 首次迁移
+## 7. Git 同步与首次迁移
 
-首次迁移必须可回滚：
+仓库 managed paths、OS file lock、防覆盖 revision/digest、import/export、fast-forward Git 命令、SQLite migration runner、旧 JSON 映射、报告和回滚完整定义在 [`sync_migration.md`](./sync_migration.md)。
 
-1. 只读扫描并验证旧 JSON。
-2. 复制完整备份并记录文件哈希。
-3. 创建 `arcana.db.new` 或等价临时数据库。
-4. 在单个事务中导入所有目标实体。
-5. 从新数据库导出目标 JSON。
-6. 做 round-trip、数量、ID、字段和引用比较。
-7. 验证成功后原子切换为活动数据库。
-8. 保留旧 JSON 只读备份，直到用户明确清理。
+核心约束：
 
-主要映射：
+- SQLite 与 Git managed paths 同时变化时停止并暴露 `both_changed`，不能选择一侧覆盖另一侧。
+- 自动 pull 只允许 fast-forward；不自动 merge、rebase 或解决冲突。
+- 首次迁移先 plan、备份和验证，再原子切换；不删除旧 JSON，也不自动 commit/push。
+- tracked Achievement 迁移后不再计分，Skill/Status 行为变化必须逐项写入报告。
 
-| 旧数据 | 目标实体 |
-| --- | --- |
-| `user_profile.json` | optional UserSettings |
-| status metric definitions 中的事实定义 | RecordSet |
-| `status.json` | scalar RecordData |
-| status dimensions/scoring | 迁移到用户维护 Pack 中的 DimensionDefinition |
-| achieved achievement progress | 保留为 `achieved` 用户状态，只保留可选 `achieved_at` |
-| tracked achievement progress | 保留为 `tracked` 用户状态，移除旧进度详情字段 |
-| current/archive mission | 统一 Mission |
-| proposed/rejected mission | 本机 MissionSuggestion |
-| loaded pack files | Pack 内容与 enabled 状态 |
-| mission memory | 清理后的 AssistantMemory |
+## 8. SQLite 物理结构
 
-旧实现把 tracked Achievement 计入 Skill；新模型只计算状态为 `achieved` 的 Achievement。迁移报告必须明确提示由此造成的积分或等级下降。
+Record、Pack Definition、连接设置、事务和 Git JSON 转换见 [`sqlite_storage.md`](./sqlite_storage.md)。该结构采用按 kind 拆表与动态 JSON payload 的混合方案，不采用 EAV。
 
-## 8. 尚未确定
+## 9. 实现依据
 
-- SQLite 物理表、索引和 migration table。
-- Git JSON 最终目录布局与逐文件 JSON Schema。
-- 数据库锁与 Git sync lock 的具体实现。
-- RecordSet 破坏性迁移的声明格式。
-- 完整 migration report 和 rollback CLI 的命令界面。
+- [`records.md`](./records.md)：Record 同步 Schema 与 Definition 兼容。
+- [`status.md`](./status.md)：Dimension、表达式与本机选择。
+- [`achievements_skills_packs.md`](./achievements_skills_packs.md)：Pack、Achievement 和 Skill。
+- [`missions_memory.md`](./missions_memory.md)：Mission、Suggestion、Dashboard 和 Memory。
+- [`sqlite_storage.md`](./sqlite_storage.md)：完整 SQLite DDL 与事务语义。
+- [`sync_migration.md`](./sync_migration.md)：锁、同步、版本、迁移和回滚。

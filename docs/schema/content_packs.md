@@ -1,7 +1,7 @@
 # Content Packs Schema
 
 > **状态**：Current JSON v1
-> **目标替代**：[`docs/design/achievements_skills_packs.md`](../design/achievements_skills_packs.md)。目标 Pack 增加 RecordSet 模板、DimensionDefinition 和 `parent_pack_id`；父子关系只用于组织，不形成启用或运行依赖。
+> **目标替代**：[`docs/design/achievements_skills_packs.md`](../design/achievements_skills_packs.md)。目标 Pack 的 `manifest.json` 只保存 Schema 版本、身份、展示元数据和可选父节点；定义文件扩展为 RecordDefinition、Dimension、Achievement 与 Skill。启用列表改由根级 `arcana.json` 保存，不再使用 `loaded_packs.json`，父子关系只用于组织，不形成启用或运行依赖。
 
 内容包（Content Pack）是 Arcana 的可插拔数据单元，每个包包含成就定义、技能树定义和包元数据。
 

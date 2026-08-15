@@ -1,7 +1,7 @@
 # Status Schema
 
 > **状态**：Current JSON v1
-> **目标替代**：[`docs/design/status.md`](../design/status.md)。目标模型改为 RecordData + Pack DimensionDefinition、子 Score 表达式和固定加权平均，并由本机 UI 选择五个 Dimension；本文件中的 values、target 和 bracket 结构仅用于解释当前代码。
+> **目标替代**：[`docs/design/status.md`](../design/status.md)。目标模型改为 Record + Pack `dimensions.json`、只读数值表达式和固定加权平均，并由本机 UI 选择五个 Dimension；本文件中的 values、target 和 bracket 结构仅用于解释当前代码。
 
 `Status` 是一套通用的指标展示系统，用户可自定义追踪任意领域的数值指标，并通过雷达图展示多维度的综合评价。
 
