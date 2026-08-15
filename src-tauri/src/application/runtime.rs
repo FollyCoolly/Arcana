@@ -1,8 +1,9 @@
 use super::{basic_pack, BASIC_PACK_ID};
 use crate::domain::{
     ArcanaRepository, ArcanaRepositoryTransaction, RepositoryError, RepositoryErrorCode,
-    RepositoryResult,
+    RepositoryResult, SyncedRepositorySnapshot,
 };
+use crate::storage::json_repository::JsonRepositoryCodec;
 use crate::storage::settings::{default_runtime_dir, expand_tilde, ArcanaSettings};
 use crate::storage::sqlite::SqliteRepository;
 use fs2::FileExt;
@@ -151,6 +152,45 @@ impl ArcanaRuntime {
         action(&mut repository)
     }
 
+    /// Export the current SQLite state to a brand-new canonical JSON
+    /// directory. This performs no Git operation and never overwrites an
+    /// existing directory.
+    pub fn export_json_to_new_directory(
+        &self,
+        target: impl AsRef<Path>,
+    ) -> RepositoryResult<SyncedRepositorySnapshot> {
+        self.require_initialized_database()?;
+        let _lock = self.acquire_lock(LockMode::Exclusive)?;
+        let mut repository = SqliteRepository::open(self.database_path())?;
+        JsonRepositoryCodec::export_to_new_directory(&mut repository, target)
+    }
+
+    /// Replace synced SQLite entities from a complete JSON directory while
+    /// retaining local-only tables. Parsing, validation and replacement happen
+    /// under the exclusive runtime lock; Git state is intentionally ignored.
+    pub fn import_json_from_directory(
+        &self,
+        source: impl AsRef<Path>,
+    ) -> RepositoryResult<SyncedRepositorySnapshot> {
+        self.require_initialized_database()?;
+        let _lock = self.acquire_lock(LockMode::Exclusive)?;
+        let mut repository = SqliteRepository::open(self.database_path())?;
+        JsonRepositoryCodec::import_from_directory(&mut repository, source)
+    }
+
+    fn require_initialized_database(&self) -> RepositoryResult<()> {
+        if self.database_path().exists() {
+            return Ok(());
+        }
+        Err(RepositoryError::new(
+            RepositoryErrorCode::NotFound,
+            format!(
+                "Arcana runtime database does not exist: {}",
+                self.database_path().display()
+            ),
+        ))
+    }
+
     fn acquire_lock(&self, mode: LockMode) -> RepositoryResult<RuntimeLock> {
         let file = OpenOptions::new()
             .create(true)
@@ -283,7 +323,7 @@ mod tests {
     use super::*;
     use crate::application::{IncrementScalarRecord, RecordCommands, SetScalarRecord};
     use crate::domain::{
-        ArcanaRepositoryReader, Pack, PackManifest, RecordDefinition, RecordDefinitionFile,
+        ArcanaRepositoryReader, Pack, PackManifest, Record, RecordDefinition, RecordDefinitionFile,
         ScalarRecordDefinition, ValueType, SCHEMA_VERSION,
     };
     use serde_json::json;
@@ -450,6 +490,61 @@ mod tests {
                     panic!("counter.value must be scalar");
                 };
                 assert_eq!(record.value, json!(4));
+                Ok(())
+            })
+            .unwrap();
+    }
+
+    #[test]
+    fn runtime_exports_and_imports_json_without_git() {
+        let directory = tempfile::tempdir().unwrap();
+        let runtime = ArcanaRuntime::new(directory.path().join("runtime")).unwrap();
+        runtime.initialize().unwrap();
+        runtime
+            .with_repository(|repository| {
+                RecordCommands::new(repository).set_scalar_at(
+                    SetScalarRecord {
+                        definition_id: "identity.nickname".to_string(),
+                        value: json!("Alice"),
+                        effective_at: None,
+                    },
+                    "2026-08-15T20:30:00+08:00".to_string(),
+                )?;
+                Ok(())
+            })
+            .unwrap();
+
+        let json_directory = directory.path().join("json");
+        runtime
+            .export_json_to_new_directory(&json_directory)
+            .unwrap();
+        assert!(json_directory.join("arcana.json").is_file());
+        assert!(json_directory.join("records/identity.json").is_file());
+
+        runtime
+            .with_repository(|repository| {
+                RecordCommands::new(repository).set_scalar_at(
+                    SetScalarRecord {
+                        definition_id: "identity.nickname".to_string(),
+                        value: json!("Bob"),
+                        effective_at: None,
+                    },
+                    "2026-08-15T20:31:00+08:00".to_string(),
+                )?;
+                Ok(())
+            })
+            .unwrap();
+        runtime.import_json_from_directory(&json_directory).unwrap();
+
+        runtime
+            .with_repository(|repository| {
+                let Record::Scalar(nickname) = repository
+                    .get_record("identity.nickname")?
+                    .expect("nickname Record must exist")
+                else {
+                    panic!("nickname must be scalar");
+                };
+                assert_eq!(nickname.value, json!("Alice"));
                 Ok(())
             })
             .unwrap();

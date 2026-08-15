@@ -18,6 +18,8 @@ SQLite 文件不进入 Git；同步仓库中的 JSON 和 Pack asset 不作为应
 SQLite Adapter <-> Domain Model <-> Sync Repository Codec
 ```
 
+当前实现先提供不依赖 Git 的 `JsonRepositoryCodec`：SQLite 可以导出到一个全新的规范 JSON 目录，也可以从完整 JSON 目录经全量校验后在单个事务中替换同步实体；本机专属数据继续保留。Codec 不覆盖已有目录、不生成 `.gitattributes`、不读取 Git 状态，也不执行 add/commit/pull/push。已有工作区的 digest 防覆盖、崩溃恢复、临时数据库切换与 Git 命令属于后续同步编排层。
+
 ## 2. 为什么选择 SQLite
 
 - Tauri UI、CLI 和外部 Skill 可能从不同进程写入，需要事务和并发控制。
