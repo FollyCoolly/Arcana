@@ -107,22 +107,7 @@ impl ArcanaRuntime {
         transaction.set_pack_enabled(BASIC_PACK_ID, true)?;
         transaction.commit()?;
         repository.checkpoint_and_close()?;
-        temporary.remove_sidecars()?;
-        std::fs::hard_link(&temporary_path, &database_path)
-            .map_err(|error| io_error("activate initialized database without overwrite", error))?;
-        if let Err(error) = std::fs::remove_file(&temporary_path) {
-            let rollback_error = std::fs::remove_file(&database_path).err();
-            let message = match rollback_error {
-                Some(rollback_error) => format!(
-                    "failed to remove temporary initialized database: {error}; \
-                     also failed to roll back activated database: {rollback_error}"
-                ),
-                None => format!("failed to remove temporary initialized database: {error}"),
-            };
-            return Err(RepositoryError::new(RepositoryErrorCode::Storage, message));
-        }
-        temporary.disarm();
-        Ok(())
+        temporary.activate_without_overwrite(&database_path)
     }
 
     /// Execute a normal local command while holding the shared runtime lock.
@@ -165,17 +150,47 @@ impl ArcanaRuntime {
         JsonRepositoryCodec::export_to_new_directory(&mut repository, target)
     }
 
-    /// Replace synced SQLite entities from a complete JSON directory while
-    /// retaining local-only tables. Parsing, validation and replacement happen
-    /// under the exclusive runtime lock; Git state is intentionally ignored.
+    /// Create a missing SQLite runtime or replace its synced entities from a
+    /// complete JSON directory. Existing local-only tables are retained.
+    /// Parsing, validation and activation happen under the exclusive runtime
+    /// lock; Git state is intentionally ignored.
     pub fn import_json_from_directory(
         &self,
         source: impl AsRef<Path>,
     ) -> RepositoryResult<SyncedRepositorySnapshot> {
-        self.require_initialized_database()?;
+        std::fs::create_dir_all(&self.runtime_dir)
+            .map_err(|error| io_error("create runtime directory", error))?;
         let _lock = self.acquire_lock(LockMode::Exclusive)?;
-        let mut repository = SqliteRepository::open(self.database_path())?;
-        JsonRepositoryCodec::import_from_directory(&mut repository, source)
+        let database_path = self.database_path();
+        if database_path.exists() {
+            let mut repository = SqliteRepository::open(database_path)?;
+            return JsonRepositoryCodec::import_from_directory(&mut repository, source);
+        }
+
+        if let Some(sidecar) = sqlite_sidecars(&database_path)
+            .into_iter()
+            .find(|path| path.exists())
+        {
+            return Err(RepositoryError::new(
+                RepositoryErrorCode::Conflict,
+                format!(
+                    "cannot create Arcana runtime while a SQLite sidecar exists: {}",
+                    sidecar.display()
+                ),
+            ));
+        }
+
+        let temporary_path = self.runtime_dir.join(format!(
+            ".arcana.sqlite3.import-{}-{}",
+            std::process::id(),
+            unique_suffix()
+        ));
+        let mut temporary = TemporaryDatabase::new(temporary_path.clone());
+        let mut repository = SqliteRepository::open(&temporary_path)?;
+        let snapshot = JsonRepositoryCodec::import_from_directory(&mut repository, source)?;
+        repository.checkpoint_and_close()?;
+        temporary.activate_without_overwrite(&database_path)?;
+        Ok(snapshot)
     }
 
     fn require_initialized_database(&self) -> RepositoryResult<()> {
@@ -265,6 +280,25 @@ impl TemporaryDatabase {
 
     fn disarm(&mut self) {
         self.armed = false;
+    }
+
+    fn activate_without_overwrite(&mut self, target: &Path) -> RepositoryResult<()> {
+        self.remove_sidecars()?;
+        std::fs::hard_link(&self.path, target)
+            .map_err(|error| io_error("activate Arcana database without overwrite", error))?;
+        if let Err(error) = std::fs::remove_file(&self.path) {
+            let rollback_error = std::fs::remove_file(target).err();
+            let message = match rollback_error {
+                Some(rollback_error) => format!(
+                    "failed to remove temporary Arcana database: {error}; \
+                     also failed to roll back activated database: {rollback_error}"
+                ),
+                None => format!("failed to remove temporary Arcana database: {error}"),
+            };
+            return Err(RepositoryError::new(RepositoryErrorCode::Storage, message));
+        }
+        self.disarm();
+        Ok(())
     }
 }
 
@@ -543,6 +577,24 @@ mod tests {
                     .expect("nickname Record must exist")
                 else {
                     panic!("nickname must be scalar");
+                };
+                assert_eq!(nickname.value, json!("Alice"));
+                Ok(())
+            })
+            .unwrap();
+
+        let imported_runtime =
+            ArcanaRuntime::new(directory.path().join("imported-runtime")).unwrap();
+        imported_runtime
+            .import_json_from_directory(&json_directory)
+            .unwrap();
+        imported_runtime
+            .with_repository(|repository| {
+                let Record::Scalar(nickname) = repository
+                    .get_record("identity.nickname")?
+                    .expect("imported nickname Record must exist")
+                else {
+                    panic!("imported nickname must be scalar");
                 };
                 assert_eq!(nickname.value, json!("Alice"));
                 Ok(())

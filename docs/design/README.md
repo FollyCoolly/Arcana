@@ -51,7 +51,7 @@
 2. 进行中：进程间锁、运行时初始化与 Application Commands；Record 的 get/set/increment/correct、collection item、event 和 delete 命令已完成，其他领域命令待实现。
 3. 进行中：确定性 JSON Codec 和持有运行时独占锁的 SQLite import/export 已完成；已有目录的防覆盖 digest、崩溃恢复 journal、临时数据库切换和 Git 编排待实现。
 4. 待实现：Status evaluator、Achievement/Skill 查询与 Mission/Memory command。
-5. 待实现：Tauri UI、`arcana-data` contract 和 canonical Agent Skill；切换时直接停止使用旧 JSON。
+5. 进行中：`arcana-data json import|export` 已接入新运行时；其余 CLI contract、Tauri UI 和 canonical Agent Skill 待切换，切换时直接停止使用旧 JSON。
 
 ### 暂不处理
 

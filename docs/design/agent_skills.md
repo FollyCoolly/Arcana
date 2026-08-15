@@ -76,8 +76,11 @@ memory list|create|update|delete
 pack list|show|scaffold|validate|write|asset-put|asset-delete|enable|disable
 status list-dimensions|evaluate|select
 batch apply
+json import|export
 sync status|import|export|pull|push|run
 ```
+
+`json import|export` 是不接触 Git 的底层完整目录转换命令；`sync` 后续在它之上增加 managed path digest、防覆盖、恢复 journal 和显式 Git 操作。
 
 实际 flag 和请求体由 CLI `--help --json` 生成文档；Skill 不复制完整 JSON Schema，而是在需要时查询 capabilities/schema，避免随代码漂移。
 

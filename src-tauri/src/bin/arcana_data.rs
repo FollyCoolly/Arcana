@@ -11,7 +11,11 @@
 //!   arcana-data pack list|validate|scaffold|write|enable|disable
 //!   arcana-data changelog write --skill <s> --summary "..." [--file <path>]
 //!   arcana-data memory update [--file <path>]
+//!   arcana-data json export --output <directory> [--runtime <directory>]
+//!   arcana-data json import --input <directory> [--runtime <directory>]
 
+use arcana_lib::application::ArcanaRuntime;
+use arcana_lib::domain::SyncedRepositorySnapshot;
 use arcana_lib::models::achievement::{AchievementFile, AchievementProgressFile, PackManifest};
 use arcana_lib::models::mission::MissionFile;
 use arcana_lib::models::skill::SkillFile;
@@ -19,13 +23,14 @@ use arcana_lib::models::status::{MetricDefinitionFile, StatusValueFile};
 use arcana_lib::services;
 use arcana_lib::storage::date_utils::{epoch_days_to_civil, today_epoch_days};
 use arcana_lib::storage::json_store::{read_json_file, resolve_data_dir};
+use arcana_lib::storage::settings::{expand_tilde, load_settings};
 use clap::{Parser, Subcommand};
 use fs2::FileExt;
 use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::Read;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 // ---------------------------------------------------------------------------
 // CLI structure
@@ -105,6 +110,33 @@ enum Commands {
         /// Deprecated: init is non-interactive by default
         #[arg(long)]
         non_interactive: bool,
+    },
+    /// Convert between the new SQLite runtime and a canonical JSON directory
+    Json {
+        #[command(subcommand)]
+        action: JsonAction,
+    },
+}
+
+#[derive(Subcommand)]
+enum JsonAction {
+    /// Export SQLite data to a new directory without running Git
+    Export {
+        /// New output directory; an existing path is never overwritten
+        #[arg(long, value_name = "DIRECTORY")]
+        output: PathBuf,
+        /// Runtime directory containing arcana.sqlite3
+        #[arg(long, value_name = "DIRECTORY")]
+        runtime: Option<PathBuf>,
+    },
+    /// Create or replace SQLite data from a complete JSON directory without Git
+    Import {
+        /// Input directory containing arcana.json, packs/, and optional data files
+        #[arg(long, value_name = "DIRECTORY")]
+        input: PathBuf,
+        /// Runtime directory containing arcana.sqlite3
+        #[arg(long, value_name = "DIRECTORY")]
+        runtime: Option<PathBuf>,
     },
 }
 
@@ -285,15 +317,25 @@ enum MemoryAction {
 fn main() {
     let cli = Cli::parse();
 
-    let data_dir = match resolve_data_dir() {
-        Ok(d) => d,
-        Err(e) => {
-            eprintln!("Fatal: {e}");
-            std::process::exit(1);
+    let result = match cli.command {
+        Commands::Json { action } => cmd_json(action),
+        command => {
+            let data_dir = match resolve_data_dir() {
+                Ok(directory) => directory,
+                Err(error) => {
+                    eprintln!("Fatal: {error}");
+                    std::process::exit(1);
+                }
+            };
+            dispatch_legacy_command(&data_dir, command)
         }
     };
 
-    let result = match cli.command {
+    print_result(result, cli.compact);
+}
+
+fn dispatch_legacy_command(data_dir: &Path, command: Commands) -> Result<String, String> {
+    match command {
         Commands::Context {
             missions,
             status,
@@ -302,7 +344,7 @@ fn main() {
             active_only,
             pack,
         } => cmd_context(
-            &data_dir,
+            data_dir,
             missions,
             status,
             achievements,
@@ -310,19 +352,22 @@ fn main() {
             active_only,
             pack,
         ),
-        Commands::Read { path } => cmd_read(&data_dir, &path),
-        Commands::Mission { action } => cmd_mission(&data_dir, action),
-        Commands::Status { action } => cmd_status(&data_dir, action),
-        Commands::Achievement { action } => cmd_achievement(&data_dir, action),
-        Commands::Pack { action } => cmd_pack(&data_dir, action),
-        Commands::Changelog { action } => cmd_changelog(&data_dir, action),
-        Commands::Memory { action } => cmd_memory(&data_dir, action),
-        Commands::Init { non_interactive } => cmd_init(&data_dir, non_interactive),
-    };
+        Commands::Read { path } => cmd_read(data_dir, &path),
+        Commands::Mission { action } => cmd_mission(data_dir, action),
+        Commands::Status { action } => cmd_status(data_dir, action),
+        Commands::Achievement { action } => cmd_achievement(data_dir, action),
+        Commands::Pack { action } => cmd_pack(data_dir, action),
+        Commands::Changelog { action } => cmd_changelog(data_dir, action),
+        Commands::Memory { action } => cmd_memory(data_dir, action),
+        Commands::Init { non_interactive } => cmd_init(data_dir, non_interactive),
+        Commands::Json { .. } => unreachable!("JSON commands are dispatched before legacy data"),
+    }
+}
 
+fn print_result(result: Result<String, String>, compact: bool) {
     match result {
         Ok(output) => {
-            if cli.compact {
+            if compact {
                 // Re-parse and compact if it's valid JSON, otherwise print as-is
                 if let Ok(v) = serde_json::from_str::<Value>(&output) {
                     println!("{}", serde_json::to_string(&v).unwrap_or(output));
@@ -338,6 +383,96 @@ fn main() {
             std::process::exit(1);
         }
     }
+}
+
+fn cmd_json(action: JsonAction) -> Result<String, String> {
+    match action {
+        JsonAction::Export { output, runtime } => {
+            let runtime = runtime_from_cli(runtime)?;
+            let output = absolute_cli_path(output)?;
+            let snapshot = runtime
+                .export_json_to_new_directory(&output)
+                .map_err(|error| error.to_string())?;
+            json_command_output("export", runtime.runtime_dir(), &output, &snapshot)
+        }
+        JsonAction::Import { input, runtime } => {
+            let runtime = runtime_from_cli(runtime)?;
+            let input = absolute_cli_path(input)?;
+            let snapshot = runtime
+                .import_json_from_directory(&input)
+                .map_err(|error| error.to_string())?;
+            json_command_output("import", runtime.runtime_dir(), &input, &snapshot)
+        }
+    }
+}
+
+fn runtime_from_cli(runtime_dir: Option<PathBuf>) -> Result<ArcanaRuntime, String> {
+    match runtime_dir {
+        Some(path) => {
+            let absolute = absolute_cli_path(path)?;
+            ArcanaRuntime::new(absolute).map_err(|error| error.to_string())
+        }
+        None => ArcanaRuntime::from_settings(&load_settings()).map_err(|error| error.to_string()),
+    }
+}
+
+fn absolute_cli_path(path: PathBuf) -> Result<PathBuf, String> {
+    let path = path.to_str().map(expand_tilde).unwrap_or(path);
+    if path.is_absolute() {
+        return Ok(path);
+    }
+    std::env::current_dir()
+        .map(|directory| directory.join(path))
+        .map_err(|error| format!("cannot resolve relative path: {error}"))
+}
+
+fn json_command_output(
+    operation: &str,
+    runtime_dir: &Path,
+    directory: &Path,
+    snapshot: &SyncedRepositorySnapshot,
+) -> Result<String, String> {
+    let record_count = snapshot
+        .records
+        .values()
+        .map(|file| file.records.len())
+        .sum::<usize>();
+    let achievement_state_count = snapshot
+        .achievement_states
+        .as_ref()
+        .map(|file| file.states.len())
+        .unwrap_or_default();
+    let mission_count = snapshot
+        .missions
+        .as_ref()
+        .map(|file| file.missions.len())
+        .unwrap_or_default();
+    let memory_count = snapshot
+        .assistant_memory
+        .as_ref()
+        .map(|file| file.memories.len())
+        .unwrap_or_default();
+    let asset_count = snapshot
+        .packs
+        .values()
+        .map(|pack| pack.assets.len())
+        .sum::<usize>();
+    serde_json::to_string_pretty(&json!({
+        "operation": format!("json_{operation}"),
+        "runtime_dir": runtime_dir,
+        "directory": absolute_cli_path(directory.to_path_buf())?,
+        "summary": {
+            "packs": snapshot.packs.len(),
+            "enabled_packs": snapshot.manifest.enabled_pack_ids.len(),
+            "record_namespaces": snapshot.records.len(),
+            "records": record_count,
+            "achievement_states": achievement_state_count,
+            "missions": mission_count,
+            "assistant_memories": memory_count,
+            "assets": asset_count
+        }
+    }))
+    .map_err(|error| format!("failed to serialize JSON command result: {error}"))
 }
 
 // ---------------------------------------------------------------------------
@@ -1360,4 +1495,71 @@ fn cmd_init(data_dir: &Path, _non_interactive: bool) -> Result<String, String> {
     println!("  See docs/architecture.md for agent setup instructions.");
 
     Ok("Init complete.".to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_json_conversion_commands() {
+        let export = Cli::try_parse_from([
+            "arcana-data",
+            "json",
+            "export",
+            "--output",
+            "snapshot",
+            "--runtime",
+            "runtime",
+        ])
+        .unwrap();
+        assert!(matches!(
+            export.command,
+            Commands::Json {
+                action: JsonAction::Export { .. }
+            }
+        ));
+
+        let import =
+            Cli::try_parse_from(["arcana-data", "json", "import", "--input", "snapshot"]).unwrap();
+        assert!(matches!(
+            import.command,
+            Commands::Json {
+                action: JsonAction::Import { .. }
+            }
+        ));
+    }
+
+    #[test]
+    fn json_cli_exports_and_imports_without_git_files() {
+        let directory = tempfile::tempdir().unwrap();
+        let runtime_dir = directory.path().join("runtime");
+        ArcanaRuntime::new(&runtime_dir)
+            .unwrap()
+            .initialize()
+            .unwrap();
+        let json_dir = directory.path().join("json");
+
+        let export = cmd_json(JsonAction::Export {
+            output: json_dir.clone(),
+            runtime: Some(runtime_dir.clone()),
+        })
+        .unwrap();
+        let export: Value = serde_json::from_str(&export).unwrap();
+        assert_eq!(export["operation"], "json_export");
+        assert_eq!(export["summary"]["packs"], 1);
+        assert!(json_dir.join("arcana.json").is_file());
+        assert!(!json_dir.join(".gitattributes").exists());
+
+        let imported_runtime_dir = directory.path().join("imported-runtime");
+        let import = cmd_json(JsonAction::Import {
+            input: json_dir,
+            runtime: Some(imported_runtime_dir.clone()),
+        })
+        .unwrap();
+        let import: Value = serde_json::from_str(&import).unwrap();
+        assert_eq!(import["operation"], "json_import");
+        assert_eq!(import["summary"]["enabled_packs"], 1);
+        assert!(imported_runtime_dir.join("arcana.sqlite3").is_file());
+    }
 }
