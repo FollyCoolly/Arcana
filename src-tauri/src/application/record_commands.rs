@@ -1,11 +1,12 @@
 use crate::domain::{
-    ArcanaRepository, ArcanaRepositoryReader, ArcanaRepositoryTransaction, Record,
-    RecordDefinition, RepositoryError, RepositoryErrorCode, RepositoryResult, ScalarRecord,
-    ValueType,
+    ArcanaRepository, ArcanaRepositoryReader, ArcanaRepositoryTransaction, CollectionItem,
+    CollectionRecord, EventEntry, EventRecord, Record, RecordDefinition, RepositoryError,
+    RepositoryErrorCode, RepositoryResult, ScalarRecord, ValueType,
 };
 use chrono::{DateTime, SecondsFormat, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::{Number, Value};
+use std::collections::BTreeMap;
 use std::time::SystemTime;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -24,6 +25,60 @@ pub struct IncrementScalarRecord {
     pub delta: Value,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub effective_at: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CreateEmptyRecord {
+    pub definition_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AddCollectionItem {
+    pub definition_id: String,
+    pub item_id: String,
+    pub fields: BTreeMap<String, Value>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CorrectCollectionItem {
+    pub definition_id: String,
+    pub item_id: String,
+    pub fields: BTreeMap<String, Value>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RemoveCollectionItem {
+    pub definition_id: String,
+    pub item_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AppendEvent {
+    pub definition_id: String,
+    pub event_id: String,
+    pub occurred_at: String,
+    pub fields: BTreeMap<String, Value>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CorrectEvent {
+    pub definition_id: String,
+    pub event_id: String,
+    pub occurred_at: String,
+    pub fields: BTreeMap<String, Value>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DeleteEvent {
+    pub definition_id: String,
+    pub event_id: String,
 }
 
 pub struct RecordCommands<'repository, R> {
@@ -52,6 +107,97 @@ where
 
     pub fn increment_scalar(&mut self, command: IncrementScalarRecord) -> RepositoryResult<Record> {
         self.increment_scalar_at(command, now_rfc3339())
+    }
+
+    pub fn create_empty_collection(
+        &mut self,
+        command: CreateEmptyRecord,
+    ) -> RepositoryResult<Record> {
+        let record = Record::Collection(CollectionRecord {
+            definition_id: command.definition_id,
+            items: Vec::new(),
+        });
+        self.create_record(record)
+    }
+
+    pub fn add_collection_item(&mut self, command: AddCollectionItem) -> RepositoryResult<Record> {
+        self.add_collection_item_at(command, now_rfc3339())
+    }
+
+    pub fn correct_collection_item(
+        &mut self,
+        command: CorrectCollectionItem,
+    ) -> RepositoryResult<Record> {
+        self.correct_collection_item_at(command, now_rfc3339())
+    }
+
+    pub fn remove_collection_item(
+        &mut self,
+        command: RemoveCollectionItem,
+    ) -> RepositoryResult<Record> {
+        let mut transaction = self.repository.begin_transaction()?;
+        let existing = required_record(
+            transaction.get_record(&command.definition_id)?,
+            &command.definition_id,
+        )?;
+        let Record::Collection(mut collection) = existing else {
+            return Err(kind_conflict(&command.definition_id, "collection"));
+        };
+        let original_len = collection.items.len();
+        collection.items.retain(|item| item.id != command.item_id);
+        if collection.items.len() == original_len {
+            return Err(child_not_found(
+                "collection item",
+                &command.item_id,
+                &command.definition_id,
+            ));
+        }
+        let record = Record::Collection(collection);
+        transaction.put_record(record.clone())?;
+        transaction.commit()?;
+        Ok(record)
+    }
+
+    pub fn create_empty_event(&mut self, command: CreateEmptyRecord) -> RepositoryResult<Record> {
+        let record = Record::Event(EventRecord {
+            definition_id: command.definition_id,
+            events: Vec::new(),
+        });
+        self.create_record(record)
+    }
+
+    pub fn append_event(&mut self, command: AppendEvent) -> RepositoryResult<Record> {
+        self.append_event_at(command, now_rfc3339())
+    }
+
+    pub fn correct_event(&mut self, command: CorrectEvent) -> RepositoryResult<Record> {
+        self.correct_event_at(command, now_rfc3339())
+    }
+
+    pub fn delete_event(&mut self, command: DeleteEvent) -> RepositoryResult<Record> {
+        let mut transaction = self.repository.begin_transaction()?;
+        let existing = required_record(
+            transaction.get_record(&command.definition_id)?,
+            &command.definition_id,
+        )?;
+        let Record::Event(mut event_record) = existing else {
+            return Err(kind_conflict(&command.definition_id, "event"));
+        };
+        let original_len = event_record.events.len();
+        event_record
+            .events
+            .retain(|event| event.id != command.event_id);
+        if event_record.events.len() == original_len {
+            return Err(child_not_found(
+                "event",
+                &command.event_id,
+                &command.definition_id,
+            ));
+        }
+        let record = Record::Event(event_record);
+        transaction.put_record(record.clone())?;
+        transaction.commit()?;
+        Ok(record)
     }
 
     pub fn delete(&mut self, definition_id: &str) -> RepositoryResult<()> {
@@ -135,6 +281,190 @@ where
         transaction.commit()?;
         Ok(record)
     }
+
+    pub(crate) fn add_collection_item_at(
+        &mut self,
+        command: AddCollectionItem,
+        recorded_at: String,
+    ) -> RepositoryResult<Record> {
+        let mut transaction = self.repository.begin_transaction()?;
+        let mut collection = match transaction.get_record(&command.definition_id)? {
+            Some(Record::Collection(collection)) => collection,
+            Some(_) => return Err(kind_conflict(&command.definition_id, "collection")),
+            None => CollectionRecord {
+                definition_id: command.definition_id.clone(),
+                items: Vec::new(),
+            },
+        };
+        if collection
+            .items
+            .iter()
+            .any(|item| item.id == command.item_id)
+        {
+            return Err(child_conflict(
+                "collection item",
+                &command.item_id,
+                &command.definition_id,
+            ));
+        }
+        collection.items.push(CollectionItem {
+            id: command.item_id,
+            fields: command.fields,
+            recorded_at,
+        });
+        collection
+            .items
+            .sort_by(|left, right| left.id.cmp(&right.id));
+        let record = Record::Collection(collection);
+        transaction.put_record(record.clone())?;
+        transaction.commit()?;
+        Ok(record)
+    }
+
+    pub(crate) fn correct_collection_item_at(
+        &mut self,
+        command: CorrectCollectionItem,
+        recorded_at: String,
+    ) -> RepositoryResult<Record> {
+        let mut transaction = self.repository.begin_transaction()?;
+        let existing = required_record(
+            transaction.get_record(&command.definition_id)?,
+            &command.definition_id,
+        )?;
+        let Record::Collection(mut collection) = existing else {
+            return Err(kind_conflict(&command.definition_id, "collection"));
+        };
+        let item = collection
+            .items
+            .iter_mut()
+            .find(|item| item.id == command.item_id)
+            .ok_or_else(|| {
+                child_not_found("collection item", &command.item_id, &command.definition_id)
+            })?;
+        item.fields = command.fields;
+        item.recorded_at = recorded_at;
+        let record = Record::Collection(collection);
+        transaction.put_record(record.clone())?;
+        transaction.commit()?;
+        Ok(record)
+    }
+
+    pub(crate) fn append_event_at(
+        &mut self,
+        command: AppendEvent,
+        recorded_at: String,
+    ) -> RepositoryResult<Record> {
+        let mut transaction = self.repository.begin_transaction()?;
+        let mut event_record = match transaction.get_record(&command.definition_id)? {
+            Some(Record::Event(event_record)) => event_record,
+            Some(_) => return Err(kind_conflict(&command.definition_id, "event")),
+            None => EventRecord {
+                definition_id: command.definition_id.clone(),
+                events: Vec::new(),
+            },
+        };
+        if event_record
+            .events
+            .iter()
+            .any(|event| event.id == command.event_id)
+        {
+            return Err(child_conflict(
+                "event",
+                &command.event_id,
+                &command.definition_id,
+            ));
+        }
+        event_record.events.push(EventEntry {
+            id: command.event_id,
+            occurred_at: command.occurred_at,
+            fields: command.fields,
+            recorded_at,
+        });
+        sort_events(&mut event_record.events);
+        let record = Record::Event(event_record);
+        transaction.put_record(record.clone())?;
+        transaction.commit()?;
+        Ok(record)
+    }
+
+    pub(crate) fn correct_event_at(
+        &mut self,
+        command: CorrectEvent,
+        recorded_at: String,
+    ) -> RepositoryResult<Record> {
+        let mut transaction = self.repository.begin_transaction()?;
+        let existing = required_record(
+            transaction.get_record(&command.definition_id)?,
+            &command.definition_id,
+        )?;
+        let Record::Event(mut event_record) = existing else {
+            return Err(kind_conflict(&command.definition_id, "event"));
+        };
+        let event = event_record
+            .events
+            .iter_mut()
+            .find(|event| event.id == command.event_id)
+            .ok_or_else(|| child_not_found("event", &command.event_id, &command.definition_id))?;
+        event.occurred_at = command.occurred_at;
+        event.fields = command.fields;
+        event.recorded_at = recorded_at;
+        sort_events(&mut event_record.events);
+        let record = Record::Event(event_record);
+        transaction.put_record(record.clone())?;
+        transaction.commit()?;
+        Ok(record)
+    }
+
+    fn create_record(&mut self, record: Record) -> RepositoryResult<Record> {
+        let mut transaction = self.repository.begin_transaction()?;
+        if transaction.get_record(record.definition_id())?.is_some() {
+            return Err(RepositoryError::new(
+                RepositoryErrorCode::Conflict,
+                format!("Record '{}' already exists", record.definition_id()),
+            ));
+        }
+        transaction.put_record(record.clone())?;
+        transaction.commit()?;
+        Ok(record)
+    }
+}
+
+fn required_record(record: Option<Record>, definition_id: &str) -> RepositoryResult<Record> {
+    record.ok_or_else(|| {
+        RepositoryError::new(
+            RepositoryErrorCode::NotFound,
+            format!("Record '{definition_id}' does not exist"),
+        )
+    })
+}
+
+fn kind_conflict(definition_id: &str, expected: &str) -> RepositoryError {
+    RepositoryError::new(
+        RepositoryErrorCode::Conflict,
+        format!("Record '{definition_id}' is not stored as {expected}"),
+    )
+}
+
+fn child_conflict(kind: &str, id: &str, definition_id: &str) -> RepositoryError {
+    RepositoryError::new(
+        RepositoryErrorCode::Conflict,
+        format!("{kind} '{id}' already exists in Record '{definition_id}'"),
+    )
+}
+
+fn child_not_found(kind: &str, id: &str, definition_id: &str) -> RepositoryError {
+    RepositoryError::new(
+        RepositoryErrorCode::NotFound,
+        format!("{kind} '{id}' does not exist in Record '{definition_id}'"),
+    )
+}
+
+fn sort_events(events: &mut [EventEntry]) {
+    events.sort_by(|left, right| {
+        left.occurred_at
+            .cmp(&right.occurred_at)
+            .then_with(|| left.id.cmp(&right.id))
+    });
 }
 
 fn increment_value(
@@ -207,8 +537,8 @@ mod tests {
     use super::*;
     use crate::application::BASIC_PACK_ID;
     use crate::domain::{
-        ArcanaRepositoryTransaction, Pack, PackManifest, RecordDefinitionFile,
-        ScalarRecordDefinition, SCHEMA_VERSION,
+        ArcanaRepositoryTransaction, FieldDefinition, Pack, PackManifest, RecordDefinitionFile,
+        ScalarRecordDefinition, StructuredRecordDefinition, SCHEMA_VERSION,
     };
     use crate::storage::sqlite::SqliteRepository;
     use serde_json::json;
@@ -227,12 +557,58 @@ mod tests {
             },
             record_definitions: Some(RecordDefinitionFile {
                 definitions: vec![
+                    RecordDefinition::Event(StructuredRecordDefinition {
+                        id: "stats.activities".to_string(),
+                        name: "Activities".to_string(),
+                        description: None,
+                        fields: BTreeMap::from([
+                            (
+                                "distance".to_string(),
+                                FieldDefinition {
+                                    value_type: ValueType::Number,
+                                    required: false,
+                                    unit: Some("km".to_string()),
+                                },
+                            ),
+                            (
+                                "kind".to_string(),
+                                FieldDefinition {
+                                    value_type: ValueType::String,
+                                    required: true,
+                                    unit: None,
+                                },
+                            ),
+                        ]),
+                    }),
                     RecordDefinition::Scalar(ScalarRecordDefinition {
                         id: "stats.count".to_string(),
                         name: "Count".to_string(),
                         description: None,
                         value_type: ValueType::Integer,
                         unit: None,
+                    }),
+                    RecordDefinition::Collection(StructuredRecordDefinition {
+                        id: "stats.projects".to_string(),
+                        name: "Projects".to_string(),
+                        description: None,
+                        fields: BTreeMap::from([
+                            (
+                                "rating".to_string(),
+                                FieldDefinition {
+                                    value_type: ValueType::Integer,
+                                    required: false,
+                                    unit: None,
+                                },
+                            ),
+                            (
+                                "title".to_string(),
+                                FieldDefinition {
+                                    value_type: ValueType::String,
+                                    required: true,
+                                    unit: None,
+                                },
+                            ),
+                        ]),
                     }),
                     RecordDefinition::Scalar(ScalarRecordDefinition {
                         id: "stats.score".to_string(),
@@ -385,5 +761,247 @@ mod tests {
             )
             .unwrap_err();
         assert_eq!(error.code, RepositoryErrorCode::ValidationFailed);
+    }
+
+    #[test]
+    fn explicit_empty_collection_is_preserved_and_never_clears_existing_data() {
+        let mut repository = repository();
+        let mut commands = RecordCommands::new(&mut repository);
+        let empty = commands
+            .create_empty_collection(CreateEmptyRecord {
+                definition_id: "stats.projects".to_string(),
+            })
+            .unwrap();
+        assert_eq!(
+            empty,
+            Record::Collection(CollectionRecord {
+                definition_id: "stats.projects".to_string(),
+                items: vec![],
+            })
+        );
+        let error = commands
+            .create_empty_collection(CreateEmptyRecord {
+                definition_id: "stats.projects".to_string(),
+            })
+            .unwrap_err();
+        assert_eq!(error.code, RepositoryErrorCode::Conflict);
+        assert_eq!(commands.get("stats.projects").unwrap(), Some(empty));
+    }
+
+    #[test]
+    fn collection_commands_sort_reject_duplicates_correct_and_preserve_empty_header() {
+        let mut repository = repository();
+        let mut commands = RecordCommands::new(&mut repository);
+        commands
+            .add_collection_item_at(
+                AddCollectionItem {
+                    definition_id: "stats.projects".to_string(),
+                    item_id: "project_b".to_string(),
+                    fields: BTreeMap::from([("title".to_string(), json!("B"))]),
+                },
+                "2026-08-15T20:30:00+08:00".to_string(),
+            )
+            .unwrap();
+        let added = commands
+            .add_collection_item_at(
+                AddCollectionItem {
+                    definition_id: "stats.projects".to_string(),
+                    item_id: "project_a".to_string(),
+                    fields: BTreeMap::from([("title".to_string(), json!("A"))]),
+                },
+                "2026-08-15T20:31:00+08:00".to_string(),
+            )
+            .unwrap();
+        let Record::Collection(added) = added else {
+            panic!("stats.projects must be a collection");
+        };
+        assert_eq!(
+            added
+                .items
+                .iter()
+                .map(|item| item.id.as_str())
+                .collect::<Vec<_>>(),
+            vec!["project_a", "project_b"]
+        );
+
+        let before_duplicate = commands.get("stats.projects").unwrap();
+        let error = commands
+            .add_collection_item_at(
+                AddCollectionItem {
+                    definition_id: "stats.projects".to_string(),
+                    item_id: "project_a".to_string(),
+                    fields: BTreeMap::from([("title".to_string(), json!("duplicate"))]),
+                },
+                "2026-08-15T20:32:00+08:00".to_string(),
+            )
+            .unwrap_err();
+        assert_eq!(error.code, RepositoryErrorCode::Conflict);
+        assert_eq!(commands.get("stats.projects").unwrap(), before_duplicate);
+
+        let corrected = commands
+            .correct_collection_item_at(
+                CorrectCollectionItem {
+                    definition_id: "stats.projects".to_string(),
+                    item_id: "project_a".to_string(),
+                    fields: BTreeMap::from([
+                        ("rating".to_string(), json!(5)),
+                        ("title".to_string(), json!("A+")),
+                    ]),
+                },
+                "2026-08-15T20:33:00+08:00".to_string(),
+            )
+            .unwrap();
+        let Record::Collection(corrected) = corrected else {
+            panic!("stats.projects must be a collection");
+        };
+        assert_eq!(corrected.items[0].fields["title"], json!("A+"));
+        assert_eq!(corrected.items[0].recorded_at, "2026-08-15T20:33:00+08:00");
+
+        commands
+            .remove_collection_item(RemoveCollectionItem {
+                definition_id: "stats.projects".to_string(),
+                item_id: "project_a".to_string(),
+            })
+            .unwrap();
+        let empty = commands
+            .remove_collection_item(RemoveCollectionItem {
+                definition_id: "stats.projects".to_string(),
+                item_id: "project_b".to_string(),
+            })
+            .unwrap();
+        assert_eq!(
+            empty,
+            Record::Collection(CollectionRecord {
+                definition_id: "stats.projects".to_string(),
+                items: vec![],
+            })
+        );
+        assert_eq!(commands.get("stats.projects").unwrap(), Some(empty));
+    }
+
+    #[test]
+    fn invalid_collection_item_rolls_back_implicit_record_creation() {
+        let mut repository = repository();
+        let mut commands = RecordCommands::new(&mut repository);
+        let error = commands
+            .add_collection_item_at(
+                AddCollectionItem {
+                    definition_id: "stats.projects".to_string(),
+                    item_id: "project_a".to_string(),
+                    fields: BTreeMap::new(),
+                },
+                "2026-08-15T20:30:00+08:00".to_string(),
+            )
+            .unwrap_err();
+        assert_eq!(error.code, RepositoryErrorCode::ValidationFailed);
+        assert_eq!(commands.get("stats.projects").unwrap(), None);
+    }
+
+    #[test]
+    fn event_commands_sort_reject_duplicates_correct_and_preserve_empty_header() {
+        let mut repository = repository();
+        let mut commands = RecordCommands::new(&mut repository);
+        let empty = commands
+            .create_empty_event(CreateEmptyRecord {
+                definition_id: "stats.activities".to_string(),
+            })
+            .unwrap();
+        assert_eq!(
+            empty,
+            Record::Event(EventRecord {
+                definition_id: "stats.activities".to_string(),
+                events: vec![],
+            })
+        );
+
+        commands
+            .append_event_at(
+                AppendEvent {
+                    definition_id: "stats.activities".to_string(),
+                    event_id: "run_late".to_string(),
+                    occurred_at: "2026-08-15T19:00:00+08:00".to_string(),
+                    fields: BTreeMap::from([("kind".to_string(), json!("run"))]),
+                },
+                "2026-08-15T20:30:00+08:00".to_string(),
+            )
+            .unwrap();
+        let appended = commands
+            .append_event_at(
+                AppendEvent {
+                    definition_id: "stats.activities".to_string(),
+                    event_id: "walk_early".to_string(),
+                    occurred_at: "2026-08-15T08:00:00+08:00".to_string(),
+                    fields: BTreeMap::from([("kind".to_string(), json!("walk"))]),
+                },
+                "2026-08-15T20:31:00+08:00".to_string(),
+            )
+            .unwrap();
+        let Record::Event(appended) = appended else {
+            panic!("stats.activities must be an event Record");
+        };
+        assert_eq!(
+            appended
+                .events
+                .iter()
+                .map(|event| event.id.as_str())
+                .collect::<Vec<_>>(),
+            vec!["walk_early", "run_late"]
+        );
+
+        let before_duplicate = commands.get("stats.activities").unwrap();
+        let error = commands
+            .append_event_at(
+                AppendEvent {
+                    definition_id: "stats.activities".to_string(),
+                    event_id: "run_late".to_string(),
+                    occurred_at: "2026-08-15T21:00:00+08:00".to_string(),
+                    fields: BTreeMap::from([("kind".to_string(), json!("run"))]),
+                },
+                "2026-08-15T20:32:00+08:00".to_string(),
+            )
+            .unwrap_err();
+        assert_eq!(error.code, RepositoryErrorCode::Conflict);
+        assert_eq!(commands.get("stats.activities").unwrap(), before_duplicate);
+
+        let corrected = commands
+            .correct_event_at(
+                CorrectEvent {
+                    definition_id: "stats.activities".to_string(),
+                    event_id: "run_late".to_string(),
+                    occurred_at: "2026-08-15T07:00:00+08:00".to_string(),
+                    fields: BTreeMap::from([
+                        ("distance".to_string(), json!(5.2)),
+                        ("kind".to_string(), json!("run")),
+                    ]),
+                },
+                "2026-08-15T20:33:00+08:00".to_string(),
+            )
+            .unwrap();
+        let Record::Event(corrected) = corrected else {
+            panic!("stats.activities must be an event Record");
+        };
+        assert_eq!(corrected.events[0].id, "run_late");
+        assert_eq!(corrected.events[0].recorded_at, "2026-08-15T20:33:00+08:00");
+
+        commands
+            .delete_event(DeleteEvent {
+                definition_id: "stats.activities".to_string(),
+                event_id: "run_late".to_string(),
+            })
+            .unwrap();
+        let empty = commands
+            .delete_event(DeleteEvent {
+                definition_id: "stats.activities".to_string(),
+                event_id: "walk_early".to_string(),
+            })
+            .unwrap();
+        assert_eq!(
+            empty,
+            Record::Event(EventRecord {
+                definition_id: "stats.activities".to_string(),
+                events: vec![],
+            })
+        );
+        assert_eq!(commands.get("stats.activities").unwrap(), Some(empty));
     }
 }

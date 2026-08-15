@@ -73,10 +73,11 @@ RecordDefinition 第一版只包含：
 - `set`：写入当前已知值；
 - `increment`：基于当前 scalar 增加；
 - `correct`：修正错误事实；
-- `add_item` / `remove_item`：维护 collection；
+- `create_empty_collection` / `create_empty_event`：明确记录空集合或空事件列表；
+- `add_item` / `correct_item` / `remove_item`：维护 collection；
 - `append_event` / `correct_event` / `delete_event`：维护 event。
 
-所有命令通过同一事务 API 执行。`increment` 必须在数据库事务中读取并更新，不能由调用方先读后写。
+所有命令通过同一事务 API 执行。`increment`、collection item 和 event 的读改写必须全部发生在数据库事务内，不能由调用方先读后写。向尚不存在的 collection/event 添加第一项时同时创建对应 Record header；显式创建空 Record 不得覆盖已有 Record。重复 item/event ID 必须返回冲突，只有 `correct_item` / `correct_event` 可以替换既有内容。删除最后一项后仍保留 Record header，以区分“明确为空”和“从未记录”。
 
 ## 5. 标识与时间
 

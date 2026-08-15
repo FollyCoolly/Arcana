@@ -68,7 +68,7 @@ plugins/arcana/
 init
 capabilities
 context summary
-record get|query|set|increment|correct|add-item|remove-item|append-event|correct-event|delete-event|delete
+record get|query|set|increment|correct|create-empty-collection|create-empty-event|add-item|correct-item|remove-item|append-event|correct-event|delete-event|delete
 achievement list|state-set|state-revoke
 mission list|create|update|complete|archive|delete
 mission suggestion-list|suggest|accept|reject|delete
