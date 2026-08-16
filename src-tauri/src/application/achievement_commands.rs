@@ -79,11 +79,11 @@ where
             .achievement_states
             .as_ref()
             .map(|file| &file.states);
-        let achieved_ids: BTreeSet<&str> = states
+        let achieved_ids: BTreeSet<String> = states
             .into_iter()
             .flat_map(|states| states.iter())
             .filter(|(_, state)| state.is_achieved())
-            .map(|(id, _)| id.as_str())
+            .map(|(id, _)| id.clone())
             .collect();
         let enabled_pack_ids: BTreeSet<&str> = snapshot
             .manifest
@@ -110,18 +110,8 @@ where
             let state = states
                 .and_then(|states| states.get(*achievement_id))
                 .cloned();
-            let unmet_prerequisite_ids = definition
-                .prerequisites
-                .iter()
-                .filter(|id| !achieved_ids.contains(id.as_str()))
-                .cloned()
-                .collect::<Vec<_>>();
-            let availability = match state.as_ref().map(|state| state.status) {
-                Some(AchievementStatus::Tracked) => AchievementAvailability::Tracked,
-                Some(AchievementStatus::Achieved) => AchievementAvailability::Achieved,
-                None if unmet_prerequisite_ids.is_empty() => AchievementAvailability::Available,
-                None => AchievementAvailability::Locked,
-            };
+            let (availability, unmet_prerequisite_ids) =
+                achievement_availability(definition, state.as_ref(), &achieved_ids);
             entries.insert(
                 (*achievement_id).to_string(),
                 AchievementEntry {
@@ -256,6 +246,26 @@ where
             changed: true,
         })
     }
+}
+
+pub(crate) fn achievement_availability(
+    definition: &AchievementDefinition,
+    state: Option<&AchievementState>,
+    achieved_ids: &BTreeSet<String>,
+) -> (AchievementAvailability, Vec<String>) {
+    let unmet_prerequisite_ids = definition
+        .prerequisites
+        .iter()
+        .filter(|id| !achieved_ids.contains(*id))
+        .cloned()
+        .collect::<Vec<_>>();
+    let availability = match state.map(|state| state.status) {
+        Some(AchievementStatus::Tracked) => AchievementAvailability::Tracked,
+        Some(AchievementStatus::Achieved) => AchievementAvailability::Achieved,
+        None if unmet_prerequisite_ids.is_empty() => AchievementAvailability::Available,
+        None => AchievementAvailability::Locked,
+    };
+    (availability, unmet_prerequisite_ids)
 }
 
 fn validate_achievement_id(achievement_id: &str) -> RepositoryResult<()> {

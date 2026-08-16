@@ -32,6 +32,7 @@ fn capabilities_succeeds_without_runtime_and_compact_only_changes_layout() {
     assert_eq!(value["commands"]["pack"]["version"], 1);
     assert_eq!(value["commands"]["status"]["version"], 1);
     assert_eq!(value["commands"]["achievement"]["version"], 1);
+    assert_eq!(value["commands"]["skill"]["version"], 1);
     assert!(utf8(&pretty.stdout).lines().count() > 1);
 
     let compact = arcana_data(&["--compact", "capabilities"]);
@@ -404,6 +405,23 @@ fn achievement_commands_derive_availability_and_revoke_unresolved_state() {
                     "prerequisites": ["cooking::first_dish"]
                 }
             ]
+        },
+        "skills": {
+            "skills": [{
+                "id": "cooking::general",
+                "name": "Cooking",
+                "level_thresholds": [10, 20, 30, 40],
+                "nodes": [
+                    {
+                        "achievement_id": "cooking::first_dish",
+                        "points": 15
+                    },
+                    {
+                        "achievement_id": "cooking::host_dinner",
+                        "points": 25
+                    }
+                ]
+            }]
         }
     });
     let pack_file = directory.path().join("cooking.json");
@@ -476,6 +494,24 @@ fn achievement_commands_derive_availability_and_revoke_unresolved_state() {
         "cooking::host_dinner"
     );
 
+    let skills = arcana_data(&[
+        "skill",
+        "--runtime",
+        &runtime_arg,
+        "list",
+        "--skill-id",
+        "cooking::general",
+    ]);
+    assert!(skills.status.success(), "{}", utf8(&skills.stderr));
+    let skills = parse_json(&skills.stdout);
+    assert_eq!(skills["skills"].as_array().unwrap().len(), 1);
+    assert_eq!(skills["skills"][0]["points"], 25);
+    assert_eq!(skills["skills"][0]["max_points"], 40);
+    assert_eq!(skills["skills"][0]["level"], 3);
+    assert_eq!(skills["skills"][0]["achieved_node_count"], 1);
+    assert_eq!(skills["skills"][0]["nodes"][0]["availability"], "available");
+    assert_eq!(skills["skills"][0]["nodes"][1]["availability"], "achieved");
+
     assert!(
         arcana_data(&["pack", "--runtime", &runtime_arg, "disable", "cooking",])
             .status
@@ -486,6 +522,16 @@ fn achievement_commands_derive_availability_and_revoke_unresolved_state() {
     let unresolved = parse_json(&unresolved.stdout);
     assert_eq!(unresolved["achievements"].as_array().unwrap().len(), 1);
     assert_eq!(unresolved["achievements"][0]["availability"], "unresolved");
+    let disabled_skills = arcana_data(&["skill", "--runtime", &runtime_arg, "list"]);
+    assert!(
+        disabled_skills.status.success(),
+        "{}",
+        utf8(&disabled_skills.stderr)
+    );
+    assert_eq!(
+        parse_json(&disabled_skills.stdout)["skills"],
+        serde_json::json!([])
+    );
 
     let revoke = arcana_data(&[
         "achievement",

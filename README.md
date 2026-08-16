@@ -81,7 +81,7 @@ Milestone tracking with content pack support.
 Honeycomb-style skill progression tightly coupled with achievements.
 
 - Each skill node maps to an achievement; unlocking achievements lights up the corresponding tree nodes.
-- Skill levels are computed from accumulated node points and required key achievements.
+- Skill levels are computed from accumulated points contributed only by achieved nodes.
 - Interactive skill overview and honeycomb node map with achievement details, prerequisite status, and progress history.
 - Loaded via content packs alongside achievements, so new packs can add both milestones and skill progression.
 
@@ -201,9 +201,10 @@ cargo build --manifest-path src-tauri/Cargo.toml --bin arcana-data
 ./src-tauri/target/debug/arcana-data pack list
 ./src-tauri/target/debug/arcana-data status list-dimensions
 ./src-tauri/target/debug/arcana-data achievement list
+./src-tauri/target/debug/arcana-data skill list
 ```
 
-`arcana-data init` creates the SQLite runtime and the `basic` Pack; it does not populate the legacy UI or onboarding missions. The Record, Pack, Status, and Achievement command families have migrated; canonical Agent Skills will return after their required SQLite Mission and Memory commands exist.
+`arcana-data init` creates the SQLite runtime and the `basic` Pack; it does not populate the legacy UI or onboarding missions. The Record, Pack, Status, Achievement, and Arcana Skill query command families have migrated; canonical Agent Skills will return after their required SQLite Mission and Memory commands exist.
 
 > [!NOTE]
 > If you want to use the agent binaries — primarily `agent-telegram`, which starts a listener service for controlling your local assistant remotely via Telegram — you will need to configure an LLM provider. Set your API key via environment variable (`ANTHROPIC_API_KEY`) or config file (`~/.arcana/agent_config.json`). See [AI Agent](#ai-agent) for details.

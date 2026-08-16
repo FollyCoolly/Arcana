@@ -1,6 +1,6 @@
 # Achievement、Skill 与 Content Pack
 
-> **状态**：Achievement Domain/Application/CLI 已实现；Skill 派生查询与 Tauri UI 尚未切换
+> **状态**：Achievement/Skill Domain、Application 与 CLI 已实现；Tauri UI 尚未切换
 > **最后更新**：2026-08-16
 
 ## 1. 依赖方向
@@ -103,6 +103,14 @@ achievement state-revoke <achievement_id>
 ```
 
 `list` 的 `availability` 由 Definition、prerequisites 和最小用户状态即时推导；它不是第三种持久化状态。`state-set` 不以 prerequisites 作为完成门槛，`state-revoke` 不要求 Definition 当前可用。
+
+当前 Arcana Skill CLI 提供：
+
+```text
+skill list [--skill-id <id>] [--pack <pack_id>]
+```
+
+它只返回已启用 Pack 中的 SkillDefinition，并从同一个 SQLite 事务快照即时计算每个节点的 `availability`、当前积分、最高积分、已完成节点数与 Lv.0～Lv.5。查询结果不写回 SQLite；停用 Pack 后对应 Skill 不再出现在结果中。
 
 ## 6. Pack 内容
 

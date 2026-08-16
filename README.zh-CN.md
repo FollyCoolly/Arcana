@@ -81,7 +81,7 @@ Arcana **不是**一个靠连续打卡和复选框驱动的习惯追踪器，也
 与成就紧密绑定的蜂窝状技能进度系统。
 
 - 每个技能节点都映射到一个成就；解锁成就会点亮对应节点。
-- 技能等级由已解锁节点的点数和必要关键成就共同计算。
+- 技能等级仅由状态为 achieved 的节点贡献积分后计算。
 - 支持技能总览和蜂窝节点图，可以查看成就详情、前置条件状态和进度历史。
 - 技能和成就一起由内容包加载，因此新的内容包可以同时扩展里程碑和技能成长线。
 
@@ -202,9 +202,10 @@ cargo build --manifest-path src-tauri/Cargo.toml --bin arcana-data
 ./src-tauri/target/debug/arcana-data pack list
 ./src-tauri/target/debug/arcana-data status list-dimensions
 ./src-tauri/target/debug/arcana-data achievement list
+./src-tauri/target/debug/arcana-data skill list
 ```
 
-`arcana-data init` 只创建 SQLite runtime 和 `basic` Pack，不会填充旧 UI 或新手任务。Record、Pack、Status 与 Achievement 命令族已经迁移；等 SQLite Mission 和 Memory 命令完成后，再恢复 canonical Agent Skill。
+`arcana-data init` 只创建 SQLite runtime 和 `basic` Pack，不会填充旧 UI 或新手任务。Record、Pack、Status、Achievement 与 Arcana Skill 查询命令族已经迁移；等 SQLite Mission 和 Memory 命令完成后，再恢复 canonical Agent Skill。
 
 > [!NOTE]
 > 如果你需要使用 agent 二进制——主要是 `agent-telegram`，它会启动一个监听服务，让你通过 Telegram 远程控制本地助手——则需要额外配置 LLM provider。通过环境变量（`ANTHROPIC_API_KEY`）或配置文件（`~/.arcana/agent_config.json`）设置 API key 即可。详见 [AI 助手](#ai-助手)。

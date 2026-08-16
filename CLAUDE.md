@@ -20,7 +20,7 @@ src-tauri/src/
   storage/sqlite/                 SQLite migrations 与 Repository adapter
   storage/json_repository.rs      SQLite ↔ 确定性 JSON Codec
   bin/arcana_data.rs              新数据 CLI 入口
-  bin/arcana_data/                CLI contract、Record、Pack、Status、Achievement、runtime/json 模块
+  bin/arcana_data/                CLI contract、Record、Pack、Status、Achievement、Skill、runtime/json 模块
   commands/ models/ services/     尚未迁移的 UI/Agent 旧实现
   agent/                          尚未迁移的内置 Rust Agent
 docs/design/                      新数据平台权威文档
@@ -56,6 +56,7 @@ arcana-data record [--runtime <directory>] <action>
 arcana-data pack [--runtime <directory>] <action>
 arcana-data status [--runtime <directory>] <action>
 arcana-data achievement [--runtime <directory>] <action>
+arcana-data skill [--runtime <directory>] list
 arcana-data json import|export ...
 ```
 
@@ -69,6 +70,7 @@ arcana-data json import|export ...
 - `pack write` 只替换结构化 Pack 内容并保留已有 asset；asset 只能通过 `pack asset-put|asset-delete` 修改。
 - Status 分数/等级只从当前 Record 即时计算；五个 `status select` 展示位只保存在本机 SQLite。
 - Achievement 只保存 tracked/achieved 与可选 achieved_at；prerequisites 不阻止用户直接确认完成，显式 revoke 不要求 Definition 可用。
+- Skill 没有独立用户状态；节点可用性、积分和 Lv.0～Lv.5 每次从已启用 Pack 与 Achievement 状态即时计算。
 - `json import|export` 不执行 Git 操作，也不覆盖已有导出目录。
 
 ## 新数据模型硬约束

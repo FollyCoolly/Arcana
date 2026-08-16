@@ -2,6 +2,7 @@ mod achievement_commands;
 mod pack_commands;
 mod record_commands;
 mod runtime;
+mod skill_commands;
 mod standard_packs;
 mod status_commands;
 
@@ -19,6 +20,7 @@ pub use record_commands::{
     RemoveCollectionItem, SetScalarRecord,
 };
 pub use runtime::ArcanaRuntime;
+pub use skill_commands::{QuerySkills, SkillCommands, SkillEvaluation, SkillNodeEvaluation};
 pub use standard_packs::{basic_pack, BASIC_PACK_ID};
 pub use status_commands::{
     AvailableStatusDimension, StatusCommands, StatusDimensionEvaluation, StatusDimensionList,

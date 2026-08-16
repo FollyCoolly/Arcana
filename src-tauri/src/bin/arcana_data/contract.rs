@@ -17,6 +17,7 @@ pub enum RepositoryOperation {
     PackAsset,
     Status,
     Achievement,
+    Skill,
     JsonImport,
     JsonExport,
 }
@@ -109,6 +110,7 @@ fn repository_error_code(
             RepositoryOperation::PackAsset => "pack_asset_not_found",
             RepositoryOperation::Status => "status_dimension_not_found",
             RepositoryOperation::Achievement => "achievement_not_found",
+            RepositoryOperation::Skill => "skill_not_found",
             RepositoryOperation::JsonImport => "json_import_not_found",
         },
         RepositoryErrorCode::Conflict => match operation {
@@ -118,6 +120,7 @@ fn repository_error_code(
             RepositoryOperation::PackAsset => "pack_asset_conflict",
             RepositoryOperation::Status => "status_conflict",
             RepositoryOperation::Achievement => "achievement_conflict",
+            RepositoryOperation::Skill => "skill_conflict",
             RepositoryOperation::JsonImport => "json_import_conflict",
             RepositoryOperation::JsonExport => "json_export_conflict",
         },
@@ -127,6 +130,7 @@ fn repository_error_code(
             RepositoryOperation::PackAsset => "pack_asset_unresolved",
             RepositoryOperation::Status => "status_dimension_unresolved",
             RepositoryOperation::Achievement => "achievement_unresolved",
+            RepositoryOperation::Skill => "skill_unresolved",
             RepositoryOperation::Initialize
             | RepositoryOperation::JsonImport
             | RepositoryOperation::JsonExport => "unresolved_reference",
@@ -182,6 +186,10 @@ pub fn capabilities() -> Value {
             "achievement": {
                 "version": 1,
                 "actions": ["list", "state-set", "state-revoke"]
+            },
+            "skill": {
+                "version": 1,
+                "actions": ["list"]
             },
             "json": {
                 "version": 1,

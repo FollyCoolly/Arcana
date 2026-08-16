@@ -3,6 +3,7 @@ mod contract;
 mod pack_commands;
 mod record_commands;
 mod runtime_commands;
+mod skill_commands;
 mod status_commands;
 
 use achievement_commands::{execute_achievement, AchievementAction};
@@ -12,6 +13,7 @@ use pack_commands::{execute_pack, PackAction};
 use record_commands::{execute_record, RecordAction};
 use runtime_commands::{execute_init, execute_json, JsonAction};
 use serde_json::Value;
+use skill_commands::{execute_skill, SkillAction};
 use status_commands::{execute_status, StatusAction};
 use std::path::PathBuf;
 
@@ -68,6 +70,14 @@ enum Commands {
         #[command(subcommand)]
         action: AchievementAction,
     },
+    /// List Arcana Skills with derived node, point, and level state
+    Skill {
+        /// Runtime directory containing arcana.sqlite3
+        #[arg(long, value_name = "DIRECTORY", global = true)]
+        runtime: Option<PathBuf>,
+        #[command(subcommand)]
+        action: SkillAction,
+    },
     /// Convert between SQLite and a canonical JSON directory without Git
     Json {
         #[command(subcommand)]
@@ -120,6 +130,7 @@ fn execute(command: Commands) -> Result<Value, CliError> {
         Commands::Pack { runtime, action } => execute_pack(runtime, action),
         Commands::Status { runtime, action } => execute_status(runtime, action),
         Commands::Achievement { runtime, action } => execute_achievement(runtime, action),
+        Commands::Skill { runtime, action } => execute_skill(runtime, action),
         Commands::Json { action } => execute_json(action),
     }
 }
@@ -215,6 +226,32 @@ mod tests {
                 matches!(
                     Cli::try_parse_from(argv).unwrap().command,
                     Commands::Achievement { .. }
+                ),
+                "failed to parse {arguments:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn parses_every_skill_command() {
+        let commands: &[&[&str]] = &[
+            &["skill", "list"],
+            &[
+                "skill",
+                "list",
+                "--skill-id",
+                "cooking::general",
+                "--pack",
+                "cooking",
+            ],
+        ];
+        for arguments in commands {
+            let mut argv = vec!["arcana-data"];
+            argv.extend_from_slice(arguments);
+            assert!(
+                matches!(
+                    Cli::try_parse_from(argv).unwrap().command,
+                    Commands::Skill { .. }
                 ),
                 "failed to parse {arguments:?}"
             );
