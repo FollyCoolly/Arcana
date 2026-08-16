@@ -1,9 +1,11 @@
+mod achievement_commands;
 mod contract;
 mod pack_commands;
 mod record_commands;
 mod runtime_commands;
 mod status_commands;
 
+use achievement_commands::{execute_achievement, AchievementAction};
 use clap::{error::ErrorKind, Parser, Subcommand};
 use contract::{capabilities, render_json, CliError, EXIT_SUCCESS};
 use pack_commands::{execute_pack, PackAction};
@@ -58,6 +60,14 @@ enum Commands {
         #[command(subcommand)]
         action: StatusAction,
     },
+    /// Query Achievement definitions and update minimal user states
+    Achievement {
+        /// Runtime directory containing arcana.sqlite3
+        #[arg(long, value_name = "DIRECTORY", global = true)]
+        runtime: Option<PathBuf>,
+        #[command(subcommand)]
+        action: AchievementAction,
+    },
     /// Convert between SQLite and a canonical JSON directory without Git
     Json {
         #[command(subcommand)]
@@ -109,6 +119,7 @@ fn execute(command: Commands) -> Result<Value, CliError> {
         Commands::Record { runtime, action } => execute_record(runtime, action),
         Commands::Pack { runtime, action } => execute_pack(runtime, action),
         Commands::Status { runtime, action } => execute_status(runtime, action),
+        Commands::Achievement { runtime, action } => execute_achievement(runtime, action),
         Commands::Json { action } => execute_json(action),
     }
 }
@@ -119,14 +130,7 @@ mod tests {
 
     #[test]
     fn only_new_sqlite_command_families_are_exposed() {
-        for removed in [
-            "context",
-            "read",
-            "mission",
-            "achievement",
-            "changelog",
-            "memory",
-        ] {
+        for removed in ["context", "read", "mission", "changelog", "memory"] {
             assert!(Cli::try_parse_from(["arcana-data", removed]).is_err());
         }
         for retained in ["capabilities", "init"] {
@@ -183,6 +187,34 @@ mod tests {
                 matches!(
                     Cli::try_parse_from(argv).unwrap().command,
                     Commands::Status { .. }
+                ),
+                "failed to parse {arguments:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn parses_every_achievement_command() {
+        let commands: &[&[&str]] = &[
+            &["achievement", "list"],
+            &[
+                "achievement",
+                "list",
+                "--pack",
+                "cooking",
+                "--status",
+                "achieved",
+            ],
+            &["achievement", "state-set", "--file", "state.json"],
+            &["achievement", "state-revoke", "cooking::first_dish"],
+        ];
+        for arguments in commands {
+            let mut argv = vec!["arcana-data"];
+            argv.extend_from_slice(arguments);
+            assert!(
+                matches!(
+                    Cli::try_parse_from(argv).unwrap().command,
+                    Commands::Achievement { .. }
                 ),
                 "failed to parse {arguments:?}"
             );

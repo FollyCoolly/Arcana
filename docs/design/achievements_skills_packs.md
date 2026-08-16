@@ -1,7 +1,7 @@
 # Achievement、Skill 与 Content Pack
 
-> **状态**：Target / 领域语义、同步 Schema 与 SQLite 结构已确定
-> **最后更新**：2026-08-15
+> **状态**：Achievement Domain/Application/CLI 已实现；Skill 派生查询与 Tauri UI 尚未切换
+> **最后更新**：2026-08-16
 
 ## 1. 依赖方向
 
@@ -93,6 +93,16 @@ Arcana 不运行持续扫描全部成就的后台线程。典型流程为：
 - 子 Pack 拥有独立 Skill；子 Pack 的已完成成就不自动向父 Pack Skill 注入积分。
 
 第一版固定为 Lv.0～Lv.5，并保存四个进入 Lv.2～Lv.5 的积分 threshold。目标模型移除 `max_level`、`node_id` 和 `required_key_achievements`：节点由同一 Skill 内唯一的 `achievement_id` 标识，升级只由 achieved 节点积分决定。关键路径由 Achievement prerequisites 和积分设计表达，不再叠加第二套升级门槛。
+
+当前 Achievement CLI 提供：
+
+```text
+achievement list [filters]
+achievement state-set [--file <json>]
+achievement state-revoke <achievement_id>
+```
+
+`list` 的 `availability` 由 Definition、prerequisites 和最小用户状态即时推导；它不是第三种持久化状态。`state-set` 不以 prerequisites 作为完成门槛，`state-revoke` 不要求 Definition 当前可用。
 
 ## 6. Pack 内容
 

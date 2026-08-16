@@ -1,9 +1,14 @@
+mod achievement_commands;
 mod pack_commands;
 mod record_commands;
 mod runtime;
 mod standard_packs;
 mod status_commands;
 
+pub use achievement_commands::{
+    AchievementAvailability, AchievementCommands, AchievementEntry, AchievementStateResult,
+    QueryAchievements, SetAchievementState,
+};
 pub use pack_commands::{
     PackAssetSummary, PackCommands, PackContent, PackDetails, PackEnabledState, PackSummary,
     PackValidation,

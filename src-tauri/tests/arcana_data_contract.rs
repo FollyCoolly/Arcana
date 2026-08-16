@@ -31,6 +31,7 @@ fn capabilities_succeeds_without_runtime_and_compact_only_changes_layout() {
     assert_eq!(value["features"]["structured_errors"], true);
     assert_eq!(value["commands"]["pack"]["version"], 1);
     assert_eq!(value["commands"]["status"]["version"], 1);
+    assert_eq!(value["commands"]["achievement"]["version"], 1);
     assert!(utf8(&pretty.stdout).lines().count() > 1);
 
     let compact = arcana_data(&["--compact", "capabilities"]);
@@ -360,5 +361,154 @@ fn status_commands_evaluate_records_and_preserve_disabled_selection() {
     assert_eq!(
         parse_json(&unresolved.stderr)["code"],
         "status_dimension_unresolved"
+    );
+}
+
+#[test]
+fn achievement_commands_derive_availability_and_revoke_unresolved_state() {
+    let directory = tempfile::tempdir().unwrap();
+    let runtime = directory.path().join("runtime");
+    let runtime_arg = path_string(&runtime);
+    assert!(arcana_data(&["init", "--runtime", &runtime_arg])
+        .status
+        .success());
+
+    let pack = serde_json::json!({
+        "manifest": {
+            "schema_version": 1,
+            "id": "cooking",
+            "name": "Cooking"
+        },
+        "record_definitions": {
+            "definitions": [{
+                "kind": "scalar",
+                "id": "cooking.dish_count",
+                "name": "Dish count",
+                "value_type": "integer"
+            }]
+        },
+        "achievements": {
+            "achievements": [
+                {
+                    "id": "cooking::first_dish",
+                    "name": "First dish",
+                    "description": "Cook one dish",
+                    "difficulty": "beginner",
+                    "related_record_definition_ids": ["cooking.dish_count"]
+                },
+                {
+                    "id": "cooking::host_dinner",
+                    "name": "Host dinner",
+                    "description": "Host a dinner",
+                    "difficulty": "intermediate",
+                    "prerequisites": ["cooking::first_dish"]
+                }
+            ]
+        }
+    });
+    let pack_file = directory.path().join("cooking.json");
+    std::fs::write(&pack_file, serde_json::to_vec(&pack).unwrap()).unwrap();
+    let pack_arg = path_string(&pack_file);
+    assert!(arcana_data(&[
+        "pack",
+        "--runtime",
+        &runtime_arg,
+        "write",
+        "--file",
+        &pack_arg,
+    ])
+    .status
+    .success());
+    assert!(
+        arcana_data(&["pack", "--runtime", &runtime_arg, "enable", "cooking",])
+            .status
+            .success()
+    );
+
+    let initial = arcana_data(&[
+        "achievement",
+        "--runtime",
+        &runtime_arg,
+        "list",
+        "--pack",
+        "cooking",
+    ]);
+    assert!(initial.status.success(), "{}", utf8(&initial.stderr));
+    let initial = parse_json(&initial.stdout);
+    assert_eq!(initial["achievements"][0]["availability"], "available");
+    assert_eq!(initial["achievements"][1]["availability"], "locked");
+
+    let state = serde_json::json!({
+        "achievement_id": "cooking::host_dinner",
+        "status": "achieved",
+        "achieved_at": "2026-08"
+    });
+    let state_file = directory.path().join("achieved.json");
+    std::fs::write(&state_file, serde_json::to_vec(&state).unwrap()).unwrap();
+    let state_arg = path_string(&state_file);
+    let set = arcana_data(&[
+        "achievement",
+        "--runtime",
+        &runtime_arg,
+        "state-set",
+        "--file",
+        &state_arg,
+    ]);
+    assert!(set.status.success(), "{}", utf8(&set.stderr));
+    assert_eq!(
+        parse_json(&set.stdout)["achievement_state"]["changed"],
+        true
+    );
+
+    let achieved = arcana_data(&[
+        "achievement",
+        "--runtime",
+        &runtime_arg,
+        "list",
+        "--status",
+        "achieved",
+    ]);
+    assert!(achieved.status.success(), "{}", utf8(&achieved.stderr));
+    let achieved = parse_json(&achieved.stdout);
+    assert_eq!(achieved["achievements"].as_array().unwrap().len(), 1);
+    assert_eq!(
+        achieved["achievements"][0]["achievement_id"],
+        "cooking::host_dinner"
+    );
+
+    assert!(
+        arcana_data(&["pack", "--runtime", &runtime_arg, "disable", "cooking",])
+            .status
+            .success()
+    );
+    let unresolved = arcana_data(&["achievement", "--runtime", &runtime_arg, "list"]);
+    assert!(unresolved.status.success(), "{}", utf8(&unresolved.stderr));
+    let unresolved = parse_json(&unresolved.stdout);
+    assert_eq!(unresolved["achievements"].as_array().unwrap().len(), 1);
+    assert_eq!(unresolved["achievements"][0]["availability"], "unresolved");
+
+    let revoke = arcana_data(&[
+        "achievement",
+        "--runtime",
+        &runtime_arg,
+        "state-revoke",
+        "cooking::host_dinner",
+    ]);
+    assert!(revoke.status.success(), "{}", utf8(&revoke.stderr));
+    assert_eq!(
+        parse_json(&revoke.stdout)["achievement_state"]["changed"],
+        true
+    );
+    let repeated = arcana_data(&[
+        "achievement",
+        "--runtime",
+        &runtime_arg,
+        "state-revoke",
+        "cooking::host_dinner",
+    ]);
+    assert!(repeated.status.success(), "{}", utf8(&repeated.stderr));
+    assert_eq!(
+        parse_json(&repeated.stdout)["achievement_state"]["changed"],
+        false
     );
 }
