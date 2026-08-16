@@ -243,7 +243,9 @@ pub trait ArcanaRepositoryTransaction: ArcanaRepositoryReader {
     fn rollback(self) -> RepositoryResult<()>;
 }
 
-/// Unit-of-work boundary. Implementations must make every transaction atomic.
+/// Unit-of-work boundary. A concrete adapter defines its atomicity boundary.
+/// The composite runtime guarantees atomic multi-operation commits only for
+/// Record-only SQLite transactions and rejects ordinary cross-store batches.
 pub trait ArcanaRepository: ArcanaRepositoryReader {
     type Transaction<'a>: ArcanaRepositoryTransaction
     where

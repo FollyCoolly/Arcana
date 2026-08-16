@@ -1,0 +1,16 @@
+{
+  "definitions": [
+    {
+      "kind": "scalar",
+      "id": "identity.birth_date",
+      "name": "生日",
+      "value_type": "date"
+    },
+    {
+      "kind": "scalar",
+      "id": "identity.nickname",
+      "name": "昵称",
+      "value_type": "string"
+    }
+  ]
+}

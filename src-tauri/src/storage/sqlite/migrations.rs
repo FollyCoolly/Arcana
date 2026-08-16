@@ -6,7 +6,7 @@ use std::fmt;
 use std::time::{Duration, SystemTime};
 
 pub const APPLICATION_ID: i32 = 0x4152_4341;
-pub const DATABASE_SCHEMA_VERSION: i64 = 1;
+pub const DATABASE_SCHEMA_VERSION: i64 = 2;
 
 struct Migration {
     version: i64,
@@ -14,11 +14,18 @@ struct Migration {
     sql: &'static str,
 }
 
-const MIGRATIONS: &[Migration] = &[Migration {
-    version: 1,
-    name: "initial",
-    sql: include_str!("migrations/0001_initial.sql"),
-}];
+const MIGRATIONS: &[Migration] = &[
+    Migration {
+        version: 1,
+        name: "initial",
+        sql: include_str!("migrations/0001_initial.sql"),
+    },
+    Migration {
+        version: 2,
+        name: "record_only",
+        sql: include_str!("migrations/0002_record_only.sql"),
+    },
+];
 
 #[derive(Debug)]
 pub enum MigrationError {

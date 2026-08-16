@@ -195,27 +195,7 @@ pub fn capabilities() -> Value {
                     "record.append-event",
                     "record.correct-event",
                     "record.delete-event",
-                    "record.delete",
-                    "pack.write",
-                    "pack.enable",
-                    "pack.disable",
-                    "pack.delete",
-                    "status.select",
-                    "status.clear",
-                    "achievement.state-set",
-                    "achievement.state-revoke",
-                    "mission.create",
-                    "mission.update",
-                    "mission.complete",
-                    "mission.archive",
-                    "mission.delete",
-                    "mission.suggest",
-                    "mission.accept",
-                    "mission.reject",
-                    "mission.suggestion-delete",
-                    "memory.create",
-                    "memory.update",
-                    "memory.delete"
+                    "record.delete"
                 ]
             },
             "record": {

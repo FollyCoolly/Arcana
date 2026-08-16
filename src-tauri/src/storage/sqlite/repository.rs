@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use super::migrations::initialize_connection;
 use crate::domain::{
     split_record_definition_id, AchievementFile, AchievementState, AchievementStateFile,
@@ -11,6 +13,7 @@ use crate::domain::{
     SkillDefinition, SkillFile, StatusDimensionSelection, SyncedRepositorySnapshot, Validate,
     SCHEMA_VERSION,
 };
+use crate::storage::local_state::LocalState;
 use rusqlite::{params, Connection, OptionalExtension, Transaction, TransactionBehavior};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -19,6 +22,47 @@ use std::path::Path;
 
 pub struct SqliteRepository {
     connection: Connection,
+}
+
+/// Read the complete v1 database before the record-only migration runs. This
+/// is used once to seed the live JSON repository. It deliberately opens the
+/// connection without applying pending migrations.
+pub fn read_legacy_v1_data(
+    path: impl AsRef<Path>,
+) -> RepositoryResult<Option<(SyncedRepositorySnapshot, LocalState)>> {
+    let connection = Connection::open(path).map_err(map_sqlite_error)?;
+    connection
+        .pragma_update(None, "foreign_keys", "ON")
+        .map_err(map_sqlite_error)?;
+    let has_packs = connection
+        .query_row(
+            "SELECT 1 FROM sqlite_schema WHERE type = 'table' AND name = 'packs'",
+            [],
+            |_| Ok(()),
+        )
+        .optional()
+        .map_err(map_sqlite_error)?
+        .is_some();
+    if !has_packs {
+        return Ok(None);
+    }
+    let version = connection
+        .query_row("SELECT max(version) FROM schema_migrations", [], |row| {
+            row.get::<_, Option<i64>>(0)
+        })
+        .map_err(map_sqlite_error)?;
+    if version != Some(1) {
+        return Ok(None);
+    }
+    let snapshot = load_synced_snapshot(&connection)?;
+    let mut local = LocalState {
+        mission_suggestions: load_mission_suggestions(&connection)?,
+        status_dimension_selection: load_status_dimension_selection(&connection)?,
+        dashboard_mission_selections: load_dashboard_mission_selections(&connection)?,
+    };
+    local.normalize();
+    local.validate()?;
+    Ok(Some((snapshot, local)))
 }
 
 impl SqliteRepository {

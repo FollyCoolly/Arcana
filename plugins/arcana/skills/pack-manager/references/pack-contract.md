@@ -17,32 +17,9 @@ arcana-data pack asset-put <pack_id> <assets/path.webp> --file <local-file>
 arcana-data pack asset-delete <pack_id> <assets/path.webp>
 ```
 
-`scaffold` does not require an initialized runtime. `validate` uses current repository context and existing assets but does not write. `write` replaces structured Pack content in one transaction while preserving assets and enabled state. Mutating commands support `--dry-run`.
+`scaffold` does not require an initialized runtime. `validate` uses current repository context and existing assets but does not write. `write` replaces structured Pack content in the configured JSON repository while preserving assets and enabled state. Mutating commands support `--dry-run`.
 
-Structured Pack mutations can be part of `batch apply`:
-
-```json
-{
-  "operations": [
-    {
-      "operation": "pack.write",
-      "input": {
-        "manifest": {
-          "schema_version": 1,
-          "id": "cooking",
-          "name": "Cooking"
-        }
-      }
-    },
-    {
-      "operation": "pack.enable",
-      "input": { "pack_id": "cooking" }
-    }
-  ]
-}
-```
-
-Available batch operations are `pack.write`, `pack.enable`, `pack.disable`, and `pack.delete`. Asset bytes remain outside batch JSON.
+Pack mutations cannot be part of a multi-operation `batch apply`; that command is reserved for Record mutations in SQLite. To create and enable a Pack, validate and write it first, then dry-run and execute `pack enable` as a separate command. If the second command fails, report that the Pack exists but remains disabled. Asset bytes likewise use their dedicated commands.
 
 ## PackContent
 
@@ -187,4 +164,4 @@ Deleting a Pack removes its definitions and assets but deliberately preserves us
 
 ## Errors
 
-Exit 0 writes business JSON to stdout. Failure leaves stdout empty and writes structured JSON to stderr. For `validation_failed`, show every `details.validation_issues[]` entry with its code, path, and message; do not bypass validation or directly edit the database.
+Exit 0 writes business JSON to stdout. Failure leaves stdout empty and writes structured JSON to stderr. For `validation_failed`, show every `details.validation_issues[]` entry with its code, path, and message; do not bypass validation or directly edit SQLite or the live JSON repository.

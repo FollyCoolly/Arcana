@@ -10,7 +10,7 @@ Generate useful MissionSuggestions without turning unaccepted AI output into syn
 ## Prepare
 
 1. Resolve `arcana-data` from `PATH`; inside the repository, fall back to the current-platform debug binary or `cargo run --manifest-path src-tauri/Cargo.toml --bin arcana-data --`.
-2. Run `arcana-data --compact capabilities`. Require contract v1 plus structured errors, batch, and dry-run before writing.
+2. Run `arcana-data --compact capabilities`. Require contract v1 plus structured errors and dry-run before writing.
 3. Read [references/mission-contract.md](references/mission-contract.md) before composing a suggestion.
 4. Read `context summary`, active Missions, pending/rejected suggestions, tracked Achievements, and only the Records or Definitions needed for plausible candidates.
 
@@ -29,9 +29,9 @@ Do not fabricate user interests, deadlines, Achievement completion, Record value
 ## Persist Suggestions
 
 1. Query existing suggestions and deduplicate semantically before writing.
-2. Put all new `mission.suggest` operations into one batch.
-3. Dry-run the exact batch. Resolve validation errors or factual ambiguity.
-4. Apply the same operation array. Treat preview IDs and timestamps as provisional.
+2. Dry-run each `mission suggest` command. Resolve validation errors or factual ambiguity before writing any candidate.
+3. Apply each confirmed suggestion with the same input. Treat preview IDs and timestamps as provisional.
+4. Stop and report clearly if a later suggestion fails; already-created suggestions remain valid because JSON-backed MissionSuggestions are not a multi-operation SQLite batch.
 5. Re-query pending suggestions and present their actual IDs, difficulty, deadline, parent, and reason.
 
 Never use `mission.create` for a generated recommendation. A Suggestion becomes a synchronized active Mission only through `mission.accept` after the user explicitly accepts it.
@@ -44,4 +44,4 @@ Do not automatically reject older pending suggestions, store generation batches 
 
 ## Handle Failures
 
-Check process status first. Read structured stderr on failure and surface stable `code` plus relevant `details`. Never partially replay a failed batch or silently replace a missing parent, invalid deadline, conflict, or unresolved reference.
+Check process status first. Read structured stderr on failure and surface stable `code` plus relevant `details`. Never blindly replay a failed command or silently replace a missing parent, invalid deadline, conflict, or unresolved reference.

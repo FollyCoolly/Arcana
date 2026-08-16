@@ -144,7 +144,7 @@ mod tests {
         AchievementDefinition, AchievementDifficulty, AchievementFile, AchievementStatus,
         ArcanaRepositoryTransaction, Pack, PackManifest, SkillFile, SkillNode, SCHEMA_VERSION,
     };
-    use crate::storage::sqlite::SqliteRepository;
+    use crate::storage::DataRepository;
     use std::collections::BTreeMap;
 
     fn skill_pack() -> Pack {
@@ -207,8 +207,8 @@ mod tests {
         }
     }
 
-    fn repository() -> SqliteRepository {
-        let mut repository = SqliteRepository::open_in_memory().unwrap();
+    fn repository() -> DataRepository {
+        let mut repository = DataRepository::open_in_memory().unwrap();
         let mut transaction = repository.begin_transaction().unwrap();
         transaction.put_pack(basic_pack()).unwrap();
         transaction.set_pack_enabled("basic", true).unwrap();

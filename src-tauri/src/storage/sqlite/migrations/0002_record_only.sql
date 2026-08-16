@@ -1,0 +1,12 @@
+DROP TABLE IF EXISTS dashboard_mission_slots;
+DROP TABLE IF EXISTS mission_suggestions;
+DROP TABLE IF EXISTS missions;
+DROP TABLE IF EXISTS assistant_memories;
+DROP TABLE IF EXISTS achievement_states;
+DROP TABLE IF EXISTS status_dimension_selection;
+DROP TABLE IF EXISTS pack_assets;
+DROP TABLE IF EXISTS pack_skills;
+DROP TABLE IF EXISTS pack_achievements;
+DROP TABLE IF EXISTS pack_dimensions;
+DROP TABLE IF EXISTS pack_record_definitions;
+DROP TABLE IF EXISTS packs;

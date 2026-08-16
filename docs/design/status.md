@@ -186,20 +186,21 @@ packs/<pack_id>/dimensions.json
 
 ## 8. 本机五项选择
 
-UI 选择只保存在本机 SQLite 的 `status_dimension_selection`：
+UI 选择只保存在 runtime 的 `local-state.json`：
 
 - `position` 范围为 0～4，表示雷达图顺序；
 - `dimension_id` 在五个位置中唯一；
 - 配置过程允许暂时少于五项，但完整 Status 页面要求恰好五项；
-- 选择不进入 Git，不属于用户同步数据；同步导入新数据库时从旧数据库复制；
+- 选择不进入 Git，不属于用户同步数据；完整 JSON import 不覆盖它；
 - 不对 Pack Dimension 建外键。Pack 被关闭、删除或缺失后保留原选择，并显示具体配置错误，不能静默补位。
 
 正常选择命令只能选择当前已启用且有效的 Dimension。用户需要自定义 Dimension 时，编辑自己维护的 Pack 或新建个人 Pack。
 
-## 9. SQLite 与计算结果
+## 9. 存储与计算结果
 
-- `pack_dimensions` 按 `(pack_id, dimension_id)` 保存规范化后的完整 Definition JSON，并对 `dimension_id` 建全局唯一索引。
-- `status_dimension_selection` 只保存本机五项顺序。
+- DimensionDefinition 来自 live repository 的 `packs/<pack_id>/dimensions.json`。
+- `local-state.json` 只保存本机五项顺序。
+- 表达式读取的 Records 来自 SQLite。
 - 子 Score、原始表达式结果、clamp 后结果、Dimension 分数和等级都即时计算，不持久化。
 - Pack 启用或导入时解析表达式、校验 RecordDefinition 引用；读取 Status 时只加载已验证 Definition 和一致性 Record 快照。
 
@@ -212,7 +213,7 @@ status select <position> <dimension_id>
 status select <position> --clear
 ```
 
-`list-dimensions` 同时返回当前本机 selection 的 available 状态；`evaluate` 返回原始子值、clamp 后子分数、缺失 Record、总分、等级和等级标题。读取与计算使用一个 SQLite 事务快照，所有派生结果只返回、不入库。
+`list-dimensions` 同时返回当前本机 selection 的 available 状态；`evaluate` 返回原始子值、clamp 后子分数、缺失 Record、总分、等级和等级标题。读取与计算在 runtime lock 下组合 live Definitions、SQLite Records 与本机选择，所有派生结果只返回、不入库。
 
 ## 10. 被替代的旧模型
 

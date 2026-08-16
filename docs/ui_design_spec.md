@@ -129,7 +129,7 @@ Arcana 采用单页 SPA 架构（非 SvelteKit 路由），所有屏幕通过 `c
 - 六边形网格技能树 + 3D 星云卡片（`SkillNebula.svelte` / Three.js）
 - 节点颜色：未解锁 `var(--rm-black)`，已解锁 `#e0093b`
 - 点击节点弹出详情 modal，可解锁/锁定成就
-- Achievement 状态通过 SQLite Application command 修改，成功后同时刷新 Achievement 与 Skill 派生数据
+- Achievement 状态通过 Application command 修改 live JSON，成功后同时刷新 Achievement 与 Skill 派生数据
 - `Q` / `E` 导航技能
 
 ### 5.5 Items

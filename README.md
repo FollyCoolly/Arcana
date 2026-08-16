@@ -4,7 +4,7 @@
 
 An AI-assisted, Persona 5-inspired desktop HUD for gamified life management.
 
-Arcana turns real-life facts and goals into Status dimensions, Achievements, Skills, and Missions. Core user data is stored locally in SQLite. AI support is provided by external Arcana Skills, which use the typed `arcana-data` CLI instead of a built-in model runtime.
+Arcana turns real-life facts and goals into Status dimensions, Achievements, Skills, and Missions. Human-readable definitions and synchronized state live in a JSON repository, while Records use local SQLite. AI support is provided by external Arcana Skills, which use the typed `arcana-data` CLI instead of a built-in model runtime.
 
 > [!IMPORTANT]
 > Required fonts are not bundled. See [Font requirements](#font-requirements).
@@ -52,8 +52,10 @@ src/                              SvelteKit frontend
 src-tauri/src/
   application/                    typed use cases and runtime lock
   domain/                         domain models and validation
-  storage/sqlite/                 migrations and Repository adapter
-  storage/json_repository.rs      SQLite ↔ deterministic JSON codec
+  storage/data_repository.rs      composite storage boundary
+  storage/sqlite/                 Record-only migrations and adapter
+  storage/json_repository.rs      live semantic JSON and deterministic codec
+  storage/local_state.rs          device-local suggestions and selections
   commands/                       Tauri IPC boundary
   models/                         Items, Gallery, Weather adapters
   bin/arcana_data.rs              machine-readable data CLI
@@ -62,7 +64,7 @@ docs/design/                      data-platform contracts and decisions
 data-example/                     Items/Gallery/Weather config examples
 ```
 
-Core data lives in `~/.arcana/runtime/arcana.sqlite3` by default. `arcana-data json import|export` converts between SQLite and deterministic, human-readable repository JSON. Git pull/commit/push orchestration is not implemented yet.
+The live semantic repository defaults to `~/.arcana/repository`; Records default to `~/.arcana/runtime/arcana.sqlite3`, and device-local suggestions/selections use `~/.arcana/runtime/local-state.json`. `arcana-data json import|export` converts the combined state to and from a deterministic, human-readable directory. Git pull/commit/push orchestration is not implemented yet.
 
 Items, Gallery, and Weather read small adapter configuration files from `~/.arcana/data` (or `ARCANA_DATA_DIR`). They are separate from synchronized core user data.
 
@@ -84,7 +86,7 @@ cargo build --manifest-path src-tauri/Cargo.toml --bin arcana-data
 ./src-tauri/target/debug/arcana-data context summary
 ```
 
-The CLI provides Record, Pack, Status, Achievement, Skill, Mission, AssistantMemory, batch, dry-run, and deterministic JSON import/export commands. Run `arcana-data help` or `<group> help` for the current contract.
+The CLI provides Record, Pack, Status, Achievement, Skill, Mission, AssistantMemory, batch, dry-run, and deterministic JSON import/export commands. Multi-operation batch is intentionally Record-only; JSON-backed mutations use individual commands. Run `arcana-data help` or `<group> help` for the current contract.
 
 ## Checks
 

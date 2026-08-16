@@ -4,7 +4,7 @@
 
 一个由 AI 辅助、采用 Persona 5 风格的游戏化人生管理桌面 HUD。
 
-Arcana 把现实中的事实与目标组织为 Status、Achievement、Skill 和 Mission。核心用户数据保存在本机 SQLite 中；AI 能力由外部 Arcana Skills 提供，它们通过类型化的 `arcana-data` CLI 工作，应用本身不再内置模型运行时。
+Arcana 把现实中的事实与目标组织为 Status、Achievement、Skill 和 Mission。便于阅读的定义与同步状态保存在 JSON repository，Records 使用本机 SQLite；AI 能力由外部 Arcana Skills 提供，它们通过类型化的 `arcana-data` CLI 工作，应用本身不再内置模型运行时。
 
 > [!IMPORTANT]
 > 所需字体不会随项目分发，详见[字体要求](#字体要求)。
@@ -52,8 +52,10 @@ src/                              SvelteKit 前端
 src-tauri/src/
   application/                    类型化用例与运行时锁
   domain/                         领域模型与校验
-  storage/sqlite/                 migration 与 Repository adapter
-  storage/json_repository.rs      SQLite ↔ 确定性 JSON Codec
+  storage/data_repository.rs      组合存储边界
+  storage/sqlite/                 Record-only migration 与 adapter
+  storage/json_repository.rs      live 语义 JSON 与确定性 Codec
+  storage/local_state.rs          本机 Suggestion 与选择
   commands/                       Tauri IPC 边界
   models/                         Items、Gallery、Weather 适配模型
   bin/arcana_data.rs              机器可读数据 CLI
@@ -62,7 +64,7 @@ docs/design/                      数据平台合约与设计决策
 data-example/                     Items/Gallery/Weather 配置示例
 ```
 
-核心数据默认位于 `~/.arcana/runtime/arcana.sqlite3`。`arcana-data json import|export` 可在 SQLite 与确定性、便于人工阅读的仓库 JSON 之间转换。目前尚未实现 Git pull/commit/push 编排。
+live 语义仓库默认位于 `~/.arcana/repository`，Records 位于 `~/.arcana/runtime/arcana.sqlite3`，本机 Suggestion/选择位于 `~/.arcana/runtime/local-state.json`。`arcana-data json import|export` 可在组合状态与确定性、便于人工阅读的目录之间转换。目前尚未实现 Git pull/commit/push 编排。
 
 Items、Gallery 和 Weather 从 `~/.arcana/data`（或 `ARCANA_DATA_DIR`）读取少量适配配置；它们不属于可同步的核心用户数据。
 
@@ -84,7 +86,7 @@ cargo build --manifest-path src-tauri/Cargo.toml --bin arcana-data
 ./src-tauri/target/debug/arcana-data context summary
 ```
 
-CLI 提供 Record、Pack、Status、Achievement、Skill、Mission、AssistantMemory、batch、dry-run 与确定性 JSON import/export 命令。当前合约以 `arcana-data help` 和各命令组的 `help` 为准。
+CLI 提供 Record、Pack、Status、Achievement、Skill、Mission、AssistantMemory、batch、dry-run 与确定性 JSON import/export 命令。多操作 batch 只支持 Record；JSON-backed mutation 使用单独命令。当前合约以 `arcana-data help` 和各命令组的 `help` 为准。
 
 ## 检查
 

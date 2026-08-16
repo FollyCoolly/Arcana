@@ -1,11 +1,13 @@
 use super::{basic_pack, BASIC_PACK_ID};
 use crate::domain::{
-    ArcanaRepository, ArcanaRepositoryTransaction, RepositoryError, RepositoryErrorCode,
-    RepositoryResult, SyncedRepositorySnapshot,
+    RepositoryError, RepositoryErrorCode, RepositoryResult, SyncedRepositorySnapshot,
 };
 use crate::storage::json_repository::JsonRepositoryCodec;
-use crate::storage::settings::{default_runtime_dir, expand_tilde, ArcanaSettings};
-use crate::storage::sqlite::SqliteRepository;
+use crate::storage::settings::{
+    default_repository_dir, default_runtime_dir, expand_tilde, ArcanaSettings,
+};
+use crate::storage::sqlite::RecordRepository;
+use crate::storage::DataRepository;
 use fs2::FileExt;
 use std::ffi::OsString;
 use std::fs::{File, OpenOptions};
@@ -16,12 +18,14 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 pub const DATABASE_FILENAME: &str = "arcana.sqlite3";
 pub const LOCK_FILENAME: &str = "arcana.lock";
+pub const LOCAL_STATE_FILENAME: &str = "local-state.json";
 const DEFAULT_LOCK_TIMEOUT: Duration = Duration::from_secs(5);
 const LOCK_RETRY_INTERVAL: Duration = Duration::from_millis(25);
 
 #[derive(Debug, Clone)]
 pub struct ArcanaRuntime {
     runtime_dir: PathBuf,
+    repository_dir: PathBuf,
     lock_timeout: Duration,
 }
 
@@ -36,11 +40,30 @@ impl ArcanaRuntime {
                 )
             })?,
         };
-        Self::new(runtime_dir)
+        let repository_dir = match settings.repository_dir.as_deref() {
+            Some(path) => expand_tilde(path),
+            None => default_repository_dir().ok_or_else(|| {
+                RepositoryError::new(
+                    RepositoryErrorCode::Storage,
+                    "cannot determine the default Arcana JSON repository directory",
+                )
+            })?,
+        };
+        Self::new_with_repository(runtime_dir, repository_dir)
     }
 
     pub fn new(runtime_dir: impl Into<PathBuf>) -> RepositoryResult<Self> {
         let runtime_dir = runtime_dir.into();
+        let repository_dir = runtime_dir.join("repository");
+        Self::new_with_repository(runtime_dir, repository_dir)
+    }
+
+    pub fn new_with_repository(
+        runtime_dir: impl Into<PathBuf>,
+        repository_dir: impl Into<PathBuf>,
+    ) -> RepositoryResult<Self> {
+        let runtime_dir = runtime_dir.into();
+        let repository_dir = repository_dir.into();
         if !runtime_dir.is_absolute() {
             return Err(RepositoryError::new(
                 RepositoryErrorCode::ValidationFailed,
@@ -50,8 +73,18 @@ impl ArcanaRuntime {
                 ),
             ));
         }
+        if !repository_dir.is_absolute() {
+            return Err(RepositoryError::new(
+                RepositoryErrorCode::ValidationFailed,
+                format!(
+                    "JSON repository directory must be absolute: {}",
+                    repository_dir.display()
+                ),
+            ));
+        }
         Ok(Self {
             runtime_dir,
+            repository_dir,
             lock_timeout: DEFAULT_LOCK_TIMEOUT,
         })
     }
@@ -68,6 +101,14 @@ impl ArcanaRuntime {
 
     pub fn database_path(&self) -> PathBuf {
         self.runtime_dir.join(DATABASE_FILENAME)
+    }
+
+    pub fn repository_dir(&self) -> &Path {
+        &self.repository_dir
+    }
+
+    pub fn local_state_path(&self) -> PathBuf {
+        self.runtime_dir.join(LOCAL_STATE_FILENAME)
     }
 
     pub fn lock_path(&self) -> PathBuf {
@@ -101,21 +142,26 @@ impl ArcanaRuntime {
             unique_suffix()
         ));
         let mut temporary = TemporaryDatabase::new(temporary_path.clone());
-        let mut repository = SqliteRepository::open(&temporary_path)?;
+        let snapshot = if self.repository_dir.exists() {
+            JsonRepositoryCodec::read_directory(&self.repository_dir)?
+        } else {
+            let snapshot = initial_snapshot();
+            JsonRepositoryCodec::write_snapshot_to_new_directory(snapshot, &self.repository_dir)?
+        };
+        let mut repository = RecordRepository::open(&temporary_path)?;
         let mut transaction = repository.begin_transaction()?;
-        transaction.put_pack(basic_pack())?;
-        transaction.set_pack_enabled(BASIC_PACK_ID, true)?;
+        transaction.replace_records(&snapshot.records)?;
         transaction.commit()?;
         repository.checkpoint_and_close()?;
         temporary.activate_without_overwrite(&database_path)
     }
 
-    /// Execute a normal local command while holding the shared runtime lock.
-    /// A short exclusive preflight applies/validates compiled SQLite migrations
-    /// before the command opens its shared-lock connection.
+    /// Execute a normal local command while holding the exclusive runtime lock.
+    /// JSON-backed writes require process-wide serialization; Record commands
+    /// use the same boundary so a composed snapshot cannot change mid-command.
     pub fn with_repository<T>(
         &self,
-        action: impl FnOnce(&mut SqliteRepository) -> RepositoryResult<T>,
+        action: impl FnOnce(&mut DataRepository) -> RepositoryResult<T>,
     ) -> RepositoryResult<T> {
         self.with_repository_result(action)
     }
@@ -125,7 +171,7 @@ impl ArcanaRuntime {
     /// underlying RepositoryError.
     pub fn with_repository_result<T, E>(
         &self,
-        action: impl FnOnce(&mut SqliteRepository) -> Result<T, E>,
+        action: impl FnOnce(&mut DataRepository) -> Result<T, E>,
     ) -> Result<T, E>
     where
         E: From<RepositoryError>,
@@ -140,35 +186,42 @@ impl ArcanaRuntime {
             )));
         }
 
-        {
-            let _migration_lock = self.acquire_lock(LockMode::Exclusive).map_err(E::from)?;
-            SqliteRepository::open(self.database_path())
-                .and_then(SqliteRepository::checkpoint_and_close)
-                .map_err(E::from)?;
-        }
-
-        let _command_lock = self.acquire_lock(LockMode::Shared).map_err(E::from)?;
-        let mut repository = SqliteRepository::open(self.database_path()).map_err(E::from)?;
+        let _command_lock = self.acquire_lock(LockMode::Exclusive).map_err(E::from)?;
+        self.ensure_semantic_repository().map_err(E::from)?;
+        RecordRepository::open(self.database_path())
+            .and_then(RecordRepository::checkpoint_and_close)
+            .map_err(E::from)?;
+        let mut repository = DataRepository::open(
+            self.database_path(),
+            &self.repository_dir,
+            self.local_state_path(),
+        )
+        .map_err(E::from)?;
         action(&mut repository)
     }
 
-    /// Export the current SQLite state to a brand-new canonical JSON
-    /// directory. This performs no Git operation and never overwrites an
-    /// existing directory.
+    /// Export the combined live JSON and SQLite Record state to a brand-new
+    /// canonical JSON directory. This performs no Git operation and never
+    /// overwrites an existing directory.
     pub fn export_json_to_new_directory(
         &self,
         target: impl AsRef<Path>,
     ) -> RepositoryResult<SyncedRepositorySnapshot> {
         self.require_initialized_database()?;
         let _lock = self.acquire_lock(LockMode::Exclusive)?;
-        let mut repository = SqliteRepository::open(self.database_path())?;
+        self.ensure_semantic_repository()?;
+        let mut repository = DataRepository::open(
+            self.database_path(),
+            &self.repository_dir,
+            self.local_state_path(),
+        )?;
         JsonRepositoryCodec::export_to_new_directory(&mut repository, target)
     }
 
-    /// Create a missing SQLite runtime or replace its synced entities from a
-    /// complete JSON directory. Existing local-only tables are retained.
-    /// Parsing, validation and activation happen under the exclusive runtime
-    /// lock; Git state is intentionally ignored.
+    /// Create a missing SQLite runtime or replace live semantic JSON and
+    /// SQLite Records from a complete JSON directory. Runtime-local JSON is
+    /// retained. Parsing, validation and activation happen under the
+    /// exclusive runtime lock; Git state is intentionally ignored.
     pub fn import_json_from_directory(
         &self,
         source: impl AsRef<Path>,
@@ -178,7 +231,15 @@ impl ArcanaRuntime {
         let _lock = self.acquire_lock(LockMode::Exclusive)?;
         let database_path = self.database_path();
         if database_path.exists() {
-            let mut repository = SqliteRepository::open(database_path)?;
+            if !self.repository_dir.exists() {
+                let snapshot = JsonRepositoryCodec::read_directory(&source)?;
+                JsonRepositoryCodec::write_snapshot_to_new_directory(
+                    snapshot,
+                    &self.repository_dir,
+                )?;
+            }
+            let mut repository =
+                DataRepository::open(database_path, &self.repository_dir, self.local_state_path())?;
             return JsonRepositoryCodec::import_from_directory(&mut repository, source);
         }
 
@@ -201,8 +262,19 @@ impl ArcanaRuntime {
             unique_suffix()
         ));
         let mut temporary = TemporaryDatabase::new(temporary_path.clone());
-        let mut repository = SqliteRepository::open(&temporary_path)?;
-        let snapshot = JsonRepositoryCodec::import_from_directory(&mut repository, source)?;
+        let snapshot = JsonRepositoryCodec::read_directory(source)?;
+        if self.repository_dir.exists() {
+            JsonRepositoryCodec::update_semantic_directory(&self.repository_dir, snapshot.clone())?;
+        } else {
+            JsonRepositoryCodec::write_snapshot_to_new_directory(
+                snapshot.clone(),
+                &self.repository_dir,
+            )?;
+        }
+        let mut repository = RecordRepository::open(&temporary_path)?;
+        let mut transaction = repository.begin_transaction()?;
+        transaction.replace_records(&snapshot.records)?;
+        transaction.commit()?;
         repository.checkpoint_and_close()?;
         temporary.activate_without_overwrite(&database_path)?;
         Ok(snapshot)
@@ -221,6 +293,30 @@ impl ArcanaRuntime {
         ))
     }
 
+    fn ensure_semantic_repository(&self) -> RepositoryResult<()> {
+        if self.repository_dir.exists() {
+            JsonRepositoryCodec::read_semantic_directory(&self.repository_dir)?;
+            return Ok(());
+        }
+
+        #[cfg(not(test))]
+        if let Some((snapshot, local_state)) =
+            crate::storage::sqlite::read_legacy_v1_data(self.database_path())?
+        {
+            JsonRepositoryCodec::write_snapshot_to_new_directory(snapshot, &self.repository_dir)?;
+            crate::storage::local_state::write_local_state(&self.local_state_path(), &local_state)?;
+            return Ok(());
+        }
+
+        Err(RepositoryError::new(
+            RepositoryErrorCode::NotFound,
+            format!(
+                "Arcana JSON repository does not exist: {}",
+                self.repository_dir.display()
+            ),
+        ))
+    }
+
     fn acquire_lock(&self, mode: LockMode) -> RepositoryResult<RuntimeLock> {
         let file = OpenOptions::new()
             .create(true)
@@ -232,7 +328,6 @@ impl ArcanaRuntime {
         let started = Instant::now();
         loop {
             let result = match mode {
-                LockMode::Shared => FileExt::try_lock_shared(&file),
                 LockMode::Exclusive => FileExt::try_lock_exclusive(&file),
             };
             match result {
@@ -256,9 +351,22 @@ impl ArcanaRuntime {
     }
 }
 
+fn initial_snapshot() -> SyncedRepositorySnapshot {
+    SyncedRepositorySnapshot {
+        manifest: crate::domain::ArcanaManifest {
+            schema_version: crate::domain::SCHEMA_VERSION,
+            enabled_pack_ids: vec![BASIC_PACK_ID.to_string()],
+        },
+        packs: std::collections::BTreeMap::from([(BASIC_PACK_ID.to_string(), basic_pack())]),
+        records: std::collections::BTreeMap::new(),
+        achievement_states: None,
+        missions: None,
+        assistant_memory: None,
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 enum LockMode {
-    Shared,
     Exclusive,
 }
 
@@ -372,8 +480,9 @@ mod tests {
     use super::*;
     use crate::application::{IncrementScalarRecord, RecordCommands, SetScalarRecord};
     use crate::domain::{
-        ArcanaRepositoryReader, Pack, PackManifest, Record, RecordDefinition, RecordDefinitionFile,
-        ScalarRecordDefinition, ValueType, SCHEMA_VERSION,
+        ArcanaRepository, ArcanaRepositoryReader, ArcanaRepositoryTransaction, Pack, PackManifest,
+        Record, RecordDefinition, RecordDefinitionFile, ScalarRecordDefinition, ValueType,
+        SCHEMA_VERSION,
     };
     use serde_json::json;
     use std::collections::BTreeMap;
@@ -461,6 +570,47 @@ mod tests {
         runtime.initialize().unwrap();
         let error = runtime.initialize().unwrap_err();
         assert_eq!(error.code, RepositoryErrorCode::Conflict);
+    }
+
+    #[test]
+    fn runtime_reads_record_definitions_from_live_json_repository() {
+        let directory = tempfile::tempdir().unwrap();
+        let runtime = ArcanaRuntime::new(directory.path().join("runtime")).unwrap();
+        runtime.initialize().unwrap();
+
+        let definitions_path = runtime
+            .repository_dir()
+            .join("packs/basic/record-definitions.json");
+        let mut definitions: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(&definitions_path).unwrap()).unwrap();
+        let nickname = definitions["definitions"]
+            .as_array_mut()
+            .unwrap()
+            .iter_mut()
+            .find(|definition| definition["id"] == "identity.nickname")
+            .unwrap();
+        nickname["name"] = json!("Preferred name");
+        std::fs::write(
+            &definitions_path,
+            serde_json::to_vec_pretty(&definitions).unwrap(),
+        )
+        .unwrap();
+
+        runtime
+            .with_repository(|repository| {
+                let snapshot = repository.load_synced_snapshot()?;
+                let nickname = snapshot.packs[BASIC_PACK_ID]
+                    .record_definitions
+                    .as_ref()
+                    .unwrap()
+                    .definitions
+                    .iter()
+                    .find(|definition| definition.id() == "identity.nickname")
+                    .unwrap();
+                assert_eq!(nickname.name(), "Preferred name");
+                Ok(())
+            })
+            .unwrap();
     }
 
     #[test]

@@ -4,9 +4,10 @@
 
 ### Changed
 
-- Unified Status, Achievement, Skill, and Mission UI with the SQLite Application/Repository runtime.
-- Added deterministic SQLite-to-JSON import/export and canonical external Arcana Skills.
-- Added desktop Pack management and transactional Pack write, enable, disable, delete, dry-run, and batch operations. Pack deletion reports affected user data without deleting it.
+- Split core persistence by ownership: live JSON now stores Packs/Definitions and synchronized semantic state, SQLite stores only Records, and runtime-local JSON stores suggestions and UI selections.
+- Added deterministic combined JSON import/export, Record-only SQLite Schema v2, and one-time migration of Schema v1 semantic/local data into the new stores.
+- Added canonical external Arcana Skills and restricted multi-operation batches to atomic Record mutations; JSON-backed mutations use individual dry-run commands.
+- Added desktop Pack management with validated write, enable, disable, delete, assets, and deletion impact previews without deleting user Records or Achievement states.
 
 ### Removed
 

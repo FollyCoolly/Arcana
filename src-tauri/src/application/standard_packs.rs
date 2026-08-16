@@ -1,7 +1,4 @@
-use crate::domain::{
-    Pack, PackManifest, RecordDefinition, RecordDefinitionFile, ScalarRecordDefinition, ValueType,
-    SCHEMA_VERSION,
-};
+use crate::domain::{Pack, RecordDefinitionFile};
 use std::collections::BTreeMap;
 
 pub const BASIC_PACK_ID: &str = "basic";
@@ -11,33 +8,14 @@ pub const BASIC_PACK_ID: &str = "basic";
 /// stable identity RecordDefinition ids.
 pub fn basic_pack() -> Pack {
     Pack {
-        manifest: PackManifest {
-            schema_version: SCHEMA_VERSION,
-            id: BASIC_PACK_ID.to_string(),
-            name: "基础".to_string(),
-            description: Some("Arcana 的基础身份信息".to_string()),
-            author: Some("Arcana".to_string()),
-            parent_pack_id: None,
-            tags: vec![],
-        },
-        record_definitions: Some(RecordDefinitionFile {
-            definitions: vec![
-                RecordDefinition::Scalar(ScalarRecordDefinition {
-                    id: "identity.birth_date".to_string(),
-                    name: "生日".to_string(),
-                    description: None,
-                    value_type: ValueType::Date,
-                    unit: None,
-                }),
-                RecordDefinition::Scalar(ScalarRecordDefinition {
-                    id: "identity.nickname".to_string(),
-                    name: "昵称".to_string(),
-                    description: None,
-                    value_type: ValueType::String,
-                    unit: None,
-                }),
-            ],
-        }),
+        manifest: serde_json::from_str(include_str!("../../resources/basic-pack/manifest.json"))
+            .expect("bundled basic Pack manifest must be valid"),
+        record_definitions: Some(
+            serde_json::from_str::<RecordDefinitionFile>(include_str!(
+                "../../resources/basic-pack/record-definitions.json"
+            ))
+            .expect("bundled basic RecordDefinitions must be valid"),
+        ),
         dimensions: None,
         achievements: None,
         skills: None,

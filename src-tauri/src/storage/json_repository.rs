@@ -121,8 +121,79 @@ impl JsonRepositoryCodec {
         })
     }
 
-    /// Atomically replace all synced entities in an open Repository. The
-    /// Repository adapter retains local-only tables as part of this operation.
+    /// Read only the JSON-owned portion of a repository. Record JSON is a
+    /// synchronization representation and is intentionally ignored during
+    /// normal runtime reads; live Records come from SQLite.
+    pub fn read_semantic_directory(
+        source: impl AsRef<Path>,
+    ) -> RepositoryResult<SyncedRepositorySnapshot> {
+        let source = source.as_ref();
+        require_directory(source, "JSON repository root")?;
+        reject_unknown_root_json(source)?;
+
+        let manifest: ArcanaManifest = read_json(&source.join(ROOT_MANIFEST), ROOT_MANIFEST)?;
+        let packs = read_packs(&source.join("packs"))?;
+        let achievement_states =
+            read_optional_json(&source.join(ACHIEVEMENT_STATES), ACHIEVEMENT_STATES)?;
+        let missions = read_optional_json(&source.join(MISSIONS), MISSIONS)?;
+        let assistant_memory =
+            read_optional_json(&source.join(ASSISTANT_MEMORY), ASSISTANT_MEMORY)?;
+
+        normalize_snapshot(SyncedRepositorySnapshot {
+            manifest,
+            packs,
+            records: BTreeMap::new(),
+            achievement_states,
+            missions,
+            assistant_memory,
+        })
+    }
+
+    /// Persist JSON-owned entities into an existing working directory without
+    /// touching `records/`, `.git`, or unrelated non-managed files.
+    pub fn update_semantic_directory(
+        source: impl AsRef<Path>,
+        snapshot: SyncedRepositorySnapshot,
+    ) -> RepositoryResult<SyncedRepositorySnapshot> {
+        let source = source.as_ref();
+        require_directory(source, "JSON repository root")?;
+        let normalized = normalize_snapshot(SyncedRepositorySnapshot {
+            records: BTreeMap::new(),
+            ..snapshot
+        })?;
+        let current = Self::read_semantic_directory(source)?;
+        let current_files = render_semantic_snapshot(&current)?;
+        let next_files = render_semantic_snapshot(&normalized)?;
+
+        for (relative, content) in &next_files {
+            if current_files.get(relative) == Some(content) {
+                continue;
+            }
+            let path = repository_path(source, relative);
+            atomic_replace_file(&path, content)?;
+        }
+        for relative in current_files.keys() {
+            if next_files.contains_key(relative) {
+                continue;
+            }
+            let path = repository_path(source, relative);
+            fs::remove_file(&path)
+                .map_err(|error| io_error("remove stale JSON repository file", error))?;
+            remove_empty_parents(path.parent(), source)?;
+        }
+
+        let stored = Self::read_semantic_directory(source)?;
+        if stored != normalized {
+            return Err(RepositoryError::new(
+                RepositoryErrorCode::Storage,
+                "JSON semantic update failed its semantic round-trip check",
+            ));
+        }
+        Ok(stored)
+    }
+
+    /// Replace all synced entities through an open Repository. The concrete
+    /// adapter owns the per-store commit semantics and retains local-only data.
     pub fn import_from_directory<R: ArcanaRepository>(
         repository: &mut R,
         source: impl AsRef<Path>,
@@ -134,7 +205,7 @@ impl JsonRepositoryCodec {
         if stored != snapshot {
             return Err(RepositoryError::new(
                 RepositoryErrorCode::Storage,
-                "SQLite import failed its semantic round-trip check",
+                "repository import failed its semantic round-trip check",
             ));
         }
         transaction.commit()?;
@@ -190,6 +261,74 @@ fn render_snapshot(
         }
     }
     Ok(files)
+}
+
+fn render_semantic_snapshot(
+    snapshot: &SyncedRepositorySnapshot,
+) -> RepositoryResult<BTreeMap<String, Vec<u8>>> {
+    let mut files = render_snapshot(snapshot)?;
+    files.retain(|path, _| !path.starts_with("records/"));
+    Ok(files)
+}
+
+fn repository_path(root: &Path, relative: &str) -> PathBuf {
+    relative
+        .split('/')
+        .fold(root.to_path_buf(), |path, segment| path.join(segment))
+}
+
+fn atomic_replace_file(path: &Path, content: &[u8]) -> RepositoryResult<()> {
+    let parent = path.parent().ok_or_else(|| {
+        codec_validation_error(format!("managed path has no parent: {}", path.display()))
+    })?;
+    fs::create_dir_all(parent).map_err(|error| io_error("create managed JSON directory", error))?;
+    let name = path
+        .file_name()
+        .and_then(OsStr::to_str)
+        .ok_or_else(|| codec_validation_error("managed JSON file name must be UTF-8"))?;
+    let suffix = format!("{}-{}", std::process::id(), unique_suffix());
+    let temporary = parent.join(format!(".{name}.arcana-temp-{suffix}"));
+    let backup = parent.join(format!(".{name}.arcana-backup-{suffix}"));
+    let mut options = fs::OpenOptions::new();
+    options.write(true).create_new(true);
+    let mut file = options
+        .open(&temporary)
+        .map_err(|error| io_error("create managed JSON temporary file", error))?;
+    io::Write::write_all(&mut file, content)
+        .map_err(|error| io_error("write managed JSON temporary file", error))?;
+    file.sync_all()
+        .map_err(|error| io_error("sync managed JSON temporary file", error))?;
+
+    let had_existing = path.exists();
+    if had_existing {
+        fs::rename(path, &backup)
+            .map_err(|error| io_error("stage previous managed JSON file", error))?;
+    }
+    if let Err(error) = fs::rename(&temporary, path) {
+        if had_existing {
+            let _ = fs::rename(&backup, path);
+        }
+        let _ = fs::remove_file(&temporary);
+        return Err(io_error("activate managed JSON file", error));
+    }
+    if had_existing {
+        fs::remove_file(&backup).map_err(|error| io_error("remove managed JSON backup", error))?;
+    }
+    Ok(())
+}
+
+fn remove_empty_parents(mut directory: Option<&Path>, root: &Path) -> RepositoryResult<()> {
+    while let Some(path) = directory {
+        if path == root {
+            break;
+        }
+        match fs::remove_dir(path) {
+            Ok(()) => directory = path.parent(),
+            Err(error) if error.kind() == io::ErrorKind::DirectoryNotEmpty => break,
+            Err(error) => return Err(io_error("remove empty JSON repository directory", error)),
+        }
+    }
+    Ok(())
 }
 
 fn normalize_snapshot(
@@ -773,7 +912,7 @@ mod tests {
         ScalarRecordDefinition, ScoreDefinition, SkillDefinition, SkillFile, SkillNode,
         StructuredRecordDefinition, ValueType, SCHEMA_VERSION,
     };
-    use crate::storage::sqlite::SqliteRepository;
+    use crate::storage::DataRepository;
     use serde_json::json;
 
     fn sample_snapshot() -> SyncedRepositorySnapshot {
@@ -1028,14 +1167,14 @@ mod tests {
     }
 
     #[test]
-    fn sqlite_import_is_atomic_and_retains_local_only_data() {
+    fn repository_import_replaces_synced_data_and_retains_local_only_data() {
         let directory = tempfile::tempdir().unwrap();
         let source = directory.path().join("source");
         let expected =
             JsonRepositoryCodec::write_snapshot_to_new_directory(sample_snapshot(), &source)
                 .unwrap();
 
-        let mut repository = SqliteRepository::open_in_memory().unwrap();
+        let mut repository = DataRepository::open_in_memory().unwrap();
         let suggestion = MissionSuggestion {
             id: "suggestion-a".to_string(),
             title: "Try running".to_string(),

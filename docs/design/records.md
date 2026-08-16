@@ -1,7 +1,7 @@
 # RecordDefinition 与 Record
 
-> **状态**：Target / Record 同步 Schema 与 SQLite 物理结构已确定
-> **最后更新**：2026-08-15
+> **状态**：Current
+> **最后更新**：2026-08-16
 
 ## 1. 定位
 

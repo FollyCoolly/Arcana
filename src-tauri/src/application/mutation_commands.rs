@@ -174,6 +174,24 @@ impl MutationOperation {
             Self::MemoryDelete(_) => "memory.delete",
         }
     }
+
+    pub fn is_record_operation(&self) -> bool {
+        matches!(
+            self,
+            Self::RecordSet(_)
+                | Self::RecordIncrement(_)
+                | Self::RecordCorrect(_)
+                | Self::RecordCreateEmptyCollection(_)
+                | Self::RecordCreateEmptyEvent(_)
+                | Self::RecordAddItem(_)
+                | Self::RecordCorrectItem(_)
+                | Self::RecordRemoveItem(_)
+                | Self::RecordAppendEvent(_)
+                | Self::RecordCorrectEvent(_)
+                | Self::RecordDeleteEvent(_)
+                | Self::RecordDelete(_)
+        )
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -250,6 +268,17 @@ where
             return Err(batch_error(RepositoryError::new(
                 RepositoryErrorCode::ValidationFailed,
                 "batch must contain at least one operation",
+            )));
+        }
+        if batch.operations.len() > 1
+            && batch
+                .operations
+                .iter()
+                .any(|operation| !operation.is_record_operation())
+        {
+            return Err(batch_error(RepositoryError::new(
+                RepositoryErrorCode::Conflict,
+                "multi-operation batch apply only supports Record mutations",
             )));
         }
 
@@ -592,18 +621,18 @@ mod tests {
     }
 
     #[test]
-    fn pack_write_enable_and_delete_share_the_batch_transaction() {
+    fn pack_mutations_are_single_operation_units_outside_record_batches() {
         let directory = tempfile::tempdir().unwrap();
         let runtime = ArcanaRuntime::new(directory.path()).unwrap();
         runtime.initialize().unwrap();
         runtime
             .with_repository(|repository| {
                 let content = PackContent::scaffold("cooking".to_string(), "Cooking".to_string())?;
-                let created = MutationCommands::new(repository)
+                let rejected = MutationCommands::new(repository)
                     .apply_batch(
                         ApplyMutationBatch {
                             operations: vec![
-                                MutationOperation::PackWrite(content),
+                                MutationOperation::PackWrite(content.clone()),
                                 MutationOperation::PackEnable(PackTarget {
                                     pack_id: "cooking".to_string(),
                                 }),
@@ -611,26 +640,31 @@ mod tests {
                         },
                         false,
                     )
-                    .map_err(|error| error.source)?;
-                assert_eq!(created.operations[1].result["enabled"], true);
+                    .unwrap_err();
+                assert_eq!(rejected.source.code, RepositoryErrorCode::Conflict);
+
+                MutationCommands::new(repository)
+                    .apply_one(MutationOperation::PackWrite(content), false)?;
+                let enabled = MutationCommands::new(repository).apply_one(
+                    MutationOperation::PackEnable(PackTarget {
+                        pack_id: "cooking".to_string(),
+                    }),
+                    false,
+                )?;
+                assert_eq!(enabled["enabled"], true);
                 assert!(repository
                     .load_synced_snapshot()?
                     .manifest
                     .enabled_pack_ids
                     .contains(&"cooking".to_string()));
 
-                let preview = MutationCommands::new(repository)
-                    .apply_batch(
-                        ApplyMutationBatch {
-                            operations: vec![MutationOperation::PackDelete(PackTarget {
-                                pack_id: "cooking".to_string(),
-                            })],
-                        },
-                        true,
-                    )
-                    .map_err(|error| error.source)?;
-                assert!(preview.dry_run);
-                assert_eq!(preview.operations[0].result["was_enabled"], true);
+                let preview = MutationCommands::new(repository).apply_one(
+                    MutationOperation::PackDelete(PackTarget {
+                        pack_id: "cooking".to_string(),
+                    }),
+                    true,
+                )?;
+                assert_eq!(preview["was_enabled"], true);
                 assert!(repository
                     .load_synced_snapshot()?
                     .packs

@@ -5,7 +5,7 @@ description: Record user-provided activities, facts, corrections, mission progre
 
 # Velvet Room
 
-Translate the user's explicit account into the smallest truthful Arcana update. Treat `arcana-data` as the only data access path; never edit SQLite or exported JSON directly.
+Translate the user's explicit account into the smallest truthful Arcana update. Treat `arcana-data` as the only data access path during a Skill run; never edit SQLite or the live JSON repository directly.
 
 ## Prepare
 
@@ -28,13 +28,13 @@ Never invent dates, quantities, event fields, past history, or completion states
 
 Use `tracked` only when the user is actively following or gathering information for an Achievement. It is not numeric progress and contributes no Skill points.
 
-## Build One Atomic Update
+## Build the Update
 
 1. Query the current Record, Mission, Suggestion, Achievement, or Memory before mutating it.
 2. Use correction operations for corrections. Before adding a collection item or event, check for an existing stable item/event ID or an equivalent recorded fact.
-3. Put all related user-state mutations in one `batch apply` payload.
-4. Run the exact payload with `--dry-run`.
-5. If material ambiguity remains, show it and wait. If the user already authorized the update and the preview is unambiguous, apply the identical operation array without `--dry-run`.
+3. Put related Record mutations in one `batch apply` payload; this is the only multi-operation atomic batch and it commits inside SQLite.
+4. Dry-run Mission, Suggestion, Achievement, Memory, or Status mutations individually. These entities use the live or runtime-local JSON stores and cannot share a batch with Records or with each other.
+5. If material ambiguity remains, show it and wait. Otherwise apply the Record batch first, then each approved JSON mutation. Stop and report precisely if a later command fails; do not claim cross-store atomicity.
 6. Re-query the affected entities and summarize what actually changed.
 
 System-generated UUIDs and timestamps in a dry-run are provisional. Never copy a preview ID into a later operation; the committed run generates it again.
@@ -53,4 +53,4 @@ Do not store full chat logs, credentials, transient mood, generated task batches
 
 ## Failure Rules
 
-Use process exit status before reading output. On failure, read structured JSON from stderr and expose `code`, relevant `details`, and validation issues. Never parse `message` as a control signal, retry a conflict blindly, skip validation, or partially replay a failed batch.
+Use process exit status before reading output. On failure, read structured JSON from stderr and expose `code`, relevant `details`, and validation issues. Never parse `message` as a control signal, retry a conflict blindly, skip validation, or partially replay a failed Record batch.

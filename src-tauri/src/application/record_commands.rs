@@ -739,7 +739,7 @@ mod tests {
         ArcanaRepositoryTransaction, FieldDefinition, Pack, PackManifest, RecordDefinitionFile,
         ScalarRecordDefinition, StructuredRecordDefinition, SCHEMA_VERSION,
     };
-    use crate::storage::sqlite::SqliteRepository;
+    use crate::storage::DataRepository;
     use serde_json::json;
     use std::collections::BTreeMap;
 
@@ -825,8 +825,8 @@ mod tests {
         }
     }
 
-    fn repository() -> SqliteRepository {
-        let mut repository = SqliteRepository::open_in_memory().unwrap();
+    fn repository() -> DataRepository {
+        let mut repository = DataRepository::open_in_memory().unwrap();
         let mut transaction = repository.begin_transaction().unwrap();
         transaction.put_pack(numeric_pack()).unwrap();
         transaction.set_pack_enabled("stats", true).unwrap();
@@ -983,7 +983,7 @@ mod tests {
 
     #[test]
     fn increment_rejects_non_numeric_definition() {
-        let mut repository = SqliteRepository::open_in_memory().unwrap();
+        let mut repository = DataRepository::open_in_memory().unwrap();
         let mut transaction = repository.begin_transaction().unwrap();
         transaction
             .put_pack(crate::application::basic_pack())

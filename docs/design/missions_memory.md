@@ -112,20 +112,20 @@ mission accept|reject <suggestion_id>
 mission suggestion-delete <suggestion_id>
 ```
 
-`create` 和 `suggest` 不接受调用方提供 ID 或时间，由系统生成 UUIDv7 和当前 RFC 3339 时间。`update` 的输入完整替换 title 及全部可编辑可选字段，省略可选字段表示清除；status、ID、created/completed time 只能由生命周期命令维护。重复 complete/archive/reject 返回 `changed: false`。Suggestion 被 accept 时在同一事务中创建同 ID 的 active Mission 并删除本机 Suggestion；显式接受已 rejected 的 Suggestion 也被允许，因为它代表用户改变决定。
+`create` 和 `suggest` 不接受调用方提供 ID 或时间，由系统生成 UUIDv7 和当前 RFC 3339 时间。`update` 的输入完整替换 title 及全部可编辑可选字段，省略可选字段表示清除；status、ID、created/completed time 只能由生命周期命令维护。重复 complete/archive/reject 返回 `changed: false`。Suggestion 被 accept 时由一个 Application operation 在 runtime lock 下创建同 ID 的 active Mission 并删除本机 Suggestion；显式接受已 rejected 的 Suggestion也被允许，因为它代表用户改变决定。两个 JSON 文件之间当前不承诺进程崩溃时的原子切换。
 
 ## 5. 本机 MissionSuggestion
 
-MissionSuggestion 只存在于本机 SQLite：
+MissionSuggestion 只存在于 runtime 的 `local-state.json`：
 
 - 字段为 `id`、`title`、可选 `description`、`difficulty`、`deadline`、`parent_mission_id`、用户可读的 `reason`、`generated_at` 和 `status`。
 - status 只允许 `pending` 或 `rejected`。
-- 新 ID 使用 UUIDv7。接受时在单一事务中创建同 ID 的 active Mission，并删除 Suggestion；拒绝时保留本机实体用于后续去重。
+- 新 ID 使用 UUIDv7。接受时创建同 ID 的 active Mission，并删除 Suggestion；拒绝时保留本机实体用于后续去重。
 - parent Mission、日期和枚举在接受时再次校验；失效 Suggestion 不能直接转成 Mission。
 - Suggestion 不保存模型、prompt、token、generation batch 或完整会话元数据。
 - 用户可以显式删除 rejected Suggestion；不使用固定 TTL 或 FIFO。
 
-同步导入临时数据库时复制本机 Suggestion。若同步 Mission 已经占用相同 ID，丢弃对应 Suggestion，因为它已经在其他设备被接受。
+完整 JSON import 不覆盖本机 Suggestion。若导入的 Mission 已经占用相同 ID，删除对应 Suggestion，因为它已经在其他设备被接受。
 
 ## 6. Dashboard 本机配置
 
@@ -133,7 +133,7 @@ Dashboard Mission 展示使用固定 slot：`countdown`、`progress`、`hint_1`�
 
 - 配置不进入 Git。
 - 不对 Mission 建硬外键；Mission 完成、删除或同步后缺失时保留 slot 并显示配置错误，用户可以替换或清除。
-- 同步导入新数据库时从旧数据库复制。
+- 完整 JSON import 不覆盖本机配置。
 - `days_remaining` 和进度显示始终读取当前 Mission，不复制业务值。
 
 ## 7. `assistant-memory.json`
@@ -177,7 +177,7 @@ memory delete <memory_id>
 
 `create` 只接收 kind/content，由系统生成 UUIDv7，并把 created_at/updated_at 设为同一当前时间。`update` 完整替换 kind/content，保留 ID 与 created_at；实际内容没有变化时返回 `changed: false` 且不刷新 updated_at。`delete` 是 hard delete，恢复依赖 JSON/Git 历史。
 
-`arcana-data context summary` 从同一个 SQLite 事务快照拼装 Agent 启动上下文：本机日期、Status selection、active Mission、显式 Achievement 状态和全部 AssistantMemory。Mission deadline 会派生 `days_remaining`；停用 Pack 的 Status selection 保留并标记 `available: false`。摘要不复制到数据库，也不内嵌完整 Record、Pack Definition、已完成/归档 Mission 或 MissionSuggestion；需要时再用对应领域查询读取。
+`arcana-data context summary` 在 runtime lock 下组合 live JSON、SQLite Records 与本机 JSON，拼装 Agent 启动上下文：本机日期、Status selection、active Mission、显式 Achievement 状态和全部 AssistantMemory。Mission deadline 会派生 `days_remaining`；停用 Pack 的 Status selection 保留并标记 `available: false`。摘要不持久化，也不内嵌完整 Record、Pack Definition、已完成/归档 Mission 或 MissionSuggestion；需要时再用对应领域查询读取。
 
 ## 8. Memory 精炼与清理
 
@@ -189,9 +189,10 @@ memory delete <memory_id>
 - Memory 只帮助 Agent 选择询问和建议，不能替代 Record、Mission 或 Achievement 状态等权威实体。
 - Git 冲突按普通文本冲突暴露，不做语义自动合并。
 
-## 9. SQLite
+## 9. 存储
 
-- `missions` 保存统一 Mission，并使用可延迟 self foreign key 校验 parent。
-- `mission_suggestions` 和 `dashboard_mission_slots` 是本机表，不进入 Git。
-- `assistant_memories` 保存同步 Memory 条目。
-- Mission 的 days remaining 与 AssistantMemory 上下文视图均按查询派生，不建立缓存表。
+- `missions.json` 保存已接受 Mission；parent 引用由领域校验器验证。
+- runtime `local-state.json` 保存 MissionSuggestion 与 Dashboard slots，不进入 Git。
+- `assistant-memory.json` 保存可同步的长期语义条目。
+- SQLite 不保存 Mission、Suggestion、Dashboard 或 AssistantMemory。
+- `days_remaining` 与 Agent context view 按查询派生，不建立缓存。

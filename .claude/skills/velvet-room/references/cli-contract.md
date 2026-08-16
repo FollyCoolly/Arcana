@@ -11,7 +11,7 @@ arcana-data --compact capabilities
 arcana-data context summary
 ```
 
-Use the published [capabilities fixture](../../../fixtures/contract-v1/capabilities.json) and [complete mutation fixture](../../../fixtures/contract-v1/batch-all-operations.json) instead of reconstructing field names from memory.
+Use the published [capabilities fixture](../../../fixtures/contract-v1/capabilities.json) and [Record batch fixture](../../../fixtures/contract-v1/batch-all-operations.json) instead of reconstructing field names from memory.
 
 ## Targeted reads
 
@@ -99,7 +99,7 @@ Achievement state:
 }
 ```
 
-`status` is `tracked` or `achieved`. `achieved_at` accepts `YYYY`, `YYYY-MM`, or `YYYY-MM-DD` and is allowed only for `achieved`. Revocation takes `{ "achievement_id": "..." }` in a batch.
+`status` is `tracked` or `achieved`. `achieved_at` accepts `YYYY`, `YYYY-MM`, or `YYYY-MM-DD` and is allowed only for `achieved`. Revocation uses the dedicated `achievement state-revoke` command.
 
 Mission creation:
 
@@ -127,7 +127,7 @@ Memory creation and update:
 
 Update additionally requires `memory_id`. Kinds are `focus`, `preference`, `constraint`, `habit`, `summary`, `reminder`, and `observation`.
 
-## Atomic batch
+## Atomic Record batch
 
 ```json
 {
@@ -140,10 +140,10 @@ Update additionally requires `memory_id`. Kinds are `focus`, `preference`, `cons
       }
     },
     {
-      "operation": "memory.create",
+      "operation": "record.increment",
       "input": {
-        "kind": "preference",
-        "content": "Prefers short review missions after study sessions."
+        "definition_id": "fitness.run_count",
+        "delta": 1
       }
     }
   ]
@@ -157,7 +157,9 @@ arcana-data batch apply --file <batch.json> --dry-run
 arcana-data batch apply --file <same-batch.json>
 ```
 
-A successful response contains `dry_run` and ordered `{index, operation, result}` entries. A failed batch writes no partial changes and includes `details.operation_index` and `details.operation`.
+A successful response contains `dry_run` and ordered `{index, operation, result}` entries. A failed batch writes no partial Record changes and includes `details.operation_index` and `details.operation`.
+
+Multi-operation batch accepts only `record.*` operations. Pack Definitions, enabled Pack IDs, Achievement states, accepted Missions, and AssistantMemory use the synchronized JSON repository. Suggestions and UI selections use runtime-local JSON. Dry-run and execute those mutations one command at a time; they cannot be made atomic with a Record batch.
 
 ## Process contract
 

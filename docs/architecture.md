@@ -3,192 +3,102 @@
 > **状态**：Current
 > **最后更新**：2026-08-16
 
-Arcana 是一个本地优先的 Tauri 桌面应用。Svelte 负责高表现力 UI，Rust 提供类型化用例、领域校验、SQLite 持久化、确定性 JSON 转换和少量外部来源适配器。AI 不作为应用内服务运行，而是由外部 Skills 通过 `arcana-data` 接入。
+Arcana 是本地优先的 Tauri 桌面应用。Svelte 提供 UI；Rust 统一承载用例、领域校验与持久化；外部 Arcana Skills 通过类型化 `arcana-data` CLI 使用这些能力，应用内不运行 LLM 或 Agent Session。
 
 ## 1. 系统边界
 
 ```mermaid
 flowchart TB
-    UI["Svelte / Tauri UI"]
-    Skills["External Arcana Skills"]
-    CLI["arcana-data CLI"]
-    IPC["Tauri Commands"]
-    App["Application Commands"]
-    Domain["Domain Models + Validation"]
-    Repo["Repository Interface"]
-    SQLite["SQLite Runtime"]
-    Codec["Deterministic JSON Codec"]
-    Json["Human-readable Repository JSON"]
-    Adapters["Items / Gallery / Weather Adapters"]
-    External["External files and APIs"]
-
-    UI --> IPC
-    IPC --> App
-    Skills --> CLI
+    UI["Svelte / Tauri UI"] --> IPC["Tauri Commands"]
+    Skills["External Arcana Skills"] --> CLI["arcana-data CLI"]
+    IPC --> App["Application Commands"]
     CLI --> App
-    App --> Domain
-    App --> Repo
-    Repo --> SQLite
-    SQLite <--> Codec
-    Codec <--> Json
-    IPC --> Adapters
-    Adapters --> External
+    App --> Domain["Domain Models + Validation"]
+    App --> Repo["DataRepository"]
+    Repo --> JSON["Live JSON Repository"]
+    Repo --> SQLite["Record-only SQLite"]
+    Repo --> Local["Runtime-local JSON"]
+    IPC --> Adapters["Items / Gallery / Weather Adapters"]
+    Adapters --> External["External files and APIs"]
 ```
 
-依赖规则：
+三种存储各有唯一职责：
 
-- UI 和 Skill 不直接写 SQLite。
-- 所有核心写操作经过 Application Command、领域校验和 Repository 事务。
-- 同步 JSON 是交换格式，不是运行时数据库。
-- Items、Gallery、Weather 的外部来源不复制进核心数据平台。
-- 应用不包含 LLM client、Agent session、Telegram channel 或另一套业务规则。
+| 存储 | 权威数据 | 默认位置 |
+| --- | --- | --- |
+| 可读 JSON repository | Pack/Definition/asset、enabled Pack、AchievementState、已接受 Mission、AssistantMemory | `~/.arcana/repository` |
+| SQLite | Record 及其 scalar/collection/event payload、数据库 migration/sync 元数据 | `~/.arcana/runtime/arcana.sqlite3` |
+| 本机 JSON | MissionSuggestion、Status 五项选择、Mission Dashboard 槽位 | `~/.arcana/runtime/local-state.json` |
+
+JSON repository 是日常运行时数据源，不再只是 SQLite 的导出物。Definitions 每次从该目录读取，用户可用普通编辑器修改 JSON；下一次命令读取时会执行完整领域校验。UI 和 Skill 的写操作仍应走 Application/CLI，以获得 dry-run、类型检查和一致错误。
 
 ## 2. 代码分层
 
-### Frontend
+- `src/`：Svelte 页面、screens 与可复用组件；不直接持久化领域数据。
+- `src-tauri/src/commands/`：Tauri IPC 边界。
+- `src-tauri/src/bin/arcana_data/`：Skill 与人工脚本使用的 CLI 边界。
+- `src-tauri/src/application/`：Record、Pack、Status、Achievement、Skill、Mission、Memory、上下文与导入导出用例。
+- `src-tauri/src/domain/`：实体、验证器与存储无关的 Repository interface。
+- `src-tauri/src/storage/data_repository.rs`：把语义 JSON、Record SQLite 与本机 JSON 组合成同一 Repository interface。
+- `src-tauri/src/storage/json_repository.rs`：确定性 JSON 解析、规范输出和语义文件更新。
+- `src-tauri/src/storage/sqlite/record_repository.rs`：Record-only SQLite adapter。
+- `src-tauri/src/storage/local_state.rs`：本机选择与建议状态。
 
-`src/routes/+page.svelte` 是主菜单与屏幕路由；`src/lib/screens/` 提供 Status、Skills、Achievements、Missions、Packs、Items 和 Gallery；`src/lib/components/` 存放雷达图、技能图等可复用组件。
+`DataRepository` 让既有 Application Commands 不需要知道实体来自哪个物理存储。每次读取会把三者组合成一个领域快照；写入根据实体所有权路由到对应存储。
 
-前端通过 Tauri `invoke` 调用后端，不持久化领域状态。Mission Dashboard 槽位与 Status 五项选择属于本机配置，由后端单独保存。
+## 3. 写入与事务边界
 
-### Tauri Commands
+- 多操作 `batch apply` 只接受 `record.*`，并在一个 SQLite transaction 内全成或全败。
+- Pack、enabled Pack、AchievementState、Mission、AssistantMemory 各自通过单条命令更新 live JSON repository。
+- MissionSuggestion、Status selection、Dashboard selection 更新 `local-state.json`。
+- 不提供横跨 SQLite 与 JSON 的伪原子 batch。一次用户叙述同时涉及 Record 与语义 JSON 时，先 dry-run，再分存储顺序执行并明确报告中途失败。
+- 单个 JSON 文件使用临时文件、同步和替换；涉及多个 JSON 文件的领域操作由运行时独占锁串行化，但当前不承诺进程崩溃时的跨文件原子性。
 
-`src-tauri/src/commands/` 是 IPC 边界：
-
-| 模块 | 职责 |
-| --- | --- |
-| `data_platform.rs` | Status、Achievement、Skill、Pack dashboard 与 mutation；Pack asset 安全读取 |
-| `missions.rs` | Mission/Suggestion 查询、接受、拒绝、完成、归档和 Dashboard 配置 |
-| `items.rs` | 读取 Markdown/Obsidian 物品来源并计算统计 |
-| `gallery.rs` | 汇总外部媒体文件 |
-| `weather.rs` | 读取本机配置并调用 Open-Meteo |
-
-### Application
-
-`src-tauri/src/application/` 实现 UI 与 CLI 共用的用例：运行时初始化和锁、Record、Pack、Status、Achievement、Skill、Mission、AssistantMemory、上下文摘要、批量事务与本机选择配置。Pack write/enable/disable/delete 与其他核心 mutation 共用同一 batch 事务；二进制 asset 使用独立命令。
-
-Application 返回类型化结果，不返回 Tauri 类型，也不处理界面状态。
-
-当前用户可修改数据的入口如下。这里的“Skill”指外部 Agent Skill，不是持久化的技能节点：
-
-| 数据 | `arcana-data` / Agent Skill | 桌面 UI |
-| --- | --- | --- |
-| Record | 完整读写、删除、dry-run、batch | 暂无专用编辑器，由 Agent 记录 |
-| Pack 与启用状态 | 完整读写、启停、删除、dry-run、batch | 列表、启停、删除预演与确认 |
-| Pack asset | 独立 CLI / Pack Manager 操作 | 只读展示 |
-| Status 展示选择 | 完整读写、dry-run、batch | 选择要展示的 Dimension |
-| Achievement 状态 | 完整读写、撤销、dry-run、batch | 跟踪、完成与撤销 |
-| Mission / Suggestion | 完整生命周期、dry-run、batch | 审阅和生命周期操作 |
-| AssistantMemory | 完整读写、删除、dry-run、batch | 暂无专用编辑器，由 Agent 管理 |
-| 本机 Dashboard 配置 | 不参与同步 | Mission 等对应界面 |
-
-Items、Gallery、Weather 仍是外部来源适配器，不属于本次统一的核心用户数据层。
-
-### Domain
-
-`src-tauri/src/domain/` 定义持久化实体、验证器与 Repository 接口。关键关系是：
+## 4. 领域关系
 
 ```text
 Enabled Pack -> RecordDefinition registry
 Record -> definition_id
 Record + DimensionDefinition -> Status score / level
-Record + user statement + AchievementDefinition -> Achievement state
+Record + user statement + AchievementDefinition -> AchievementState
 achieved Achievement + SkillDefinition -> Skill points / level
 MissionSuggestion --accept--> Mission
 ```
 
-分数、等级、技能节点状态、成就进度说明和剩余天数均为派生值，不重复持久化。
+- Record 是扁平的用户事实；RecordDefinition 随 Pack 发放。Definition namespace 与 Pack ID 是不同概念。
+- Pack 可组成单父级 PackForest。父子关系只用于组织，启用不级联；每个 Pack 必须完整声明自己使用的 Definition。
+- Status Dimension 是一层加权 Score，子 Score 与总分裁剪到 `0..100`；正分为 Lv.1，四个 threshold 定义 Lv.2～Lv.5，零分为 Lv.0。
+- Achievement 只持久化 `tracked` 或 `achieved` 状态。自然语言要求与可选 `tip` 帮助 Agent 判断，不存在自动解锁 DSL；Record 改变不会自动撤销 achieved。
+- Skill 只从 achieved Achievement 派生积分和等级。
+- 未接受推荐是本机 MissionSuggestion；接受后才成为可同步 Mission。
+- AssistantMemory 只保存跨会话有价值的精炼语义，不保存完整会话。
 
-### Storage
+分数、等级、Skill 节点状态、进度说明、游戏天数和剩余天数都即时派生，不重复持久化。
 
-`src-tauri/src/storage/sqlite/` 包含 migration runner、DDL 和 Repository adapter。默认数据库位于 `~/.arcana/runtime/arcana.sqlite3`；Application 在访问时持有运行时锁。
+## 5. JSON、导入导出与 Git
 
-`storage/json_repository.rs` 负责 SQLite 与规范同步目录之间的确定性转换。导出保证稳定文件划分、字段省略和排序；导入先完整解析与校验，再写入 SQLite。当前 CLI 不执行 Git 命令。
+`arcana-data json export` 把当前组合状态写成一个全新的确定性 JSON 目录，其中也包含从 SQLite 投影出的 `records/`。`json import` 校验完整目录，然后把语义实体写入配置的 live repository、把 Records 写入 SQLite；本机状态不从同步 JSON 导入。
 
-`storage/json_store.rs` 只为 Items、Gallery、Weather 读取适配配置；它不是第二套核心用户数据层。
+当前没有 Git pull/commit/push 编排。用户可把 live repository 放入自己的 private Git repository 并按普通 Git 工作流同步；冲突直接暴露给用户，不做 CRDT、自动 merge 或 operation log。由于 Records 的 live authority 是 SQLite，完整 Git 同步闭环仍需在拉取/提交前后显式执行 Record 的 JSON import/export。
 
-### External Agent Skills
+## 6. 外部来源
 
-canonical plugin 位于 `plugins/arcana/`：
+Items、Gallery 与 Weather 继续读取 `~/.arcana/data` 或外部 API，不属于核心数据平台。外部平台拥有其原始数据；只有显式导入为 Record 后才进入核心用户事实。
 
-| Skill | 职责 |
-| --- | --- |
-| `velvet-room` | 记录事实、修正、进度、Achievement 状态、Status 选择与 AssistantMemory |
-| `phan-site` | 生成、接受、拒绝和删除 MissionSuggestion |
-| `pack-manager` | 创建、扩展、校验和管理 Pack |
-
-Skill 先读取 CLI capabilities，再使用结构化 stdout/stderr 合约。`.claude/skills` 与 fixtures 是生成镜像，由 `scripts/sync_agent_skills.py` 校验。
-
-## 3. 持久化边界
-
-| 数据 | 权威位置 | 是否进入同步 JSON |
-| --- | --- | --- |
-| Record | SQLite | 是，按 namespace 分文件 |
-| Pack 定义与 asset | SQLite / 规范 Pack 内容 | 是 |
-| AchievementState | SQLite | 是 |
-| Mission | SQLite | 是 |
-| MissionSuggestion | SQLite 本机表 | 否 |
-| AssistantMemory | SQLite | 是 |
-| Status 五项选择 | SQLite 本机表 | 否 |
-| Mission Dashboard 槽位 | SQLite 本机表 | 否 |
-| Items/Gallery 外部源配置 | `~/.arcana/data` | 否 |
-| Weather 配置 | `~/.arcana/data/weather.json` | 否 |
-| Agent session、凭证 | 外部 Agent 自行管理 | 否 |
-
-SQLite 与同步 JSON 的详细结构见 [`docs/design/`](./design/README.md)。系统不保留 changelog 或无限增长的 operation log；历史快照由未来的 Git 提交提供。
-
-## 4. 核心领域行为
-
-### Record 与 Pack
-
-Record 是用户事实；RecordDefinition 随 Pack 发放。Definition ID 使用 `<namespace>.<name>`，namespace 不等于 Pack ID。一个 Pack 可以使用多个 namespace，不同 Pack 也可以复用同一 Definition。
-
-Pack 可形成单父级的 PackForest，但父子关系只用于浏览和组织。启用子 Pack 不会自动启用父 Pack；跨 Pack 引用必须显式且在启用集合中可解析。
-
-### Status
-
-Dimension 包含若干 0～100 子 Score，最终分数是可用子 Score 的加权平均并默认裁剪到 0～100。四个 threshold 把正分映射为 Lv.1～Lv.5，0 分为 Lv.0。UI 最多展示五个本机选择的 Dimension。
-
-### Achievement 与 Skill
-
-Achievement 只保存 `tracked` 或 `achieved`。Agent 可以结合 Record 与自然语言 requirement 判断是否可能完成；特殊提示放在可选 `tip`，不建立自动解锁 DSL。Record 变化不会自动撤销 achieved；用户可显式撤销误操作。
-
-Skill 节点引用 Achievement。只有 achieved 节点贡献分数，Skill 等级与节点状态即时派生。
-
-### Mission 与 Memory
-
-未接受推荐是本机 MissionSuggestion；接受操作原子创建同 ID 的 active Mission 并删除 suggestion。Mission 可转为 completed 或 archived。Dashboard 槽位不写入同步实体。
-
-AssistantMemory 保存 Agent 精炼后的长期语义信息并进入同步；完整会话不属于 Arcana 数据。
-
-## 5. 运行与验证
+## 7. 运行与验证
 
 ```bash
 npm run check
 cargo test --manifest-path src-tauri/Cargo.toml
 cargo fmt --manifest-path src-tauri/Cargo.toml --check
-cargo clippy --manifest-path src-tauri/Cargo.toml --lib --bins --tests
 python scripts/sync_agent_skills.py --check
 ```
 
-构建数据 CLI：
+## 8. 尚未完成
 
-```bash
-cargo build --manifest-path src-tauri/Cargo.toml --bin arcana-data
-src-tauri/target/debug/arcana-data capabilities
-src-tauri/target/debug/arcana-data init
-```
+- Record JSON 与 Git 的 pull/import/export/commit/push 安全闭环。
+- JSON 多文件写入的 journal/恢复机制与人工编辑覆盖检测。
+- Windows/macOS、分辨率和缩放比例的统一 UI 策略。
+- 完整新用户引导与 Pack 创建体验打磨。
 
-## 6. 尚未完成
-
-- Git pull/conflict detection/import/export/commit/push 的安全编排。
-- 导出覆盖保护、崩溃恢复 journal 与临时数据库切换的完整同步闭环。
-- Windows/macOS 与不同分辨率、缩放比例的统一 UI 策略。
-- 完整的新用户引导与 Pack 创建体验打磨。
-
-## 7. 相关文档
-
-- [数据平台设计](./design/README.md)
-- [视觉风格指南](./visual_style_guide.md)
-- [UI 设计规范](./ui_design_spec.md)
-- [Items 外部来源格式](./schema/items.md)
+详细 Schema 与决策见 [设计文档索引](./design/README.md)。

@@ -32,39 +32,14 @@ Only `title` is required. Omit unknown optional fields instead of writing `null`
 
 The CLI generates UUIDv7 `id`, `generated_at`, and `status: pending`. Do not supply them.
 
-## Atomic generation
-
-```json
-{
-  "operations": [
-    {
-      "operation": "mission.suggest",
-      "input": {
-        "title": "The Mise en Place Trial",
-        "difficulty": "D",
-        "reason": "A concrete next step for the active cooking goal."
-      }
-    },
-    {
-      "operation": "mission.suggest",
-      "input": {
-        "title": "Five-Dish Rotation",
-        "difficulty": "C",
-        "reason": "Expand the user's stated home-cooking focus."
-      }
-    }
-  ]
-}
-```
-
-Run:
+## Suggestion generation
 
 ```text
-arcana-data batch apply --file <suggestions.json> --dry-run
-arcana-data batch apply --file <same-suggestions.json>
+arcana-data mission suggest --file <suggestion.json> --dry-run
+arcana-data mission suggest --file <same-suggestion.json>
 ```
 
-Dry-run IDs and timestamps are previews; do not reference them. The operation array must remain identical for the committed call.
+Repeat this pair for each candidate. Dry-run IDs and timestamps are previews; do not reference them. The input must remain identical for the committed call. MissionSuggestions live in the runtime-local JSON state and multi-operation `batch apply` is reserved for SQLite Record mutations, so candidate creation is intentionally not atomic as a group.
 
 ## User decisions
 
@@ -77,10 +52,10 @@ arcana-data mission suggestion-delete <suggestion_id> --dry-run
 arcana-data mission suggestion-delete <suggestion_id>
 ```
 
-Accept atomically creates an active Mission with the same ID and removes the local Suggestion. Only accepted Missions enter JSON export and later Git sync.
+Accept creates an active Mission with the same ID in the synchronized JSON repository and removes the Suggestion from runtime-local JSON. Only accepted Missions enter later Git sync.
 
 ## Failure contract
 
-Exit 0 writes direct business JSON to stdout. Any failure leaves stdout empty and writes structured JSON to stderr. Use stable `code` and `details`; a batch error includes `operation_index` and `operation`, and the whole transaction is rolled back.
+Exit 0 writes direct business JSON to stdout. Any failure leaves stdout empty and writes structured JSON to stderr. Use stable `code` and `details`.
 
-See the published [capabilities fixture](../../../fixtures/contract-v1/capabilities.json) and [complete mutation fixture](../../../fixtures/contract-v1/batch-all-operations.json) for the command surface and exact field names.
+See the published [capabilities fixture](../../../fixtures/contract-v1/capabilities.json) for the command surface and exact field names.

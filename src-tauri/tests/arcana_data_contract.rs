@@ -1,5 +1,6 @@
 use arcana_lib::application::{ApplyMutationBatch, PackContent};
 use serde_json::Value;
+use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
@@ -92,6 +93,134 @@ fn data_revision(runtime: &Path) -> i64 {
             |row| row.get(0),
         )
         .unwrap()
+}
+
+#[test]
+fn opening_a_v1_runtime_moves_non_record_data_out_of_sqlite() {
+    let directory = tempfile::tempdir().unwrap();
+    let runtime = directory.path().join("runtime");
+    std::fs::create_dir_all(&runtime).unwrap();
+    let database = runtime.join("arcana.sqlite3");
+    let initial_sql = include_str!("../src/storage/sqlite/migrations/0001_initial.sql");
+    let checksum = Sha256::digest(initial_sql.as_bytes())
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect::<String>();
+    let connection = rusqlite::Connection::open(&database).unwrap();
+    connection.execute_batch(initial_sql).unwrap();
+    connection
+        .execute(
+            "INSERT INTO schema_migrations(version, name, checksum, applied_at) VALUES (1, 'initial', ?1, '2026-08-15T00:00:00Z')",
+            [&checksum],
+        )
+        .unwrap();
+    connection
+        .execute(
+            "INSERT INTO packs(id, enabled, schema_version, manifest_json) VALUES ('basic', 1, 1, ?1)",
+            [serde_json::json!({
+                "schema_version": 1,
+                "id": "basic",
+                "name": "基础",
+                "description": "Arcana 的基础身份信息",
+                "author": "Arcana",
+                "tags": []
+            }).to_string()],
+        )
+        .unwrap();
+    for definition in [
+        serde_json::json!({
+            "kind": "scalar",
+            "id": "identity.birth_date",
+            "name": "生日",
+            "value_type": "date"
+        }),
+        serde_json::json!({
+            "kind": "scalar",
+            "id": "identity.nickname",
+            "name": "昵称",
+            "value_type": "string"
+        }),
+    ] {
+        connection
+            .execute(
+                "INSERT INTO pack_record_definitions(pack_id, definition_id, definition_json) VALUES ('basic', ?1, ?2)",
+                rusqlite::params![definition["id"].as_str().unwrap(), definition.to_string()],
+            )
+            .unwrap();
+    }
+    connection
+        .execute(
+            "INSERT INTO records(definition_id, kind) VALUES ('identity.nickname', 'scalar')",
+            [],
+        )
+        .unwrap();
+    connection
+        .execute(
+            "INSERT INTO scalar_records(definition_id, value_json, recorded_at) VALUES ('identity.nickname', '\"Alice\"', '2026-08-15T00:00:00Z')",
+            [],
+        )
+        .unwrap();
+    connection
+        .execute(
+            "INSERT INTO missions(id, title, status, created_at) VALUES ('legacy-mission', 'Keep this mission', 'active', '2026-08-15T00:00:00Z')",
+            [],
+        )
+        .unwrap();
+    connection
+        .execute(
+            "INSERT INTO mission_suggestions(id, title, generated_at, status) VALUES ('legacy-suggestion', 'Keep this suggestion', '2026-08-15T00:00:00Z', 'pending')",
+            [],
+        )
+        .unwrap();
+    connection
+        .execute(
+            "INSERT INTO assistant_memories(id, kind, content, created_at, updated_at) VALUES ('legacy-memory', 'reminder', 'Keep this memory', '2026-08-15T00:00:00Z', '2026-08-15T00:00:00Z')",
+            [],
+        )
+        .unwrap();
+    drop(connection);
+
+    let runtime_arg = path_string(&runtime);
+    let opened = arcana_data(&["context", "--runtime", &runtime_arg, "summary"]);
+    assert!(opened.status.success(), "{}", utf8(&opened.stderr));
+
+    let repository = runtime.join("repository");
+    assert!(repository.join("arcana.json").is_file());
+    assert!(repository.join("packs/basic/manifest.json").is_file());
+    assert!(repository.join("missions.json").is_file());
+    assert!(repository.join("assistant-memory.json").is_file());
+    assert!(runtime.join("local-state.json").is_file());
+
+    let connection = rusqlite::Connection::open(&database).unwrap();
+    let version: i64 = connection
+        .query_row("SELECT max(version) FROM schema_migrations", [], |row| {
+            row.get(0)
+        })
+        .unwrap();
+    assert_eq!(version, 2);
+    let legacy_table_count: i64 = connection
+        .query_row(
+            "SELECT count(*) FROM sqlite_schema WHERE type = 'table' AND name IN ('packs', 'missions', 'mission_suggestions', 'assistant_memories')",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(legacy_table_count, 0);
+
+    let nickname = arcana_data(&[
+        "record",
+        "--runtime",
+        &runtime_arg,
+        "get",
+        "identity.nickname",
+    ]);
+    assert!(nickname.status.success(), "{}", utf8(&nickname.stderr));
+    assert_eq!(parse_json(&nickname.stdout)["record"]["value"], "Alice");
+    let suggestions = arcana_data(&["mission", "--runtime", &runtime_arg, "suggestion-list"]);
+    assert_eq!(
+        parse_json(&suggestions.stdout)["suggestions"][0]["id"],
+        "legacy-suggestion"
+    );
 }
 
 #[test]
@@ -346,16 +475,10 @@ fn dry_run_and_batch_share_validation_without_persisting_partial_state() {
                 }
             },
             {
-                "operation": "mission.create",
+                "operation": "record.set",
                 "input": {
-                    "title": "Created atomically"
-                }
-            },
-            {
-                "operation": "memory.create",
-                "input": {
-                    "kind": "observation",
-                    "content": "Created in the same batch"
+                    "definition_id": "identity.birth_date",
+                    "value": "1990-01-01"
                 }
             }
         ]
@@ -377,7 +500,7 @@ fn dry_run_and_batch_share_validation_without_persisting_partial_state() {
     );
     let batch_preview = parse_json(&batch_preview.stdout);
     assert_eq!(batch_preview["dry_run"], true);
-    assert_eq!(batch_preview["operations"].as_array().unwrap().len(), 3);
+    assert_eq!(batch_preview["operations"].as_array().unwrap().len(), 2);
     assert!(parse_json(
         &arcana_data(&[
             "record",
@@ -389,15 +512,6 @@ fn dry_run_and_batch_share_validation_without_persisting_partial_state() {
         .stdout
     )["record"]
         .is_null());
-    assert_eq!(
-        parse_json(&arcana_data(&["mission", "--runtime", &runtime_arg, "list"]).stdout)
-            ["missions"],
-        serde_json::json!([])
-    );
-    assert_eq!(
-        parse_json(&arcana_data(&["memory", "--runtime", &runtime_arg, "list"]).stdout)["memories"],
-        serde_json::json!([])
-    );
     assert_eq!(data_revision(&runtime), initial_revision);
 
     let applied = arcana_data(&[

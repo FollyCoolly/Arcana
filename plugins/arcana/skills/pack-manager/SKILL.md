@@ -5,7 +5,7 @@ description: Create, extend, refine, validate, enable, disable, remove, and add 
 
 # Pack Manager
 
-Design self-contained, high-quality Arcana Packs and write them only through `arcana-data pack` commands. Never edit SQLite, exported sync JSON, or Pack tables directly.
+Design self-contained, high-quality Arcana Packs and write them through `arcana-data pack` commands. Pack definitions, assets, and enabled state live in the configured JSON repository; SQLite contains only Records. Do not bypass CLI validation by editing either store during a Skill run.
 
 ## Prepare
 
@@ -39,12 +39,12 @@ Define Achievement completion in natural language. Keep prerequisites local to t
 3. Write candidate PackContent to a temporary JSON file.
 4. Run `pack validate --file <candidate.json>` and fix every issue.
 5. Run `pack write --dry-run --file <same-candidate.json>` before replacing an enabled Pack whose definitions already validate user Records.
-6. Run `pack write --file <same-candidate.json>` only after validation succeeds. For a new Pack that should be enabled immediately, put `pack.write` and `pack.enable` in one `batch apply` transaction.
-7. For an existing Pack, enable or disable it explicitly only when requested. Enabling does not cascade to parents or children.
+6. Run `pack write --file <same-candidate.json>` only after validation succeeds.
+7. For a new Pack that should be enabled immediately, dry-run and execute `pack enable <id>` as a second command after `pack write`. For an existing Pack, enable or disable it explicitly only when requested. Enabling does not cascade to parents or children.
 8. Import binary card art separately with `pack asset-put`; validate again after content references the asset.
 9. Run `pack show <id>` and summarize the resulting counts, hierarchy, and enabled state.
 
-`pack write` preserves current enabled state and existing assets. Structured `pack.write`, `pack.enable`, `pack.disable`, and `pack.delete` operations may be batched; asset bytes may not. Do not embed asset bytes or local absolute paths in PackContent.
+`pack write` preserves current enabled state and existing assets. Pack mutations are single logical JSON-repository operations and cannot be placed in multi-operation `batch apply`; batch is reserved for Record mutations in SQLite. Do not embed asset bytes or local absolute paths in PackContent.
 
 For deletion, first run `pack show`, then `pack delete --dry-run <id>`. Surface child Packs, unresolved Records or Achievement states, and orphaned local Status selections from the preview. Execute the real delete only after the user explicitly confirms the impact. Deletion preserves user Records and Achievement states as unresolved data instead of silently discarding them.
 

@@ -110,7 +110,7 @@ achievement state-revoke <achievement_id>
 skill list [--skill-id <id>] [--pack <pack_id>]
 ```
 
-它只返回已启用 Pack 中的 SkillDefinition，并从同一个 SQLite 事务快照即时计算每个节点的 `availability`、当前积分、最高积分、已完成节点数与 Lv.0～Lv.5。查询结果不写回 SQLite；停用 Pack 后对应 Skill 不再出现在结果中。
+它只返回已启用 Pack 中的 SkillDefinition，并从 live Definitions 与 AchievementState 的组合快照即时计算每个节点的 `availability`、当前积分、最高积分、已完成节点数与 Lv.0～Lv.5。查询结果不写回任何存储；停用 Pack 后对应 Skill 不再出现在结果中。
 
 ## 6. Pack 内容
 
@@ -320,11 +320,10 @@ packs/<pack_id>/
 
 等级算法固定为：总分为 0 时 Lv.0；总分大于 0 时至少 Lv.1；依次跨过四个 threshold 后进入 Lv.2～Lv.5。只有 achieved Achievement 节点贡献积分。
 
-## 15. SQLite
+## 15. 存储
 
-- `pack_achievements` 保存每个 Pack 的完整 AchievementDefinition JSON，并对 `achievement_id` 建全局唯一约束。
-- `achievement_states` 保存最小用户状态，不对 Pack Achievement 建外键，以保留 unresolved 状态。
-- `pack_skills` 保存完整 SkillDefinition JSON，并对 `skill_id` 建全局唯一约束。
-- `pack_assets` 保存 Pack asset 的规范相对路径和原始 bytes，使一次 import 可以原子切换完整 Pack，而不在运行时混读 Git 工作区文件。
+- AchievementDefinition、SkillDefinition 与 asset 直接保存在 live Pack JSON/asset 目录。
+- 最小用户状态保存在根级 `achievement-states.json`；找不到 Definition 时仍保留为 unresolved。
 - Skill 积分、等级和节点解锁状态不建表、不缓存，每次从 SkillDefinition 与 achieved 状态计算。
-- 删除 Pack 只级联删除该 Pack 的 Definition；用户 Achievement 状态继续保留。
+- 删除 Pack 只删除该 Pack 的 Definition 与 asset；用户 Achievement 状态继续保留。
+- SQLite 不保存 Pack、Achievement 或 Skill 数据。

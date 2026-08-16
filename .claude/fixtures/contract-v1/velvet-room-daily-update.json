@@ -8,17 +8,10 @@
       }
     },
     {
-      "operation": "mission.create",
+      "operation": "record.set",
       "input": {
-        "title": "Review today's notes",
-        "difficulty": "D"
-      }
-    },
-    {
-      "operation": "memory.create",
-      "input": {
-        "kind": "preference",
-        "content": "Prefers short review missions after finishing a study session."
+        "definition_id": "identity.birth_date",
+        "value": "1990-01-01"
       }
     }
   ]

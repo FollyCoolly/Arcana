@@ -65,6 +65,12 @@ pub fn default_runtime_dir() -> Option<PathBuf> {
     home_dir().map(|h| h.join(".arcana").join("runtime"))
 }
 
+/// Default human-readable repository. Pack definitions and low-volume
+/// synchronized semantic state are read directly from this directory.
+pub fn default_repository_dir() -> Option<PathBuf> {
+    home_dir().map(|h| h.join(".arcana").join("repository"))
+}
+
 fn settings_path() -> Option<PathBuf> {
     home_dir().map(|h| h.join(".arcana").join("settings.json"))
 }
