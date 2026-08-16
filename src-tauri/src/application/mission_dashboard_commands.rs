@@ -123,31 +123,32 @@ mod tests {
                     "019b1234-89ab-7def-8123-456789abcdef".to_string(),
                     "2026-08-16T10:00:00Z".to_string(),
                 )?;
-                let mut commands = MissionDashboardCommands::new(repository);
-                assert!(
-                    commands
-                        .select(
-                            DashboardMissionSlot::Progress,
-                            created.mission.id.clone(),
-                            Some("Arcana".to_string()),
-                        )?
-                        .changed
-                );
-                assert!(
-                    !commands
-                        .select(
-                            DashboardMissionSlot::Progress,
-                            created.mission.id.clone(),
-                            Some("Arcana".to_string()),
-                        )?
-                        .changed
-                );
-                assert_eq!(commands.list()?.len(), 1);
+                {
+                    let mut commands = MissionDashboardCommands::new(repository);
+                    assert!(
+                        commands
+                            .select(
+                                DashboardMissionSlot::Progress,
+                                created.mission.id.clone(),
+                                Some("Arcana".to_string()),
+                            )?
+                            .changed
+                    );
+                    assert!(
+                        !commands
+                            .select(
+                                DashboardMissionSlot::Progress,
+                                created.mission.id.clone(),
+                                Some("Arcana".to_string()),
+                            )?
+                            .changed
+                    );
+                    assert_eq!(commands.list()?.len(), 1);
 
-                assert!(commands.clear(DashboardMissionSlot::Progress)?.changed);
-                assert!(!commands.clear(DashboardMissionSlot::Progress)?.changed);
+                    assert!(commands.clear(DashboardMissionSlot::Progress)?.changed);
+                    assert!(!commands.clear(DashboardMissionSlot::Progress)?.changed);
+                }
 
-                drop(commands);
                 MissionCommands::new(repository)
                     .complete_at(&created.mission.id, "2026-08-16T11:00:00Z".to_string())?;
                 let error = MissionDashboardCommands::new(repository)

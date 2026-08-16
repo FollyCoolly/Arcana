@@ -1,15 +1,11 @@
-# Arcana 目标设计文档
+# Arcana 数据平台设计文档
 
-> **状态**：Target / 本机数据平台实现中
+> **状态**：Current contract / Git 同步编排待实现
 > **最后更新**：2026-08-16
 
-本目录描述 Arcana 下一阶段的数据平台与领域模型。领域模型、DDL、SQLite migration runner、Repository adapter、本机运行时锁、`basic` Pack 初始化、全部 Record/Pack/Status/Achievement/Mission/AssistantMemory Commands、Arcana Skill 派生查询、单事务 Agent 上下文摘要，以及 SQLite 与规范 JSON 新目录之间的核心 Codec 已落地；`arcana-data` 的目标命令与 Tauri Status/Achievement/Skill/Mission 页面已切到新运行时，但内置 Agent 与 Git 同步编排尚未切换，因此当前程序还没有完整支持这里的结构。
+本目录定义 Arcana 当前核心数据平台和领域模型的权威合约。领域模型、DDL、SQLite migration runner、Repository adapter、本机运行时锁、`basic` Pack 初始化、Record/Pack/Status/Achievement/Mission/AssistantMemory Commands、Arcana Skill 派生查询、单事务 Agent 上下文摘要、SQLite 与规范 JSON 之间的 Codec，以及 Tauri 对应页面均已落地。项目不再维护旧 JSON 核心运行时或内置 Rust Agent。
 
-尚未切换的 UI 页面与内置 Rust Agent 行为仍以 [`docs/architecture.md`](../architecture.md) 与 [`docs/schema/`](../schema/README.md) 为准；已迁移页面与 `arcana-data` 只实现本目录的目标模型，不导入或兼容旧 JSON。完成 UI/Agent 切换后删除旧实现与旧 Schema 文档。若两组文档冲突：
-
-- 判断当前程序行为时，以当前架构文档和代码为准；
-- 设计或实现新数据平台时，以本目录为准；
-- 实现中若发现规范缺口，不得由实现者在代码里隐式决定；应先补充本目录并说明兼容影响。
+尚未完成的是 Git pull/commit/push 编排以及同步过程的覆盖保护、崩溃恢复和数据库切换闭环。实现中若发现规范缺口，不得在代码里隐式决定；应先补充本目录并说明兼容影响。
 
 ## 阅读顺序
 
@@ -51,7 +47,7 @@
 2. 已完成：进程间锁、运行时初始化与 Record、Pack、Status、Achievement、Mission、AssistantMemory Application Commands，以及 Arcana Skill 派生查询。
 3. 进行中：确定性 JSON Codec 和持有运行时独占锁的 SQLite import/export 已完成；已有目录的防覆盖 digest、崩溃恢复 journal、临时数据库切换和 Git 编排待实现。
 4. 已完成：全部目标领域 command；AssistantMemory 也已接入 Application 与 CLI。
-5. 进行中：`arcana-data` 全部目标领域命令、canonical Arcana plugin 与质量门已完成；Tauri 已初始化同一 SQLite Runtime，Status、Achievement、Skill、Mission 页面、本机 Mission Dashboard 配置及受控 Pack 图片读取已迁移；内置 Agent 仍待迁移或删除。
+5. 已完成：`arcana-data` 全部目标领域命令、canonical Arcana plugin 与质量门、Tauri Status/Achievement/Skill/Mission 页面、本机配置及受控 Pack 图片读取均已迁移；内置 Agent 与旧核心 JSON 实现已删除。
 
 ### 暂不处理
 

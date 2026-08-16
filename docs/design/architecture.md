@@ -1,7 +1,7 @@
-# Arcana 目标架构
+# Arcana 数据平台架构
 
-> **状态**：Target / 设计已闭环，尚未全部实现
-> **最后更新**：2026-08-15
+> **状态**：Current contract / 同步编排尚未全部实现
+> **最后更新**：2026-08-16
 
 ## 1. 目标
 
@@ -111,15 +111,12 @@ pull
 - Agent 可以从对话、日记或周记提取 Record，并判断 Achievement。
 - Agent 不直接编辑 SQLite，不生成虚构历史数据，也不绕过验证器。
 - 完整 Agent Session、模型供应商配置和凭证只保留在本机。
-- 当前代码中的内置 Agent prompt 属于现状实现；新架构不维护两套相互复制的业务规则。
+- 应用不内置 Agent prompt 或模型运行时，避免与外部 Skill 维护两套业务规则。
 
 canonical Skill 源码、CLI contract、harness 分发和质量门见 [`agent_skills.md`](./agent_skills.md)。
 
-## 8. 当前实现到目标架构
+## 8. 当前实现边界
 
-入口切换完成前必须区分两套文档语义：
+UI、CLI 与外部 Skill 已统一使用本架构，旧核心 JSON 与内置 Agent 已删除。新系统不导入旧 JSON，也不提供兼容命令。
 
-- [`../architecture.md`](../architecture.md) 描述当前 JSON 实现；
-- 本文描述迁移目标。
-
-实现顺序从领域模型、Repository 和同步仓库 Codec 开始，再一次性切换 UI/CLI/Skill。新系统不导入旧 JSON；不能先让某个入口使用 SQLite、其他入口继续修改旧 JSON，从而形成两个权威数据源。切换后删除旧存储调用与旧 Schema 文档。
+当前剩余边界是同步编排：`arcana-data json import|export` 已实现 SQLite 与规范目录互转，但尚未封装 Git pull、冲突检查、commit、push、覆盖保护、崩溃恢复 journal 和临时数据库切换。

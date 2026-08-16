@@ -4,8 +4,8 @@ use std::path::PathBuf;
 
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct ArcanaSettings {
-    /// Legacy JSON v1 location. Only the not-yet-migrated UI and Rust Agent use
-    /// it; the new data CLI ignores it.
+    /// External-source configuration used by Items, Gallery and Weather.
+    /// User progress is stored separately in the SQLite runtime.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub data_dir: Option<String>,
     /// Target Git synchronization repository. Not used by current commands yet.
@@ -96,7 +96,7 @@ mod tests {
     }
 
     #[test]
-    fn target_paths_can_coexist_with_legacy_data_dir() {
+    fn runtime_paths_can_coexist_with_external_source_data_dir() {
         let settings: ArcanaSettings = serde_json::from_str(
             r#"{
                 "data_dir": "~/old-data",

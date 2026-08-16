@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Unified Status, Achievement, Skill, and Mission UI with the SQLite Application/Repository runtime.
+- Added deterministic SQLite-to-JSON import/export and canonical external Arcana Skills.
+
+### Removed
+
+- Removed the built-in Rust Agent, CLI/Telegram entry points, legacy JSON services, and obsolete JSON schemas and validators. AI integration now uses external Skills through `arcana-data`.
+
 ## v0.1.0 (2026-04-30)
 
 Initial release. A Persona 5-inspired gamified life management desktop app built with Tauri v2, Svelte 5, and Rust.

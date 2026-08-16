@@ -1,9 +1,7 @@
-pub mod agent;
 pub mod application;
 mod commands;
 pub mod domain;
 pub mod models;
-pub mod services;
 pub mod storage;
 
 use std::collections::hash_map::DefaultHasher;
@@ -155,8 +153,8 @@ pub fn run() {
                 // Wait until a slot is available
                 loop {
                     let current = counter.load(Ordering::Relaxed);
-                    if current < MAX_CONCURRENT {
-                        if counter
+                    if current < MAX_CONCURRENT
+                        && counter
                             .compare_exchange(
                                 current,
                                 current + 1,
@@ -164,9 +162,8 @@ pub fn run() {
                                 Ordering::Relaxed,
                             )
                             .is_ok()
-                        {
-                            break;
-                        }
+                    {
+                        break;
                     }
                     std::thread::sleep(std::time::Duration::from_millis(50));
                 }

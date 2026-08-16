@@ -75,7 +75,7 @@ fn wmo_to_icon(code: u32, is_day: bool) -> &'static str {
                 "13n"
             }
         } // Snow
-        80 | 81 | 82 => {
+        80..=82 => {
             if is_day {
                 "09d"
             } else {
