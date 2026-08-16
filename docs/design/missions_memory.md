@@ -1,6 +1,6 @@
 # Mission 与 AssistantMemory
 
-> **状态**：Mission/AssistantMemory Domain、Application 与 CLI 已实现；Tauri UI 尚未切换
+> **状态**：Mission Domain、Application、CLI 与 Tauri UI 已实现；AssistantMemory Domain/Application/CLI 已实现
 > **最后更新**：2026-08-16
 
 ## 1. MissionSuggestion 与 Mission
@@ -27,6 +27,8 @@ MissionSuggestion --accept--> Mission
 - `days_remaining` 等值按需计算，不持久化。
 
 主菜单 countdown、hints、progress 等展示选择属于本机 Dashboard 配置，不属于 Mission 领域实体，也不跨设备同步。
+
+桌面 Mission 页面分别查询同步 Mission 与本机 pending MissionSuggestion；接受、拒绝、完成和归档使用独立 typed command。Mission 详情可以设置或清除四个本机 Dashboard slot，完成或归档后失效的引用继续保留并作为 unresolved slot 返回，不静默改写用户配置。
 
 ## 2. AssistantMemory
 

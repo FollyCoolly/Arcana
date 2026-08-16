@@ -3,7 +3,7 @@
 本目录用于维护 Arcana 的数据结构规范文档，重点描述本地 JSON 文件的字段定义、约束和演进方式。
 
 > [!IMPORTANT]
-> 本目录描述当前已实现的 JSON v1 文件，用于迁移对照，不代表新代码的目标结构。SQLite + Git JSON 目标模型已经在 [`docs/design/`](../design/README.md) 定稿；迁移完成前不直接覆盖这里的现行规范，以免混淆 current 与 target。
+> 本目录描述旧内置 Agent 以及 Items/Gallery 尚在使用的 JSON v1 文件，只用于迁移对照。Status、Achievement、Skill、Mission 桌面页面已经迁移到 [`docs/design/`](../design/README.md) 定义的 SQLite 模型；本目录不再是这些页面的 current contract。
 
 ## 目标
 

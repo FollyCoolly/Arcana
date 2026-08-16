@@ -154,6 +154,7 @@ Arcana 采用单页 SPA 架构（非 SvelteKit 路由），所有屏幕通过 `c
 - 排序轮播：可配置排序字段和方向
 - 详情卡片：弹出式 overlay，显示完整描述、进度条、操作按钮
 - Phan-Site 模式（P 键切换）：显示 AI 提议的任务，支持 accept/reject
+- Mission 详情支持 complete/archive，并可选择或清除 countdown、progress、hint 1、hint 2 本机主菜单槽位
 - 滚动指示器
 
 ---
@@ -182,7 +183,7 @@ Arcana 采用单页 SPA 架构（非 SvelteKit 路由），所有屏幕通过 `c
 - 所有状态使用 Svelte 5 `$state()` runes（无 Svelte stores）
 - 屏幕间数据通过 `$state` 变量 + prop 传递
 - 数据加载：`onMount` 时预加载（`preloadStatusData()`、`preloadMissionMenuData()`），各屏幕按需调用 `invoke()`
-- Tauri invoke 命令：`load_status_dashboard`、`select_status_dimension`、`clear_status_dimension`、`load_achievement_dashboard`、`set_achievement_achieved`、`revoke_achievement_state`、`load_skill_dashboard`、`load_pack_asset`、`load_items`、`load_gallery`、`load_missions`、`load_main_menu_missions`、`update_mission_status`、`get_weather`
+- Tauri invoke 命令：`load_status_dashboard`、`select_status_dimension`、`clear_status_dimension`、`load_achievement_dashboard`、`set_achievement_achieved`、`revoke_achievement_state`、`load_skill_dashboard`、`load_pack_asset`、`load_mission_dashboard`、`load_mission_menu_dashboard`、`complete_mission`、`archive_mission`、`accept_mission_suggestion`、`reject_mission_suggestion`、`select_mission_dashboard_slot`、`clear_mission_dashboard_slot`、`load_items`、`load_gallery`、`get_weather`
 
 ---
 

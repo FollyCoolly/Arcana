@@ -5,7 +5,7 @@
 > **状态**: Current implementation
 
 > [!IMPORTANT]
-> 本文主要描述尚未迁移的 Tauri 页面与内置 Rust Agent JSON 架构。Status、Achievement、Skill 页面和 `arcana-data` 已切到 SQLite/Record 新模型；新模型与当前 CLI 合约见 [`docs/design/`](./design/README.md)。
+> 本文同时描述迁移中的两条边界。Status、Achievement、Skill、Mission 页面和 `arcana-data` 已切到 SQLite/Record 新模型；Items、Gallery 与内置 Rust Agent 仍在旧 JSON/外部数据边界。新模型与当前 CLI 合约见 [`docs/design/`](./design/README.md)。
 
 Arcana 是一个 Persona 5 风格的游戏化人生管理桌面应用，也就是给 “Earth Online” 加一层用户界面。当前实现已经从早期的 Status MVP 演进为一个本地优先的桌面 HUD：前端负责高表现力的菜单与模块屏幕，Rust 后端同时维护新的 SQLite 数据平台和待迁移的旧 JSON/Agent 边界。
 
@@ -19,7 +19,7 @@ Arcana 采用 **Local-First + Tauri Shell + Shared Services** 架构。
 
 - **本地优先**：新运行时位于 `~/.arcana/runtime` 的 SQLite 数据库；尚未迁移的页面和内置 Agent 仍读取旧 `~/.arcana/data` JSON。仓库中的 `data-example/` 只为旧实现保留。
 - **旧共享业务层**：尚未迁移的 Tauri IPC 与独立 Rust agent 复用 `src-tauri/src/services/`；新的 `arcana-data` 只通过 Application Commands 与 Repository 访问 SQLite。
-- **数据驱动 UI**：Status、Achievement、Skill 从 SQLite 中的 Record、Pack Definition 与用户状态渲染；Missions、Items、Gallery 暂时仍从旧 JSON 渲染。
+- **数据驱动 UI**：Status、Achievement、Skill 从 SQLite 中的 Record、Pack Definition 与用户状态渲染；Mission 从同步 Mission、本机 Suggestion 与 Dashboard slot 渲染；Items、Gallery 暂时保留旧/外部数据源。
 - **旧 Agent 审计**：尚未迁移的内置 Agent 写 missions/status/achievement progress 后仍写 `ai_changelog.json`；新数据平台不保留 changelog。
 - **Persona 5 风格表达层**：视觉风格集中在 Svelte 组件、全局 CSS、静态资源与设计文档中，后端保持数据和规则纯净。
 
@@ -123,7 +123,7 @@ flowchart TB
 | `data_platform.rs` | 从 SQLite Application 层加载 Status、Achievement、Skill dashboard，修改 Achievement 状态，读取受控 Pack 图片，并管理五个本机 Dimension 选择 |
 | `items.rs` | 加载物品来源和物品列表 |
 | `gallery.rs` | 加载媒体图鉴来源与条目 |
-| `missions.rs` | 加载 missions、主菜单 mission widget、更新 mission status |
+| `missions.rs` | 从 SQLite 加载 Mission/Suggestion 与主菜单投影，执行接受、拒绝、完成、归档和本机 Dashboard slot 配置 |
 | `weather.rs` | 读取天气数据 |
 
 `src-tauri/src/lib.rs` 注册这些 commands，同时配置：
@@ -137,13 +137,13 @@ flowchart TB
 
 位置：`src-tauri/src/services/`
 
-`services/` 是旧 JSON UI/Agent 的共享边界。尚未迁移的 Tauri commands 与 Rust agent 仍复用这里的业务操作；已迁移 IPC 与 `arcana-data` 已退出该层，改用 `application/`、`domain/` 和 `storage/sqlite/`。新增数据平台功能不得再接入旧 services。
+`services/` 是旧 JSON Agent 的共享边界。Items、Gallery 命令仍直接使用旧 `models/` 与 `storage/`；Rust agent 复用 `services/`。Status、Achievement、Skill、Mission IPC 与 `arcana-data` 已退出该层，改用 `application/`、`domain/` 和 `storage/sqlite/`。新增数据平台功能不得再接入旧 services。
 
 | 模块 | 职责 |
 | --- | --- |
 | `context.rs` | 汇总 missions/status/metric definitions/achievement progress/memory 给 AI |
 | `file_access.rs` | 沙箱读取 `<data_dir>` 下文件 |
-| `mission.rs` | 更新/创建 mission 和 main_menu 配置 |
+| `mission.rs` | 仅供旧内置 Agent 更新/创建旧 mission 和 main_menu 配置；桌面 Mission 页面不再使用 |
 | `status.rs` | 仅供旧内置 Agent 更新旧 status metric values；桌面 Status 页面不再使用 |
 | `achievement.rs` | 仅供旧内置 Agent 更新旧 achievement progress，追加 progress detail |
 | `changelog.rs` | 写 `ai_changelog.json`，限制 200 条 |
@@ -244,7 +244,7 @@ src-tauri/src/
   commands/                   # IPC commands
   models/                     # Serde data structures
   storage/                    # JSON IO, settings, validation, date utils
-  services/                   # Shared data/business operations
+  services/                   # Legacy built-in Agent operations
   agent/                      # AI agent runtime
     channels/
   bin/
@@ -269,9 +269,9 @@ data-example/                 # tracked initialization templates
 
 docs/
   architecture.md
-  design/                      # 下一阶段目标设计
+  design/                      # 新数据平台权威设计
   screenshots/
-  schema/                      # 当前 JSON Schema
+  schema/                      # 旧 JSON 迁移对照
   ui_design_spec.md
   visual_style_guide.md
 
@@ -291,7 +291,7 @@ static/
 | 模块 | 数据文件/来源 | 后端入口 | 前端入口 |
 | --- | --- | --- | --- |
 | Status | SQLite Record、Pack Dimension、本机五项选择 | `commands/data_platform.rs`, `application/status_commands.rs` | `StatusScreen.svelte`, `StatusDetailView.svelte`, `RadarChart.svelte` |
-| Missions | `missions.json`, `mission_archive.json`, `mission_memory.json` | `commands/missions.rs`, `services/mission.rs`, `services/memory.rs` | `MissionsScreen.svelte`, `PhanSiteProgress.svelte` |
+| Missions | SQLite 同步 Mission、本机 MissionSuggestion 与 Dashboard slot | `commands/missions.rs`, `application/mission_commands.rs`, `application/mission_dashboard_commands.rs` | `MissionsScreen.svelte`, `PhanSiteProgress.svelte` |
 | Achievements | SQLite Pack AchievementDefinition 与 AchievementState | `commands/data_platform.rs`, `application/achievement_commands.rs` | `AchievementsScreen.svelte` |
 | Skills | SQLite Pack SkillDefinition 与派生 Achievement 状态 | `commands/data_platform.rs`, `application/skill_commands.rs` | `SkillsScreen.svelte` |
 | Items | `item_sources.json` + source files | `commands/items.rs` | `ItemsScreen.svelte` |
@@ -317,8 +317,11 @@ Status 页面现在只消费新数据平台：
 ```text
 <data_dir>/packs/<pack_id>/
   manifest.json
+  record-definitions.json
+  dimensions.json
   achievements.json
   skills.json
+  assets/
 ```
 
 规则：
@@ -326,18 +329,19 @@ Status 页面现在只消费新数据平台：
 - achievement ID 使用 `<pack_id>::<snake_case_name>`。
 - `manifest.id` 必须等于目录名。
 - achievement prerequisites 只引用同包 achievement，并且必须构成 DAG。
-- skill `level_thresholds` 数量 == `max_level - 1`（Lv.1 为隐含起始），`points_required` 严格递增。
-- loaded packs 由 `loaded_packs.json` 控制。
+- Skill 固定 Lv.0～Lv.5，四个 `level_thresholds` 严格递增；只有 achieved Achievement 节点计分。
+- Pack 启用状态保存在 SQLite，并在规范 JSON 中由 `arcana.json.enabled_pack_ids` 表达。
 
 ### 5.3 Mission System
 
-Mission 是 AI 驱动的任务系统：
+Mission 与推荐内容是两个实体：
 
-- 生命周期：`proposed` -> `active` -> `completed` / `archived` / `rejected`
-- `progress` 为 0-100，由 AI 或 UI 写入
-- `main_menu` 可配置 countdown、hints、progress widget
-- rejected mission 对 UI 隐藏，但保留用于去重
-- mission 可链接 achievement，形成任务到成就的进度闭环
+- 未接受内容是仅本机 `MissionSuggestion`，状态为 pending/rejected；
+- 接受 Suggestion 时原子创建同 ID 的 active Mission，并删除 Suggestion；
+- 可同步 Mission 生命周期为 active、completed、archived；
+- `progress` 可选且为 0～100，complete command 会把已有 progress 设为 100；
+- countdown、progress、hint 1、hint 2 是本机 Dashboard slot，不写入同步 Mission；
+- deadline 的剩余天数按当前日期即时派生；Mission 不保存静态 Achievement 链接。
 
 ---
 

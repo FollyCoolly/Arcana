@@ -283,9 +283,14 @@ pub fn run() {
             commands::weather::get_weather,
             commands::items::load_items,
             commands::gallery::load_gallery,
-            commands::missions::load_missions,
-            commands::missions::load_main_menu_missions,
-            commands::missions::update_mission_status,
+            commands::missions::load_mission_dashboard,
+            commands::missions::load_mission_menu_dashboard,
+            commands::missions::complete_mission,
+            commands::missions::archive_mission,
+            commands::missions::accept_mission_suggestion,
+            commands::missions::reject_mission_suggestion,
+            commands::missions::select_mission_dashboard_slot,
+            commands::missions::clear_mission_dashboard_slot,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

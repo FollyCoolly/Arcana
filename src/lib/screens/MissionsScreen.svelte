@@ -5,23 +5,30 @@
     import PhanSiteProgress from "$lib/PhanSiteProgress.svelte";
     import PromptWord from "$lib/PromptWord.svelte";
     import type {
-        MissionData,
-        MissionResponse,
-        ProgressDisplay,
+        Mission,
+        DashboardMissionSlot,
+        MissionDashboardData,
+        MissionMenuDashboardData,
+        MissionSuggestion,
     } from "$lib/types/mission";
+    import { dataCommandErrorMessage } from "$lib/types/data_platform";
 
     let {
         onBack,
-        missionProgress = null,
-    }: { onBack: () => void; missionProgress?: ProgressDisplay | null } =
-        $props();
+        missionMenuData = null,
+        onMissionMenuDataLoaded,
+    }: {
+        onBack: () => void;
+        missionMenuData?: MissionMenuDashboardData | null;
+        onMissionMenuDataLoaded?: (data: MissionMenuDashboardData) => void;
+    } = $props();
 
     let loading = $state(false);
     let error = $state<string | null>(null);
-    let missionData = $state<MissionData | null>(null);
+    let missionData = $state<MissionDashboardData | null>(null);
     let sortIndex = $state(0);
     let selectedIndex = $state(0);
-    let detailMission = $state<MissionResponse | null>(null);
+    let detailMission = $state<Mission | null>(null);
     let rowRefs = $state<(HTMLElement | undefined)[]>([]);
     let scrollRef = $state<HTMLElement | undefined>(undefined);
     let scrollRatio = $state(0);
@@ -30,13 +37,13 @@
     // Phan-Site mode state
     let phanMode = $state(false);
     let phanSelectedIndex = $state(0);
-    let phanDetailMission = $state<MissionResponse | null>(null);
+    let phanDetailMission = $state<MissionSuggestion | null>(null);
 
     type SortOption = { key: string; label: string };
     const SORT_OPTIONS: SortOption[] = [
         { key: "newest", label: "Pubtime" },
         { key: "status", label: "State" },
-        { key: "progress", label: "Diffuculty" },
+        { key: "difficulty", label: "Difficulty" },
     ];
 
     // Carousel: compute visible order so active is always in the center
@@ -64,14 +71,14 @@
     };
 
     let proposedMissions = $derived(
-        missionData?.missions.filter((m) => m.status === "proposed") ?? [],
+        [...(missionData?.suggestions ?? [])].sort((a, b) =>
+            b.generated_at.localeCompare(a.generated_at),
+        ),
     );
 
     let sortedMissions = $derived.by(() => {
         if (!missionData) return [];
-        const list = missionData.missions.filter(
-            (m) => m.status !== "proposed",
-        );
+        const list = [...missionData.missions];
         const opt = SORT_OPTIONS[sortIndex];
         switch (opt.key) {
             case "newest":
@@ -84,7 +91,7 @@
                         (STATUS_ORDER[a.status] ?? 9) -
                         (STATUS_ORDER[b.status] ?? 9),
                 );
-            case "progress":
+            case "difficulty":
                 return list.sort(
                     (a, b) =>
                         (DIFFICULTY_ORDER[a.difficulty ?? ""] ?? 99) -
@@ -137,10 +144,12 @@
     function openDetail(index: number) {
         selectedIndex = index;
         detailMission = sortedMissions[index] ?? null;
+        actionError = null;
     }
 
     function closeDetail() {
         detailMission = null;
+        actionError = null;
     }
 
     function difficultyGrade(difficulty?: string): string {
@@ -149,8 +158,6 @@
 
     function statusLabel(status: string): string {
         switch (status) {
-            case "proposed":
-                return "NEW!";
             case "active":
                 return "ACTIVE";
             case "completed":
@@ -163,16 +170,101 @@
     }
 
     let updating = $state(false);
+    let actionError = $state<string | null>(null);
 
-    async function updateMissionStatus(id: string, newStatus: string) {
+    const DASHBOARD_SLOTS: {
+        slot: DashboardMissionSlot;
+        label: string;
+    }[] = [
+        { slot: "countdown", label: "Countdown" },
+        { slot: "progress", label: "Progress" },
+        { slot: "hint_1", label: "Hint 1" },
+        { slot: "hint_2", label: "Hint 2" },
+    ];
+
+    async function refreshAfterMutation() {
+        const [dashboard, menuDashboard] = await Promise.all([
+            invoke<MissionDashboardData>("load_mission_dashboard"),
+            invoke<MissionMenuDashboardData>("load_mission_menu_dashboard"),
+        ]);
+        missionData = dashboard;
+        onMissionMenuDataLoaded?.(menuDashboard);
+        detailMission = null;
+        phanDetailMission = null;
+    }
+
+    async function runMissionCommand(
+        command: "complete_mission" | "archive_mission",
+        missionId: string,
+    ) {
         updating = true;
+        actionError = null;
         try {
-            await invoke("update_mission_status", { id, newStatus });
-            missionData = await invoke<MissionData>("load_missions");
-            detailMission = null;
-            phanDetailMission = null;
+            await invoke(command, { missionId });
+            await refreshAfterMutation();
         } catch (e) {
-            error = String(e);
+            actionError = dataCommandErrorMessage(
+                e,
+                "Failed to update Mission.",
+            );
+        } finally {
+            updating = false;
+        }
+    }
+
+    async function runSuggestionCommand(
+        command:
+            | "accept_mission_suggestion"
+            | "reject_mission_suggestion",
+        suggestionId: string,
+    ) {
+        updating = true;
+        actionError = null;
+        try {
+            await invoke(command, { suggestionId });
+            await refreshAfterMutation();
+        } catch (e) {
+            actionError = dataCommandErrorMessage(
+                e,
+                "Failed to update Mission suggestion.",
+            );
+        } finally {
+            updating = false;
+        }
+    }
+
+    function isDashboardSlotSelected(
+        slot: DashboardMissionSlot,
+        missionId: string,
+    ): boolean {
+        return missionMenuData?.selections[slot]?.mission_id === missionId;
+    }
+
+    async function toggleDashboardSlot(
+        slot: DashboardMissionSlot,
+        mission: Mission,
+    ) {
+        updating = true;
+        actionError = null;
+        try {
+            if (isDashboardSlotSelected(slot, mission.id)) {
+                await invoke("clear_mission_dashboard_slot", { slot });
+            } else {
+                await invoke("select_mission_dashboard_slot", {
+                    slot,
+                    missionId: mission.id,
+                    label: null,
+                });
+            }
+            const menuDashboard = await invoke<MissionMenuDashboardData>(
+                "load_mission_menu_dashboard",
+            );
+            onMissionMenuDataLoaded?.(menuDashboard);
+        } catch (e) {
+            actionError = dataCommandErrorMessage(
+                e,
+                "Failed to update Dashboard selection.",
+            );
         } finally {
             updating = false;
         }
@@ -182,9 +274,16 @@
         loading = true;
         error = null;
         try {
-            missionData = await invoke<MissionData>("load_missions");
+            const [dashboard, menuDashboard] = await Promise.all([
+                invoke<MissionDashboardData>("load_mission_dashboard"),
+                invoke<MissionMenuDashboardData>(
+                    "load_mission_menu_dashboard",
+                ),
+            ]);
+            missionData = dashboard;
+            onMissionMenuDataLoaded?.(menuDashboard);
         } catch (e) {
-            error = String(e);
+            error = dataCommandErrorMessage(e, "Failed to load Missions.");
         } finally {
             loading = false;
         }
@@ -195,6 +294,7 @@
         phanSelectedIndex = 0;
         phanDetailMission = null;
         detailMission = null;
+        actionError = null;
     }
 
     function handleKeydown(event: KeyboardEvent) {
@@ -249,10 +349,12 @@
             event.preventDefault();
             if (phanMode) {
                 phanDetailMission = null;
-                phanSelectedIndex = Math.min(
-                    phanSelectedIndex + 1,
-                    proposedMissions.length - 1,
-                );
+                if (proposedMissions.length > 0) {
+                    phanSelectedIndex = Math.min(
+                        phanSelectedIndex + 1,
+                        proposedMissions.length - 1,
+                    );
+                }
             } else {
                 detailMission = null;
                 if (sortedMissions.length > 0) {
@@ -283,9 +385,14 @@
             loading = true;
             error = null;
             try {
-                missionData = await invoke<MissionData>("load_missions");
+                missionData = await invoke<MissionDashboardData>(
+                    "load_mission_dashboard",
+                );
             } catch (e) {
-                error = String(e);
+                error = dataCommandErrorMessage(
+                    e,
+                    "Failed to load Missions.",
+                );
             } finally {
                 loading = false;
             }
@@ -360,18 +467,30 @@
                 <p class="state-text error">{error}</p>
             {:else if phanMode}
                 {#if proposedMissions.length > 0}
-                    <ul class="rm-missions-list">
+                    <div class="rm-missions-list">
                         {#each proposedMissions as mission, i (mission.id)}
-                            <li
+                            <button
+                                type="button"
                                 class="rm-mission-row"
                                 class:is-selected={phanSelectedIndex === i}
                                 bind:this={rowRefs[i]}
                                 onclick={() => {
                                     phanSelectedIndex = i;
                                     phanDetailMission = mission;
+                                    actionError = null;
                                 }}
                                 onmouseenter={() => {
                                     phanSelectedIndex = i;
+                                }}
+                                onkeydown={(event) => {
+                                    if (
+                                        event.key === "Enter" ||
+                                        event.key === " "
+                                    ) {
+                                        phanSelectedIndex = i;
+                                        phanDetailMission = mission;
+                                        actionError = null;
+                                    }
                                 }}
                             >
                                 <img
@@ -390,16 +509,17 @@
                                 >
                                     {difficultyGrade(mission.difficulty)}
                                 </span>
-                            </li>
+                            </button>
                         {/each}
-                    </ul>
+                    </div>
                 {:else}
                     <p class="state-text">No new requests.</p>
                 {/if}
             {:else if sortedMissions.length > 0}
-                <ul class="rm-missions-list">
+                <div class="rm-missions-list">
                     {#each sortedMissions as mission, i (mission.id)}
-                        <li
+                        <button
+                            type="button"
                             class="rm-mission-row"
                             class:is-selected={selectedIndex === i}
                             class:is-completed={mission.status === "completed"}
@@ -408,6 +528,13 @@
                             onclick={() => openDetail(i)}
                             onmouseenter={() => {
                                 selectedIndex = i;
+                            }}
+                            onkeydown={(event) => {
+                                if (
+                                    event.key === "Enter" ||
+                                    event.key === " "
+                                )
+                                    openDetail(i);
                             }}
                         >
                             <img
@@ -427,9 +554,9 @@
                             >
                                 {difficultyGrade(mission.difficulty)}
                             </span>
-                        </li>
+                        </button>
                     {/each}
-                </ul>
+                </div>
             {:else}
                 <p class="state-text">No missions yet.</p>
             {/if}
@@ -449,7 +576,12 @@
 
     <!-- Detail card overlay -->
     {#if detailMission}
-        <div class="rm-detail-backdrop" onclick={closeDetail}></div>
+        <button
+            type="button"
+            class="rm-detail-backdrop"
+            aria-label="Close Mission details"
+            onclick={closeDetail}
+        ></button>
         <article class="rm-detail-card">
             <div class="rm-detail-top">
                 <span
@@ -497,17 +629,80 @@
                     </span>
                 {/if}
             </div>
+            <div class="rm-dashboard-slots">
+                <span class="rm-dashboard-slots-label">Main menu</span>
+                <div class="rm-dashboard-slot-buttons">
+                    {#each DASHBOARD_SLOTS as item (item.slot)}
+                        {@const selected = isDashboardSlotSelected(
+                            item.slot,
+                            detailMission.id,
+                        )}
+                        {@const unavailable =
+                            !selected &&
+                            (detailMission.status !== "active" ||
+                                (item.slot === "countdown" &&
+                                    !detailMission.deadline))}
+                        <button
+                            type="button"
+                            class="rm-dashboard-slot-btn"
+                            class:is-selected={selected}
+                            disabled={updating || unavailable}
+                            title={item.slot === "countdown" &&
+                            !detailMission.deadline
+                                ? "Countdown requires a deadline"
+                                : item.label}
+                            onclick={() =>
+                                toggleDashboardSlot(
+                                    item.slot,
+                                    detailMission!,
+                                )}
+                        >
+                            {selected ? "✓ " : ""}{item.label}
+                        </button>
+                    {/each}
+                </div>
+            </div>
+            {#if detailMission.status !== "archived"}
+                <div class="rm-detail-actions">
+                    {#if detailMission.status === "active"}
+                        <button
+                            class="rm-action-btn rm-action-accept"
+                            disabled={updating}
+                            onclick={() =>
+                                runMissionCommand(
+                                    "complete_mission",
+                                    detailMission!.id,
+                                )}>COMPLETE</button
+                        >
+                    {/if}
+                    <button
+                        class="rm-action-btn rm-action-reject"
+                        disabled={updating}
+                        onclick={() =>
+                            runMissionCommand(
+                                "archive_mission",
+                                detailMission!.id,
+                            )}>ARCHIVE</button
+                    >
+                </div>
+            {/if}
+            {#if actionError}
+                <p class="rm-detail-action-error">{actionError}</p>
+            {/if}
         </article>
     {/if}
 
     <!-- Phan detail card overlay (when in phan mode and a mission is selected) -->
     {#if phanDetailMission}
-        <div
+        <button
+            type="button"
             class="rm-detail-backdrop"
+            aria-label="Close Mission suggestion"
             onclick={() => {
                 phanDetailMission = null;
+                actionError = null;
             }}
-        ></div>
+        ></button>
         <article class="rm-detail-card">
             <div class="rm-detail-top">
                 <span class="rm-detail-stamp">NEW!</span>
@@ -521,6 +716,12 @@
             <h2 class="rm-detail-title">{phanDetailMission.title}</h2>
             {#if phanDetailMission.description}
                 <p class="rm-detail-desc">{phanDetailMission.description}</p>
+            {/if}
+            {#if phanDetailMission.reason}
+                <p class="rm-detail-reason">
+                    <strong>WHY THIS MISSION</strong>
+                    {phanDetailMission.reason}
+                </p>
             {/if}
             <div class="rm-detail-meta">
                 {#if phanDetailMission.days_remaining != null}
@@ -541,17 +742,26 @@
                     class="rm-action-btn rm-action-accept"
                     disabled={updating}
                     onclick={() =>
-                        updateMissionStatus(phanDetailMission!.id, "active")}
+                        runSuggestionCommand(
+                            "accept_mission_suggestion",
+                            phanDetailMission!.id,
+                        )}
                     >ACCEPT</button
                 >
                 <button
                     class="rm-action-btn rm-action-reject"
                     disabled={updating}
                     onclick={() =>
-                        updateMissionStatus(phanDetailMission!.id, "rejected")}
+                        runSuggestionCommand(
+                            "reject_mission_suggestion",
+                            phanDetailMission!.id,
+                        )}
                     >REJECT</button
                 >
             </div>
+            {#if actionError}
+                <p class="rm-detail-action-error">{actionError}</p>
+            {/if}
         </article>
     {/if}
 
@@ -561,10 +771,10 @@
         <PromptWord text={phanMode ? "tracked" : "phansite"} fontSize={72} />
     </button>
 
-    {#if missionProgress}
+    {#if missionMenuData?.progress}
         <PhanSiteProgress
-            question={missionProgress.label}
-            progress={missionProgress.progress}
+            question={missionMenuData.progress.label}
+            progress={missionMenuData.progress.progress}
             placement="missions"
         />
     {/if}
@@ -827,6 +1037,11 @@
         align-items: center;
         height: 7rem;
         padding: 0;
+        border: 0;
+        color: inherit;
+        background: transparent;
+        font: inherit;
+        text-align: left;
         cursor: pointer;
         transition:
             color 100ms ease,
@@ -938,6 +1153,8 @@
         position: absolute;
         inset: 0;
         z-index: 20;
+        padding: 0;
+        border: 0;
         background: rgba(0, 0, 0, 0.5);
     }
 
@@ -1077,7 +1294,68 @@
         color: rgba(255, 80, 80, 0.9);
     }
 
-    /* ── Detail action buttons (proposed) ── */
+    .rm-detail-reason {
+        margin: 0 clamp(0.8rem, 1vw, 1.5rem) clamp(0.6rem, 0.7vw, 1rem);
+        padding: clamp(0.5rem, 0.6vw, 0.9rem);
+        color: rgba(255, 255, 255, 0.72);
+        background: rgba(255, 255, 255, 0.06);
+        border-left: 3px solid #e5191c;
+        font-size: clamp(0.68rem, 0.65vw, 1rem);
+        line-height: 1.45;
+    }
+
+    .rm-detail-reason strong {
+        display: block;
+        margin-bottom: 0.2rem;
+        color: #e5191c;
+        font-size: 0.82em;
+        letter-spacing: 0.08em;
+    }
+
+    .rm-dashboard-slots {
+        padding: clamp(0.45rem, 0.55vw, 0.8rem) clamp(0.8rem, 1vw, 1.5rem);
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .rm-dashboard-slots-label {
+        display: block;
+        margin-bottom: 0.35rem;
+        color: rgba(255, 255, 255, 0.5);
+        font-size: clamp(0.58rem, 0.58vw, 0.86rem);
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .rm-dashboard-slot-buttons {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.3rem;
+    }
+
+    .rm-dashboard-slot-btn {
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        padding: 0.3rem 0.45rem;
+        color: rgba(255, 255, 255, 0.65);
+        background: rgba(255, 255, 255, 0.06);
+        font-size: clamp(0.58rem, 0.6vw, 0.88rem);
+        font-weight: 800;
+        text-transform: uppercase;
+        cursor: pointer;
+    }
+
+    .rm-dashboard-slot-btn.is-selected {
+        border-color: #e5191c;
+        color: #ffffff;
+        background: rgba(229, 25, 28, 0.55);
+    }
+
+    .rm-dashboard-slot-btn:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+    }
+
+    /* ── Detail action buttons ── */
     .rm-detail-actions {
         display: flex;
         gap: clamp(0.5rem, 0.6vw, 1rem);
@@ -1127,6 +1405,14 @@
     .rm-action-reject:hover {
         background: rgba(255, 255, 255, 0.15);
         color: rgba(255, 255, 255, 0.7);
+    }
+
+    .rm-detail-action-error {
+        margin: 0;
+        padding: 0 clamp(0.8rem, 1vw, 1.5rem) clamp(0.7rem, 0.8vw, 1.2rem);
+        color: #ff6b6b;
+        font-size: clamp(0.65rem, 0.65vw, 0.95rem);
+        font-weight: 700;
     }
 
     .rm-back-btn--missions {

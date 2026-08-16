@@ -11,7 +11,7 @@
     import type { LetterConfig } from "$lib/MenuItem.svelte";
     import type { StatusData } from "$lib/types/status";
     import type { AchievementData } from "$lib/types/achievement";
-    import type { MainMenuMissionData } from "$lib/types/mission";
+    import type { MissionMenuDashboardData } from "$lib/types/mission";
 
     import StatusScreen from "$lib/screens/StatusScreen.svelte";
     import AchievementsScreen from "$lib/screens/AchievementsScreen.svelte";
@@ -290,7 +290,7 @@
     // Shared data: preloaded on mount, passed to screen components
     let statusData = $state<StatusData | null>(null);
     let achievementData = $state<AchievementData | null>(null);
-    let missionMenuData = $state<MainMenuMissionData | null>(null);
+    let missionMenuData = $state<MissionMenuDashboardData | null>(null);
 
     let commandRef = $state<HTMLElement | undefined>(undefined);
     let menuItemRefs = $state<(HTMLButtonElement | undefined)[]>([]);
@@ -446,8 +446,8 @@
 
     async function preloadMissionMenuData() {
         try {
-            missionMenuData = await invoke<MainMenuMissionData>(
-                "load_main_menu_missions",
+            missionMenuData = await invoke<MissionMenuDashboardData>(
+                "load_mission_menu_dashboard",
             );
         } catch {
             // non-critical: main menu works without mission data
@@ -680,7 +680,10 @@
         {#if currentScreen === "missions"}
             <MissionsScreen
                 onBack={goBack}
-                missionProgress={missionMenuData?.progress ?? null}
+                {missionMenuData}
+                onMissionMenuDataLoaded={(data) => {
+                    missionMenuData = data;
+                }}
             />
         {/if}
     </section>

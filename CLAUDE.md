@@ -4,7 +4,7 @@ Arcana 是一个 Persona 5 风格的游戏化人生管理桌面应用。项目�
 
 ## 当前迁移边界
 
-- Tauri Status、Achievement、Skill 页面已通过 `commands/data_platform.rs` 使用新 Application/SQLite 运行时；其余 Tauri 页面与内置 Rust Agent 暂时仍使用 `models/`、`services/` 和旧 JSON storage。只修复旧模型的必要问题，不在其中增加新数据平台功能。
+- Tauri Status、Achievement、Skill、Mission 页面已通过新 Application/SQLite 运行时；Items、Gallery 与内置 Rust Agent 暂时仍使用 `models/`、`services/` 和旧 JSON storage。只修复旧模型的必要问题，不在其中增加新数据平台功能。
 - `arcana-data` 已完全停止暴露旧 JSON 命令，只使用 `application/`、`domain/`、`storage/sqlite/` 和 JSON Repository Codec。
 - 旧 `context/read/mission/status/achievement/pack/changelog/memory` JSON 实现与旧 Skill 内容已删除，不得恢复兼容层；新的 canonical Agent Skills 只使用 SQLite CLI，`.claude/skills` 是生成镜像，不得手工维护。
 - 新数据不迁移旧 JSON；UI/Agent 完成切换后再删除剩余旧模块和 `docs/schema/` 迁移对照文档。

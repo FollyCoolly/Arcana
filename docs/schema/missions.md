@@ -1,7 +1,7 @@
 # Missions Schema
 
-> **状态**：Current JSON v1
-> **目标替代**：[`docs/design/missions_memory.md`](../design/missions_memory.md)。目标 `missions.json` 统一保存 active/completed/archived Mission；未接受或已拒绝的 MissionSuggestion 和主菜单展示槽只保存在本机 SQLite。目标 Mission 移除 `short_desc`、成就关联和 AI 元数据等非核心字段。
+> **状态**：Legacy JSON v1 / 仅供旧内置 Agent
+> 桌面 Mission 页面已经迁移到 [`docs/design/missions_memory.md`](../design/missions_memory.md) 定义的 SQLite 模型。本文件只记录尚未迁移的内置 Rust Agent 所使用的旧 current/archive 格式。
 
 Mission 模块管理用户的长期目标和重要任务。日常追踪需求由 AI 通过 achievement progress 处理，不在此模块中显式建模。
 
