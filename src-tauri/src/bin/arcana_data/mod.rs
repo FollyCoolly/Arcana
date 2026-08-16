@@ -1,9 +1,11 @@
 mod contract;
+mod pack_commands;
 mod record_commands;
 mod runtime_commands;
 
 use clap::{error::ErrorKind, Parser, Subcommand};
 use contract::{capabilities, render_json, CliError, EXIT_SUCCESS};
+use pack_commands::{execute_pack, PackAction};
 use record_commands::{execute_record, RecordAction};
 use runtime_commands::{execute_init, execute_json, JsonAction};
 use serde_json::Value;
@@ -37,6 +39,14 @@ enum Commands {
         runtime: Option<PathBuf>,
         #[command(subcommand)]
         action: RecordAction,
+    },
+    /// Inspect, validate, and update Packs in the SQLite runtime
+    Pack {
+        /// Runtime directory containing arcana.sqlite3
+        #[arg(long, value_name = "DIRECTORY", global = true)]
+        runtime: Option<PathBuf>,
+        #[command(subcommand)]
+        action: PackAction,
     },
     /// Convert between SQLite and a canonical JSON directory without Git
     Json {
@@ -87,6 +97,7 @@ fn execute(command: Commands) -> Result<Value, CliError> {
         Commands::Capabilities => Ok(capabilities()),
         Commands::Init { runtime } => execute_init(runtime),
         Commands::Record { runtime, action } => execute_record(runtime, action),
+        Commands::Pack { runtime, action } => execute_pack(runtime, action),
         Commands::Json { action } => execute_json(action),
     }
 }
@@ -103,7 +114,6 @@ mod tests {
             "mission",
             "status",
             "achievement",
-            "pack",
             "changelog",
             "memory",
         ] {
@@ -111,6 +121,39 @@ mod tests {
         }
         for retained in ["capabilities", "init"] {
             assert!(Cli::try_parse_from(["arcana-data", retained]).is_ok());
+        }
+    }
+
+    #[test]
+    fn parses_every_pack_command() {
+        let commands: &[&[&str]] = &[
+            &["pack", "list"],
+            &["pack", "show", "cooking"],
+            &["pack", "scaffold", "cooking", "--name", "Cooking"],
+            &["pack", "validate", "--file", "pack.json"],
+            &["pack", "write", "--file", "pack.json"],
+            &[
+                "pack",
+                "asset-put",
+                "cooking",
+                "assets/card.webp",
+                "--file",
+                "card.webp",
+            ],
+            &["pack", "asset-delete", "cooking", "assets/card.webp"],
+            &["pack", "enable", "cooking"],
+            &["pack", "disable", "cooking"],
+        ];
+        for arguments in commands {
+            let mut argv = vec!["arcana-data"];
+            argv.extend_from_slice(arguments);
+            assert!(
+                matches!(
+                    Cli::try_parse_from(argv).unwrap().command,
+                    Commands::Pack { .. }
+                ),
+                "failed to parse {arguments:?}"
+            );
         }
     }
 

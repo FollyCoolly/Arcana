@@ -13,6 +13,8 @@ const EXIT_RUNTIME_ERROR: i32 = 3;
 pub enum RepositoryOperation {
     Initialize,
     Record,
+    Pack,
+    PackAsset,
     JsonImport,
     JsonExport,
 }
@@ -101,16 +103,22 @@ fn repository_error_code(
                 "runtime_not_initialized"
             }
             RepositoryOperation::Record => "record_not_found",
+            RepositoryOperation::Pack => "pack_not_found",
+            RepositoryOperation::PackAsset => "pack_asset_not_found",
             RepositoryOperation::JsonImport => "json_import_not_found",
         },
         RepositoryErrorCode::Conflict => match operation {
             RepositoryOperation::Initialize => "runtime_already_initialized",
             RepositoryOperation::Record => "record_conflict",
+            RepositoryOperation::Pack => "pack_conflict",
+            RepositoryOperation::PackAsset => "pack_asset_conflict",
             RepositoryOperation::JsonImport => "json_import_conflict",
             RepositoryOperation::JsonExport => "json_export_conflict",
         },
         RepositoryErrorCode::Unresolved => match operation {
             RepositoryOperation::Record => "record_unresolved",
+            RepositoryOperation::Pack => "pack_unresolved",
+            RepositoryOperation::PackAsset => "pack_asset_unresolved",
             RepositoryOperation::Initialize
             | RepositoryOperation::JsonImport
             | RepositoryOperation::JsonExport => "unresolved_reference",
@@ -143,6 +151,20 @@ pub fn capabilities() -> Value {
                     "correct-event",
                     "delete-event",
                     "delete"
+                ]
+            },
+            "pack": {
+                "version": 1,
+                "actions": [
+                    "list",
+                    "show",
+                    "scaffold",
+                    "validate",
+                    "write",
+                    "asset-put",
+                    "asset-delete",
+                    "enable",
+                    "disable"
                 ]
             },
             "json": {

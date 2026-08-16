@@ -199,9 +199,10 @@ npm run tauri dev
 cargo build --manifest-path src-tauri/Cargo.toml --bin arcana-data
 ./src-tauri/target/debug/arcana-data capabilities
 ./src-tauri/target/debug/arcana-data init
+./src-tauri/target/debug/arcana-data pack list
 ```
 
-`arcana-data init` 只创建 SQLite runtime 和 `basic` Pack，不会填充旧 UI 或新手任务。等 SQLite Pack、Status、Achievement、Mission 和 Memory 命令完成后，再恢复 canonical Agent Skill。
+`arcana-data init` 只创建 SQLite runtime 和 `basic` Pack，不会填充旧 UI 或新手任务。Record 与 Pack 命令族已经迁移；等 SQLite Status、Achievement、Mission 和 Memory 命令完成后，再恢复 canonical Agent Skill。
 
 > [!NOTE]
 > 如果你需要使用 agent 二进制——主要是 `agent-telegram`，它会启动一个监听服务，让你通过 Telegram 远程控制本地助手——则需要额外配置 LLM provider。通过环境变量（`ANTHROPIC_API_KEY`）或配置文件（`~/.arcana/agent_config.json`）设置 API key 即可。详见 [AI 助手](#ai-助手)。

@@ -6,7 +6,7 @@ Arcana 是一个 Persona 5 风格的游戏化人生管理桌面应用。项目�
 
 - Tauri UI 与内置 Rust Agent 暂时仍使用 `models/`、`services/` 和旧 JSON storage；只修复必要问题，不在这套模型上增加新数据平台功能。
 - `arcana-data` 已完全停止暴露旧 JSON 命令，只使用 `application/`、`domain/`、`storage/sqlite/` 和 JSON Repository Codec。
-- 旧 `context/read/mission/status/achievement/pack/changelog/memory` CLI 与旧 `.claude/skills` 已删除，不得恢复兼容层。
+- 旧 `context/read/mission/status/achievement/pack/changelog/memory` JSON 实现与旧 `.claude/skills` 已删除，不得恢复兼容层；同名 `pack` 已按 SQLite 合约重新实现。
 - 新数据不迁移旧 JSON；UI/Agent 完成切换后再删除剩余旧模块和 `docs/schema/` 迁移对照文档。
 - 新数据平台的权威设计位于 `docs/design/`，旧 UI 的现状说明位于 `docs/architecture.md`。
 
@@ -20,7 +20,7 @@ src-tauri/src/
   storage/sqlite/                 SQLite migrations 与 Repository adapter
   storage/json_repository.rs      SQLite ↔ 确定性 JSON Codec
   bin/arcana_data.rs              新数据 CLI 入口
-  bin/arcana_data/                CLI contract、Record、runtime/json 模块
+  bin/arcana_data/                CLI contract、Record、Pack、runtime/json 模块
   commands/ models/ services/     尚未迁移的 UI/Agent 旧实现
   agent/                          尚未迁移的内置 Rust Agent
 docs/design/                      新数据平台权威文档
@@ -53,6 +53,7 @@ cargo clippy --manifest-path src-tauri/Cargo.toml --lib --bins --tests
 arcana-data capabilities
 arcana-data init [--runtime <directory>]
 arcana-data record [--runtime <directory>] <action>
+arcana-data pack [--runtime <directory>] <action>
 arcana-data json import|export ...
 ```
 
@@ -63,6 +64,7 @@ arcana-data json import|export ...
 - 不增加 `ok/data` 结果 Envelope；contract 与 Schema 版本只从 `capabilities` 获取。
 - `--help` 面向人类，`--compact` 只改变 JSON 空白。
 - CLI 不直接执行 SQL，不绕过领域校验，不读写旧 `<data_dir>` JSON。
+- `pack write` 只替换结构化 Pack 内容并保留已有 asset；asset 只能通过 `pack asset-put|asset-delete` 修改。
 - `json import|export` 不执行 Git 操作，也不覆盖已有导出目录。
 
 ## 新数据模型硬约束

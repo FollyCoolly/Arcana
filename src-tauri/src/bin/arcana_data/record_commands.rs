@@ -201,14 +201,15 @@ fn prepare_record_action(action: RecordAction) -> Result<PreparedRecordAction, C
             kind: kind.map(Into::into),
             has_value,
         })),
-        RecordAction::Set { file } => Ok(PreparedRecordAction::Set(parse_record_input(
+        RecordAction::Set { file } => Ok(PreparedRecordAction::Set(parse_json_input(
             file.as_deref(),
             "set scalar",
         )?)),
-        RecordAction::Increment { file } => Ok(PreparedRecordAction::Increment(
-            parse_record_input(file.as_deref(), "increment scalar")?,
-        )),
-        RecordAction::Correct { file } => Ok(PreparedRecordAction::Correct(parse_record_input(
+        RecordAction::Increment { file } => Ok(PreparedRecordAction::Increment(parse_json_input(
+            file.as_deref(),
+            "increment scalar",
+        )?)),
+        RecordAction::Correct { file } => Ok(PreparedRecordAction::Correct(parse_json_input(
             file.as_deref(),
             "correct scalar",
         )?)),
@@ -220,30 +221,33 @@ fn prepare_record_action(action: RecordAction) -> Result<PreparedRecordAction, C
                 definition_id,
             }))
         }
-        RecordAction::AddItem { file } => Ok(PreparedRecordAction::AddItem(parse_record_input(
+        RecordAction::AddItem { file } => Ok(PreparedRecordAction::AddItem(parse_json_input(
             file.as_deref(),
             "add collection item",
         )?)),
         RecordAction::CorrectItem { file } => Ok(PreparedRecordAction::CorrectItem(
-            parse_record_input(file.as_deref(), "correct collection item")?,
+            parse_json_input(file.as_deref(), "correct collection item")?,
         )),
         RecordAction::RemoveItem { file } => Ok(PreparedRecordAction::RemoveItem(
-            parse_record_input(file.as_deref(), "remove collection item")?,
+            parse_json_input(file.as_deref(), "remove collection item")?,
         )),
         RecordAction::AppendEvent { file } => Ok(PreparedRecordAction::AppendEvent(
-            parse_record_input(file.as_deref(), "append event")?,
+            parse_json_input(file.as_deref(), "append event")?,
         )),
         RecordAction::CorrectEvent { file } => Ok(PreparedRecordAction::CorrectEvent(
-            parse_record_input(file.as_deref(), "correct event")?,
+            parse_json_input(file.as_deref(), "correct event")?,
         )),
         RecordAction::DeleteEvent { file } => Ok(PreparedRecordAction::DeleteEvent(
-            parse_record_input(file.as_deref(), "delete event")?,
+            parse_json_input(file.as_deref(), "delete event")?,
         )),
         RecordAction::Delete { definition_id } => Ok(PreparedRecordAction::Delete(definition_id)),
     }
 }
 
-fn parse_record_input<T>(file: Option<&std::path::Path>, operation: &str) -> Result<T, CliError>
+pub(super) fn parse_json_input<T>(
+    file: Option<&std::path::Path>,
+    operation: &str,
+) -> Result<T, CliError>
 where
     T: serde::de::DeserializeOwned,
 {
