@@ -206,6 +206,13 @@ pub fn run() {
             });
         })
         .setup(|app| {
+            let runtime =
+                application::ArcanaRuntime::from_settings(&storage::settings::load_settings())?;
+            if !runtime.database_path().exists() {
+                runtime.initialize()?;
+            }
+            app.manage(runtime);
+
             let window = app.get_webview_window("main").unwrap();
 
             let _ = window.set_decorations(false);
@@ -265,7 +272,9 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            commands::status::load_status_data,
+            commands::data_platform::load_status_dashboard,
+            commands::data_platform::select_status_dimension,
+            commands::data_platform::clear_status_dimension,
             commands::weather::get_weather,
             commands::achievements::load_achievements,
             commands::achievements::set_achievement_achieved,

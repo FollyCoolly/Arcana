@@ -3,20 +3,53 @@
     import { invoke } from "@tauri-apps/api/core";
     import RadarChart from "$lib/components/RadarChart.svelte";
     import StatusDetailView from "$lib/screens/StatusDetailView.svelte";
-    import type { StatusData } from "$lib/types/status";
+    import type {
+        DataCommandError,
+        DimensionData,
+        StatusData,
+    } from "$lib/types/status";
     import KeyHint from "$lib/KeyHint.svelte";
     import PromptWord from "$lib/PromptWord.svelte";
 
     let {
         onBack,
         statusData: initialStatusData,
-    }: { onBack: () => void; statusData: StatusData | null } = $props();
+        onStatusDataLoaded,
+    }: {
+        onBack: () => void;
+        statusData: StatusData | null;
+        onStatusDataLoaded?: (data: StatusData) => void;
+    } = $props();
 
     let loading = $state(false);
     let errorMessage = $state<string | null>(null);
     let statusData = $state<StatusData | null>(initialStatusData);
-    let view = $state<"radar" | "detail">("radar");
+    let view = $state<"radar" | "detail" | "configure">("radar");
     let selectedDimensionId = $state<string | null>(null);
+    let updatingPosition = $state<number | null>(null);
+
+    let selectedDimensions = $derived.by<DimensionData[]>(() =>
+        (statusData?.dimensions ?? [])
+            .filter((dimension) => dimension.selected_position !== undefined)
+            .sort(
+                (left, right) =>
+                    (left.selected_position ?? 0) -
+                    (right.selected_position ?? 0),
+            ),
+    );
+
+    function errorText(error: unknown): string {
+        if (typeof error === "string") return error;
+        if (
+            error &&
+            typeof error === "object" &&
+            "message" in error &&
+            typeof (error as DataCommandError).message === "string"
+        ) {
+            return (error as DataCommandError).message;
+        }
+        return "Failed to load Status data from the local database.";
+    }
 
     function handleDimensionSelect(id: string) {
         selectedDimensionId = id;
@@ -33,22 +66,40 @@
         errorMessage = null;
 
         try {
-            statusData = await invoke<StatusData>("load_status_data");
+            statusData = await invoke<StatusData>("load_status_dashboard");
+            onStatusDataLoaded?.(statusData);
         } catch (error) {
-            errorMessage =
-                typeof error === "string"
-                    ? error
-                    : "Failed to load status data. Check data files in /data.";
+            errorMessage = errorText(error);
             statusData = null;
         } finally {
             loading = false;
         }
     }
 
+    async function updateSelection(position: number, dimensionId: string) {
+        updatingPosition = position;
+        errorMessage = null;
+        try {
+            if (dimensionId) {
+                await invoke("select_status_dimension", {
+                    position,
+                    dimensionId,
+                });
+            } else {
+                await invoke("clear_status_dimension", { position });
+            }
+            await loadStatusData();
+        } catch (error) {
+            errorMessage = errorText(error);
+        } finally {
+            updatingPosition = null;
+        }
+    }
+
     function handleKeydown(event: KeyboardEvent) {
         if (event.key === "Escape") {
             event.preventDefault();
-            if (view === "detail") {
+            if (view !== "radar") {
                 handleDetailBack();
             } else {
                 onBack();
@@ -130,7 +181,7 @@
         type="button"
         class="rm-back-btn"
         onclick={() => {
-            if (view === "detail") {
+            if (view !== "radar") {
                 handleDetailBack();
             } else {
                 onBack();
@@ -149,12 +200,14 @@
             >
                 <span class="rm-hint-text">用户：{statusData.username}</span>
             </div>
-            <div
-                class="rm-hint-board rm-hint-board--slim"
-                style:background-image="url(/ui/board/board_slim.png)"
-            >
-                <span class="rm-hint-text">游戏天数：{statusData.game_days ?? "—"}</span>
-            </div>
+            {#if statusData.game_days !== null}
+                <div
+                    class="rm-hint-board rm-hint-board--slim"
+                    style:background-image="url(/ui/board/board_slim.png)"
+                >
+                    <span class="rm-hint-text">游戏天数：{statusData.game_days}</span>
+                </div>
+            {/if}
         </div>
     {/if}
 
@@ -168,18 +221,65 @@
         </div>
     {:else if statusData}
         {#if view === "radar"}
-            <div class="rm-radar-stage">
-                <RadarChart
-                    dimensions={statusData.dimensions.filter((d) => d.enabled)}
-                    onSelect={handleDimensionSelect}
-                />
-            </div>
-        {:else}
+            {#if selectedDimensions.length > 0}
+                <div class="rm-radar-stage">
+                    <RadarChart
+                        dimensions={selectedDimensions}
+                        onSelect={handleDimensionSelect}
+                    />
+                </div>
+            {:else}
+                <div class="rm-stage-inner">
+                    <p class="state-text">No Status dimensions selected.</p>
+                </div>
+            {/if}
+            <button
+                type="button"
+                class="rm-configure-btn"
+                onclick={() => {
+                    view = "configure";
+                }}
+            >
+                Configure dimensions
+            </button>
+        {:else if view === "detail"}
             <StatusDetailView
                 {statusData}
                 {selectedDimensionId}
                 onBack={handleDetailBack}
             />
+        {:else}
+            <div class="rm-configure-panel">
+                <h2>Displayed dimensions</h2>
+                <p>Choose up to five dimensions for the Status radar.</p>
+                <div class="rm-slot-list">
+                    {#each Array.from({ length: 5 }, (_, position) => position) as position}
+                        {@const selected = statusData.dimensions.find(
+                            (dimension) =>
+                                dimension.selected_position === position,
+                        )}
+                        <label class="rm-slot-row">
+                            <span>Slot {position + 1}</span>
+                            <select
+                                value={selected?.id ?? ""}
+                                disabled={updatingPosition !== null}
+                                onchange={(event) =>
+                                    void updateSelection(
+                                        position,
+                                        event.currentTarget.value,
+                                    )}
+                            >
+                                <option value="">Not selected</option>
+                                {#each statusData.dimensions as dimension}
+                                    <option value={dimension.id}>
+                                        {dimension.name} · {dimension.pack_id}
+                                    </option>
+                                {/each}
+                            </select>
+                        </label>
+                    {/each}
+                </div>
+            </div>
         {/if}
     {:else}
         <div class="rm-stage-inner">
@@ -361,5 +461,70 @@
         justify-content: center;
         padding: clamp(1rem, 2vw, 3rem);
         padding-left: 8%;
+    }
+
+    .rm-configure-btn {
+        position: fixed;
+        right: clamp(2rem, 4vw, 6rem);
+        bottom: clamp(2rem, 4vh, 5rem);
+        z-index: 12;
+        border: 0.2rem solid var(--rm-white, #fff);
+        background: var(--rm-black, #000);
+        color: var(--rm-white, #fff);
+        padding: 0.65em 1em;
+        font: 800 clamp(1rem, 1.4vw, 2rem) "p5hatty", "Orbitron", sans-serif;
+        text-transform: uppercase;
+        cursor: pointer;
+        transform: rotate(-1deg);
+    }
+
+    .rm-configure-panel {
+        position: relative;
+        z-index: 2;
+        width: min(58rem, 72vw);
+        margin: clamp(8rem, 16vh, 15rem) auto 0;
+        padding: clamp(1.5rem, 3vw, 3.5rem);
+        background: var(--rm-black, #000);
+        border: 0.35rem solid var(--rm-white, #fff);
+        transform: rotate(-0.4deg);
+    }
+
+    .rm-configure-panel h2,
+    .rm-configure-panel p {
+        margin-top: 0;
+    }
+
+    .rm-configure-panel h2 {
+        font-size: clamp(2rem, 3vw, 4rem);
+        text-transform: uppercase;
+    }
+
+    .rm-configure-panel p {
+        font-size: clamp(1rem, 1.3vw, 1.8rem);
+    }
+
+    .rm-slot-list {
+        display: grid;
+        gap: clamp(0.6rem, 1vh, 1rem);
+    }
+
+    .rm-slot-row {
+        display: grid;
+        grid-template-columns: minmax(7rem, 0.35fr) 1fr;
+        align-items: center;
+        gap: 1rem;
+        font-size: clamp(1rem, 1.35vw, 1.9rem);
+        font-weight: 800;
+        text-transform: uppercase;
+    }
+
+    .rm-slot-row select {
+        width: 100%;
+        padding: 0.55em 0.7em;
+        border: 0.2rem solid var(--rm-white, #fff);
+        border-radius: 0;
+        background: var(--rm-white, #fff);
+        color: var(--rm-black, #000);
+        font: 700 clamp(0.9rem, 1.1vw, 1.5rem) "p5hatty", "Orbitron", sans-serif;
     }
 </style>

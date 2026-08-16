@@ -5,7 +5,7 @@
 > **状态**: Current implementation
 
 > [!IMPORTANT]
-> 本文主要描述尚未迁移的 Tauri UI 与内置 Rust Agent JSON 架构。`arcana-data` 已切到 SQLite/Record 新模型并删除旧 JSON 命令，其当前合约见 [`docs/design/agent_skills.md`](./design/agent_skills.md)。SQLite、RecordDefinition/Record、Status 新评分模型、Achievement 用户状态与 PackForest 的完整目标设计见 [`docs/design/`](./design/README.md)。
+> 本文主要描述尚未迁移的 Tauri 页面与内置 Rust Agent JSON 架构。Status 页面和 `arcana-data` 已切到 SQLite/Record 新模型；新模型与当前 CLI 合约见 [`docs/design/`](./design/README.md)。
 
 Arcana 是一个 Persona 5 风格的游戏化人生管理桌面应用，也就是给 “Earth Online” 加一层用户界面。当前实现已经从早期的 Status MVP 演进为一个本地优先的桌面 HUD：前端负责高表现力的菜单与模块屏幕，Rust 后端负责本地 JSON 数据、校验、系统指标计算、AI agent 与结构化数据入口。
 
@@ -17,9 +17,9 @@ Arcana 采用 **Local-First + Tauri Shell + Shared Services** 架构。
 
 核心原则：
 
-- **本地优先**：运行时数据存在用户数据目录中的 JSON 文件，不依赖数据库；默认目录为 `~/.arcana/data`，也可通过 `ARCANA_DATA_DIR` 或 `~/.arcana/settings.json` 配置。仓库中的 `data-example/` 是初始化模板，`data/` 是被忽略的本地开发目录。
+- **本地优先**：新运行时位于 `~/.arcana/runtime` 的 SQLite 数据库；尚未迁移的页面和内置 Agent 仍读取旧 `~/.arcana/data` JSON。仓库中的 `data-example/` 只为旧实现保留。
 - **旧共享业务层**：尚未迁移的 Tauri IPC 与独立 Rust agent 复用 `src-tauri/src/services/`；新的 `arcana-data` 只通过 Application Commands 与 Repository 访问 SQLite。
-- **数据驱动 UI**：Status、Missions、Achievements、Skills、Items、Gallery 都从 JSON 数据和 content packs 渲染，不在 UI 中硬编码用户进度。
+- **数据驱动 UI**：Status 从 SQLite 中的 Record、Pack Dimension 与本机选择渲染；Missions、Achievements、Skills、Items、Gallery 暂时仍从旧 JSON 与 content packs 渲染。
 - **旧 Agent 审计**：尚未迁移的内置 Agent 写 missions/status/achievement progress 后仍写 `ai_changelog.json`；新数据平台不保留 changelog。
 - **Persona 5 风格表达层**：视觉风格集中在 Svelte 组件、全局 CSS、静态资源与设计文档中，后端保持数据和规则纯净。
 
@@ -119,7 +119,7 @@ flowchart TB
 
 | 模块 | 主要职责 |
 | --- | --- |
-| `status.rs` | 加载 status metrics、计算 dimensions 和系统指标 |
+| `data_platform.rs` | 从 SQLite Application 层加载 Status dashboard，管理五个本机 Dimension 选择 |
 | `achievements.rs` | 加载成就包与进度，标记/锁定成就 |
 | `skills.rs` | 加载技能树并根据 achievement progress 计算节点/等级 |
 | `items.rs` | 加载物品来源和物品列表 |
@@ -139,14 +139,14 @@ flowchart TB
 
 位置：`src-tauri/src/services/`
 
-`services/` 是旧 JSON UI/Agent 的共享边界。Tauri commands 与 Rust agent 仍复用这里的业务操作；`arcana-data` 已退出该层，改用 `application/`、`domain/` 和 `storage/sqlite/`。新增数据平台功能不得再接入旧 services。
+`services/` 是旧 JSON UI/Agent 的共享边界。尚未迁移的 Tauri commands 与 Rust agent 仍复用这里的业务操作；Status IPC 与 `arcana-data` 已退出该层，改用 `application/`、`domain/` 和 `storage/sqlite/`。新增数据平台功能不得再接入旧 services。
 
 | 模块 | 职责 |
 | --- | --- |
 | `context.rs` | 汇总 missions/status/metric definitions/achievement progress/memory 给 AI |
 | `file_access.rs` | 沙箱读取 `<data_dir>` 下文件 |
 | `mission.rs` | 更新/创建 mission 和 main_menu 配置 |
-| `status.rs` | 更新 status metric values，并校验 metric ID |
+| `status.rs` | 仅供旧内置 Agent 更新旧 status metric values；桌面 Status 页面不再使用 |
 | `achievement.rs` | 更新 achievement progress，追加 progress detail |
 | `changelog.rs` | 写 `ai_changelog.json`，限制 200 条 |
 | `memory.rs` | 更新 `mission_memory.json` |
@@ -292,7 +292,7 @@ static/
 
 | 模块 | 数据文件/来源 | 后端入口 | 前端入口 |
 | --- | --- | --- | --- |
-| Status | `status.json`, `status_metric_definitions.json`, `user_profile.json`, system metrics | `commands/status.rs`, `services/status.rs` | `StatusScreen.svelte`, `StatusDetailView.svelte`, `RadarChart.svelte` |
+| Status | SQLite Record、Pack Dimension、本机五项选择 | `commands/data_platform.rs`, `application/status_commands.rs` | `StatusScreen.svelte`, `StatusDetailView.svelte`, `RadarChart.svelte` |
 | Missions | `missions.json`, `mission_archive.json`, `mission_memory.json` | `commands/missions.rs`, `services/mission.rs`, `services/memory.rs` | `MissionsScreen.svelte`, `PhanSiteProgress.svelte` |
 | Achievements | `<data_dir>/packs/*/achievements.json`, `achievement_progress.json`, `loaded_packs.json` | `commands/achievements.rs`, `services/achievement.rs` | `AchievementsScreen.svelte` |
 | Skills | `<data_dir>/packs/*/skills.json`, achievement progress | `commands/skills.rs` | `SkillsScreen.svelte`, `SkillNebula.svelte` |
@@ -301,15 +301,16 @@ static/
 | UI Events | `ui_events.json` | `commands/ui_events.rs`, `services/ui_events.rs` | root page event polling/listening |
 | Weather | `weather.json` | `commands/weather.rs` | root page/weather display surfaces |
 
-### 5.1 Status 三层模型
+### 5.1 Status Record/Dimension 模型
 
-Status 使用三层数据模型：
+Status 页面现在只消费新数据平台：
 
-1. `metrics[]`：指标字典，只描述 id/name/group/unit/value_type。
-2. `dimensions[]`：雷达维度，包含 metric weight、target/range/brackets、level thresholds、P5 风格等级称号。
-3. `status.json`：用户当前 metric values。
+1. 已启用 Pack 提供 RecordDefinition 和 DimensionDefinition。
+2. 用户事实保存为 Record；每个子 Score 使用受限表达式读取数值 scalar Record。
+3. Dimension 分数是可用子 Score 的加权平均，固定裁剪到 0～100，再由四个 threshold 推导 Lv.0～Lv.5。
+4. 五个展示槽位保存在 SQLite 本机表中，不进入同步 JSON；UI 允许暂时少于五项并明确显示未选择状态。
 
-系统指标以 `sys_` 为前缀，由后端实时计算，不存储在 `status.json`。当前包括 gallery 计数、skill level 计数、BMI fallback、game days 等。
+昵称和生日分别读取普通 `identity.nickname` 与 `identity.birth_date` Record；缺失时显示默认昵称并隐藏游戏天数。
 
 ### 5.2 Content Pack System
 
@@ -350,15 +351,15 @@ Mission 是 AI 驱动的任务系统：
 sequenceDiagram
     participant UI as Svelte Screen
     participant IPC as Tauri Command
-    participant Storage as storage/json_store
-    participant Data as Local JSON
+    participant Application as StatusCommands
+    participant Data as SQLite Repository
 
-    UI->>IPC: invoke("load_status_data")
-    IPC->>Storage: read definitions/status/profile
-    Storage->>Data: read JSON files
-    Data-->>Storage: typed JSON
-    IPC->>IPC: compute sys metrics and dimensions
-    IPC-->>UI: StatusData
+    UI->>IPC: invoke("load_status_dashboard")
+    IPC->>Application: list/evaluate dimensions
+    Application->>Data: read Pack, Record and local selections
+    Data-->>Application: repository snapshot
+    Application-->>IPC: typed evaluations
+    IPC-->>UI: StatusDashboardData
     UI->>UI: render screen
 ```
 

@@ -60,7 +60,7 @@
      * This ensures Lv.4 is always visually distinct from Lv.5.
      */
     function normalizedScore(dim: DimensionData): number {
-        if (dim.level === null || dim.level === undefined) return 0;
+        if (dim.level === 0) return 0;
         return Math.min(dim.level / maxLevel, 1.0);
     }
 
@@ -207,8 +207,7 @@
         >
             <CollageLabel
                 text={dim.name}
-                level={dim.level !== null &&
-                dim.level > dim.level_thresholds.length
+                level={dim.level > dim.level_thresholds.length
                     ? "Max"
                     : dim.level}
                 title={dim.level_title ?? "--"}

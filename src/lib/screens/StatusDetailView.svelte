@@ -5,11 +5,9 @@
     import PromptWord from "$lib/PromptWord.svelte";
     import type {
         StatusData,
-        StatusMetric,
         DimensionData,
-        MetricGroup,
+        StatusScoreData,
     } from "$lib/types/status";
-    import { formatGroupName, formatMetricValue } from "$lib/utils/format";
 
     let {
         statusData,
@@ -25,100 +23,39 @@
         selectedDimensionId ?? "all",
     );
 
-    /** Get the active dimension definition, if any */
+    let selectedDimensions = $derived.by<DimensionData[]>(() =>
+        statusData.dimensions
+            .filter((dimension) => dimension.selected_position !== undefined)
+            .sort(
+                (left, right) =>
+                    (left.selected_position ?? 0) -
+                    (right.selected_position ?? 0),
+            ),
+    );
+
     let activeDimension = $derived<DimensionData | null>(
         activeDimensionId === "all"
             ? null
-            : (statusData.dimensions.find((d) => d.id === activeDimensionId) ??
+            : (selectedDimensions.find((d) => d.id === activeDimensionId) ??
                   null),
     );
 
-    /** Set of metric IDs in the active dimension */
-    let dimensionMetricIds = $derived<Set<string>>(
-        activeDimension
-            ? new Set(activeDimension.metrics.map((m) => m.metric_id))
-            : new Set(),
-    );
+    type ScoreGroup = { name: string; scores: StatusScoreData[] };
 
-    /** Filter and group metrics for display */
-    let metricGroups = $derived.by<MetricGroup[]>(() => {
-        // Determine which metrics to show
-        let metricsToShow: StatusMetric[];
-
-        if (activeDimensionId === "all") {
-            // Show all metrics that have values
-            metricsToShow = statusData.metrics.filter((m) => m.value !== null);
-        } else {
-            // Show only metrics in the active dimension (include no-data metrics)
-            metricsToShow = statusData.metrics.filter((m) =>
-                dimensionMetricIds.has(m.id),
-            );
-
-            // Also include system metrics in the dimension
-            if (activeDimension) {
-                for (const dm of activeDimension.metrics) {
-                    if (dm.metric_id.startsWith("sys_") && dm.value !== null) {
-                        // Create a pseudo-metric for display
-                        const sysName = dm.metric_id
-                            .replace(/^sys_/, "")
-                            .split("_")
-                            .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
-                            .join(" ");
-                        metricsToShow.push({
-                            id: dm.metric_id,
-                            name: sysName,
-                            group: "system",
-                            unit: "count",
-                            value_type: "number",
-                            value: dm.value,
-                        });
-                    }
-                }
-            }
+    let scoreGroups = $derived.by<ScoreGroup[]>(() => {
+        if (activeDimension) {
+            return [{ name: activeDimension.name, scores: activeDimension.scores }];
         }
-
-        // Group by group field
-        const groups = new Map<string, StatusMetric[]>();
-        for (const metric of metricsToShow) {
-            const list = groups.get(metric.group) ?? [];
-            list.push(metric);
-            groups.set(metric.group, list);
-        }
-
-        return Array.from(groups.entries()).map(([name, metrics]) => ({
-            name,
-            metrics,
+        return selectedDimensions.map((dimension) => ({
+            name: dimension.name,
+            scores: dimension.scores,
         }));
     });
-
-    /** Get contribution for a metric in the active dimension (or max across all dimensions in "all" view) */
-    function getContribution(metricId: string): number | null {
-        if (activeDimension) {
-            const dm = activeDimension.metrics.find(
-                (m) => m.metric_id === metricId,
-            );
-            return dm?.contribution ?? null;
-        }
-
-        // "All" view: find the max contribution across all enabled dimensions
-        let max: number | null = null;
-        for (const dim of statusData.dimensions) {
-            if (!dim.enabled) continue;
-            const dm = dim.metrics.find((m) => m.metric_id === metricId);
-            if (dm?.contribution != null) {
-                max =
-                    max === null
-                        ? dm.contribution
-                        : Math.max(max, dm.contribution);
-            }
-        }
-        return max;
-    }
 
     /** Ordered list of navigable tab IDs */
     let tabIds = $derived<string[]>([
         "all",
-        ...statusData.dimensions.filter((d) => d.enabled).map((d) => d.id),
+        ...selectedDimensions.map((dimension) => dimension.id),
     ]);
 
     /** Current index in the tab list */
@@ -169,7 +106,7 @@
         >
             All
         </button>
-        {#each statusData.dimensions.filter((d) => d.enabled) as dim}
+        {#each selectedDimensions as dim}
             <button
                 type="button"
                 class="detail-tab"
@@ -187,7 +124,7 @@
     {#if activeDimension}
         <div class="dimension-summary">
             <CollageLabel text={activeDimension.name} />
-            {#if activeDimension.level !== null}
+            {#if activeDimension.level > 0}
                 <span class="dim-level">
                     <span class="dim-level-frag" style:transform="rotate(-3deg)"
                         >Lv.</span
@@ -208,45 +145,43 @@
         </div>
     {/if}
 
-    <!-- Metric groups -->
+    <!-- Score groups -->
     <div class="detail-content">
-        {#if metricGroups.length === 0}
-            <p class="state-text">No metrics with data.</p>
+        {#if scoreGroups.length === 0}
+            <p class="state-text">No Status scores are available.</p>
         {:else}
-            {#each metricGroups as group}
+            {#each scoreGroups as group}
                 <div class="detail-group">
-                    <PromptWord
-                        text={formatGroupName(group.name)}
-                        fontSize={52}
-                    />
+                    <PromptWord text={group.name} fontSize={52} />
                     <div class="detail-metric-grid">
-                        {#each group.metrics as metric}
-                            {@const contribution = getContribution(metric.id)}
-                            {@const isMissing = metric.value === null}
+                        {#each group.scores as score}
+                            {@const isMissing = score.score === null}
                             <article
                                 class="rm-metric-card"
                                 class:rm-metric-maxed={!isMissing &&
-                                    contribution !== null &&
-                                    contribution >= 1}
+                                    score.score !== null &&
+                                    score.score >= 100}
                                 class:rm-metric-missing={isMissing}
                             >
-                                <p class="rm-metric-name">{metric.name}</p>
+                                <p class="rm-metric-name">{score.name}</p>
                                 <p class="rm-metric-value">
-                                    {formatMetricValue(
-                                        metric.value,
-                                        metric.unit,
-                                    )}
+                                    {score.score === null
+                                        ? "—"
+                                        : `${score.score.toFixed(1)} / 100`}
                                 </p>
-                                {#if isMissing || (contribution !== null && contribution < 1)}
-                                    <div class="rm-metric-bar-wrap">
-                                        <div
-                                            class="rm-metric-bar"
-                                            style:width="{Math.min(
-                                                (contribution ?? 0) * 100,
-                                                100,
-                                            )}%"
-                                        ></div>
-                                    </div>
+                                <div class="rm-metric-bar-wrap">
+                                    <div
+                                        class="rm-metric-bar"
+                                        style:width="{Math.min(
+                                            score.score ?? 0,
+                                            100,
+                                        )}%"
+                                    ></div>
+                                </div>
+                                {#if score.missing_record_ids?.length}
+                                    <p class="rm-metric-missing-records">
+                                        Missing: {score.missing_record_ids.join(", ")}
+                                    </p>
                                 {/if}
                             </article>
                         {/each}
@@ -490,6 +425,16 @@
         height: 100%;
         background: #f5a623;
         transition: width 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+
+    .rm-metric-missing-records {
+        margin: 0;
+        padding: 0.4rem 0.8rem 0.65rem;
+        background: var(--rm-black, #000);
+        color: var(--rm-white, #fff);
+        font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+        font-size: clamp(0.65rem, 0.65vw, 1rem);
+        overflow-wrap: anywhere;
     }
 
     /* ── Prev / Next navigation ── */

@@ -182,7 +182,7 @@ Arcana 采用单页 SPA 架构（非 SvelteKit 路由），所有屏幕通过 `c
 - 所有状态使用 Svelte 5 `$state()` runes（无 Svelte stores）
 - 屏幕间数据通过 `$state` 变量 + prop 传递
 - 数据加载：`onMount` 时预加载（`preloadStatusData()`、`preloadMissionMenuData()`），各屏幕按需调用 `invoke()`
-- Tauri invoke 命令：`load_status_data`、`load_achievements`、`load_skills`、`load_items`、`load_gallery`、`load_missions`、`load_main_menu_missions`、`update_mission_status`、`set_achievement_achieved`、`lock_achievement`、`get_pending_events`、`get_weather`
+- Tauri invoke 命令：`load_status_dashboard`、`select_status_dimension`、`clear_status_dimension`、`load_achievements`、`load_skills`、`load_items`、`load_gallery`、`load_missions`、`load_main_menu_missions`、`update_mission_status`、`set_achievement_achieved`、`lock_achievement`、`get_pending_events`、`get_weather`
 
 ---
 

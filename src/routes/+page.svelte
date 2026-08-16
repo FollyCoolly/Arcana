@@ -436,7 +436,7 @@
 
     async function preloadStatusData() {
         try {
-            statusData = await invoke<StatusData>("load_status_data");
+            statusData = await invoke<StatusData>("load_status_dashboard");
         } catch {
             // non-critical: screen will load its own data
         }
@@ -638,7 +638,13 @@
         {/if}
 
         {#if currentScreen === "status"}
-            <StatusScreen onBack={goBack} {statusData} />
+            <StatusScreen
+                onBack={goBack}
+                {statusData}
+                onStatusDataLoaded={(data) => {
+                    statusData = data;
+                }}
+            />
         {/if}
 
         {#if currentScreen === "achievements"}

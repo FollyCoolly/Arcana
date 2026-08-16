@@ -1,6 +1,6 @@
 # Status 目标模型
 
-> **状态**：Implemented in Domain/Application/CLI；Tauri UI 尚未切换
+> **状态**：Implemented in Domain/Application/CLI/Tauri Status UI
 > **最后更新**：2026-08-16
 
 ## 1. 定位

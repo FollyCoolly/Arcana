@@ -1,43 +1,33 @@
-export type StatusMetric = {
+export type StatusScoreData = {
     id: string;
     name: string;
-    group: string;
-    unit: string;
-    value_type: string;
-    value: number | null;
-    description?: string;
-};
-
-export type DimensionMetricResult = {
-    metric_id: string;
-    value: number | null;
-    contribution: number | null;
     weight: number;
+    expression: string;
+    raw_value: number | null;
+    score: number | null;
+    missing_record_ids?: string[];
 };
 
 export type DimensionData = {
+    pack_id: string;
     id: string;
     name: string;
     level_titles: string[];
     level_thresholds: number[];
-    enabled: boolean;
+    selected_position?: number;
     score: number | null;
-    level: number | null;
-    level_title: string | null;
-    metrics: DimensionMetricResult[];
+    level: number;
+    level_title?: string;
+    scores: StatusScoreData[];
 };
 
 export type StatusData = {
-    definition_version: number;
-    value_version: number;
     username: string;
     game_days: number | null;
-    metrics: StatusMetric[];
     dimensions: DimensionData[];
-    system_metrics: Record<string, number>;
 };
 
-export type MetricGroup = {
-    name: string;
-    metrics: StatusMetric[];
+export type DataCommandError = {
+    code: string;
+    message: string;
 };
