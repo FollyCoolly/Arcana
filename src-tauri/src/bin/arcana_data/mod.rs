@@ -1,5 +1,6 @@
 mod achievement_commands;
 mod contract;
+mod memory_commands;
 mod mission_commands;
 mod pack_commands;
 mod record_commands;
@@ -10,6 +11,7 @@ mod status_commands;
 use achievement_commands::{execute_achievement, AchievementAction};
 use clap::{error::ErrorKind, Parser, Subcommand};
 use contract::{capabilities, render_json, CliError, EXIT_SUCCESS};
+use memory_commands::{execute_memory, MemoryAction};
 use mission_commands::{execute_mission, MissionAction};
 use pack_commands::{execute_pack, PackAction};
 use record_commands::{execute_record, RecordAction};
@@ -88,6 +90,14 @@ enum Commands {
         #[command(subcommand)]
         action: MissionAction,
     },
+    /// Manage synchronized AssistantMemory entries
+    Memory {
+        /// Runtime directory containing arcana.sqlite3
+        #[arg(long, value_name = "DIRECTORY", global = true)]
+        runtime: Option<PathBuf>,
+        #[command(subcommand)]
+        action: MemoryAction,
+    },
     /// Convert between SQLite and a canonical JSON directory without Git
     Json {
         #[command(subcommand)]
@@ -142,6 +152,7 @@ fn execute(command: Commands) -> Result<Value, CliError> {
         Commands::Achievement { runtime, action } => execute_achievement(runtime, action),
         Commands::Skill { runtime, action } => execute_skill(runtime, action),
         Commands::Mission { runtime, action } => execute_mission(runtime, action),
+        Commands::Memory { runtime, action } => execute_memory(runtime, action),
         Commands::Json { action } => execute_json(action),
     }
 }
@@ -299,6 +310,35 @@ mod tests {
                 matches!(
                     Cli::try_parse_from(argv).unwrap().command,
                     Commands::Mission { .. }
+                ),
+                "failed to parse {arguments:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn parses_every_memory_command() {
+        let commands: &[&[&str]] = &[
+            &["memory", "list"],
+            &[
+                "memory",
+                "list",
+                "--memory-id",
+                "memory-id",
+                "--kind",
+                "reminder",
+            ],
+            &["memory", "create", "--file", "memory.json"],
+            &["memory", "update", "--file", "memory.json"],
+            &["memory", "delete", "memory-id"],
+        ];
+        for arguments in commands {
+            let mut argv = vec!["arcana-data"];
+            argv.extend_from_slice(arguments);
+            assert!(
+                matches!(
+                    Cli::try_parse_from(argv).unwrap().command,
+                    Commands::Memory { .. }
                 ),
                 "failed to parse {arguments:?}"
             );

@@ -35,6 +35,7 @@ fn capabilities_succeeds_without_runtime_and_compact_only_changes_layout() {
     assert_eq!(value["commands"]["achievement"]["version"], 1);
     assert_eq!(value["commands"]["skill"]["version"], 1);
     assert_eq!(value["commands"]["mission"]["version"], 1);
+    assert_eq!(value["commands"]["memory"]["version"], 1);
     assert!(utf8(&pretty.stdout).lines().count() > 1);
 
     let compact = arcana_data(&["--compact", "capabilities"]);
@@ -733,4 +734,123 @@ fn mission_commands_cover_accepted_and_local_suggestion_lifecycles() {
         parse_json(&missing.stderr)["code"],
         "mission_suggestion_not_found"
     );
+}
+
+#[test]
+fn memory_commands_preserve_identity_and_export_synchronized_entries() {
+    let directory = tempfile::tempdir().unwrap();
+    let runtime = directory.path().join("runtime");
+    let runtime_arg = path_string(&runtime);
+    assert!(arcana_data(&["init", "--runtime", &runtime_arg])
+        .status
+        .success());
+
+    let create = serde_json::json!({
+        "kind": "reminder",
+        "content": "Ask about cooking history next time"
+    });
+    let create_file = directory.path().join("create-memory.json");
+    std::fs::write(&create_file, serde_json::to_vec(&create).unwrap()).unwrap();
+    let create_arg = path_string(&create_file);
+    let created = arcana_data(&[
+        "memory",
+        "--runtime",
+        &runtime_arg,
+        "create",
+        "--file",
+        &create_arg,
+    ]);
+    assert!(created.status.success(), "{}", utf8(&created.stderr));
+    let created = parse_json(&created.stdout);
+    let memory_id = created["memory"]["id"].as_str().unwrap().to_string();
+    assert_eq!(Uuid::parse_str(&memory_id).unwrap().get_version_num(), 7);
+    assert_eq!(created["changed"], true);
+    assert_eq!(
+        created["memory"]["created_at"],
+        created["memory"]["updated_at"]
+    );
+    let created_at = created["memory"]["created_at"]
+        .as_str()
+        .unwrap()
+        .to_string();
+
+    let listed = arcana_data(&[
+        "memory",
+        "--runtime",
+        &runtime_arg,
+        "list",
+        "--kind",
+        "reminder",
+    ]);
+    assert!(listed.status.success(), "{}", utf8(&listed.stderr));
+    assert_eq!(
+        parse_json(&listed.stdout)["memories"]
+            .as_array()
+            .unwrap()
+            .len(),
+        1
+    );
+
+    let update = serde_json::json!({
+        "memory_id": memory_id,
+        "kind": "observation",
+        "content": "Cooking history may unlock achievements"
+    });
+    let update_file = directory.path().join("update-memory.json");
+    std::fs::write(&update_file, serde_json::to_vec(&update).unwrap()).unwrap();
+    let update_arg = path_string(&update_file);
+    let updated = arcana_data(&[
+        "memory",
+        "--runtime",
+        &runtime_arg,
+        "update",
+        "--file",
+        &update_arg,
+    ]);
+    assert!(updated.status.success(), "{}", utf8(&updated.stderr));
+    let updated = parse_json(&updated.stdout);
+    assert_eq!(updated["memory"]["created_at"], created_at);
+    assert_eq!(updated["memory"]["kind"], "observation");
+    let updated_at = updated["memory"]["updated_at"]
+        .as_str()
+        .unwrap()
+        .to_string();
+
+    let repeated = arcana_data(&[
+        "memory",
+        "--runtime",
+        &runtime_arg,
+        "update",
+        "--file",
+        &update_arg,
+    ]);
+    assert!(repeated.status.success(), "{}", utf8(&repeated.stderr));
+    let repeated = parse_json(&repeated.stdout);
+    assert_eq!(repeated["changed"], false);
+    assert_eq!(repeated["memory"]["updated_at"], updated_at);
+
+    let export = directory.path().join("export");
+    let export_arg = path_string(&export);
+    let exported = arcana_data(&[
+        "json",
+        "export",
+        "--runtime",
+        &runtime_arg,
+        "--output",
+        &export_arg,
+    ]);
+    assert!(exported.status.success(), "{}", utf8(&exported.stderr));
+    let exported_memory = serde_json::from_slice::<Value>(
+        &std::fs::read(export.join("assistant-memory.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(exported_memory["memories"][0]["id"], memory_id);
+    assert_eq!(exported_memory["memories"][0]["kind"], "observation");
+
+    let deleted = arcana_data(&["memory", "--runtime", &runtime_arg, "delete", &memory_id]);
+    assert!(deleted.status.success(), "{}", utf8(&deleted.stderr));
+    assert_eq!(parse_json(&deleted.stdout)["deleted"], true);
+    let missing = arcana_data(&["memory", "--runtime", &runtime_arg, "delete", &memory_id]);
+    assert!(!missing.status.success());
+    assert_eq!(parse_json(&missing.stderr)["code"], "memory_not_found");
 }

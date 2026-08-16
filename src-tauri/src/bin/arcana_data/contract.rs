@@ -20,6 +20,7 @@ pub enum RepositoryOperation {
     Skill,
     Mission,
     MissionSuggestion,
+    Memory,
     JsonImport,
     JsonExport,
 }
@@ -115,6 +116,7 @@ fn repository_error_code(
             RepositoryOperation::Skill => "skill_not_found",
             RepositoryOperation::Mission => "mission_not_found",
             RepositoryOperation::MissionSuggestion => "mission_suggestion_not_found",
+            RepositoryOperation::Memory => "memory_not_found",
             RepositoryOperation::JsonImport => "json_import_not_found",
         },
         RepositoryErrorCode::Conflict => match operation {
@@ -127,6 +129,7 @@ fn repository_error_code(
             RepositoryOperation::Skill => "skill_conflict",
             RepositoryOperation::Mission => "mission_conflict",
             RepositoryOperation::MissionSuggestion => "mission_suggestion_conflict",
+            RepositoryOperation::Memory => "memory_conflict",
             RepositoryOperation::JsonImport => "json_import_conflict",
             RepositoryOperation::JsonExport => "json_export_conflict",
         },
@@ -139,6 +142,7 @@ fn repository_error_code(
             RepositoryOperation::Skill => "skill_unresolved",
             RepositoryOperation::Mission => "mission_unresolved",
             RepositoryOperation::MissionSuggestion => "mission_suggestion_unresolved",
+            RepositoryOperation::Memory => "memory_unresolved",
             RepositoryOperation::Initialize
             | RepositoryOperation::JsonImport
             | RepositoryOperation::JsonExport => "unresolved_reference",
@@ -214,6 +218,10 @@ pub fn capabilities() -> Value {
                     "reject",
                     "suggestion-delete"
                 ]
+            },
+            "memory": {
+                "version": 1,
+                "actions": ["list", "create", "update", "delete"]
             },
             "json": {
                 "version": 1,

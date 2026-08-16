@@ -6,7 +6,7 @@ Arcana 是一个 Persona 5 风格的游戏化人生管理桌面应用。项目�
 
 - Tauri UI 与内置 Rust Agent 暂时仍使用 `models/`、`services/` 和旧 JSON storage；只修复必要问题，不在这套模型上增加新数据平台功能。
 - `arcana-data` 已完全停止暴露旧 JSON 命令，只使用 `application/`、`domain/`、`storage/sqlite/` 和 JSON Repository Codec。
-- 旧 `context/read/mission/status/achievement/pack/changelog/memory` JSON 实现与旧 `.claude/skills` 已删除，不得恢复兼容层；`pack`、`status`、`achievement`、`mission` 已按 SQLite 合约重新实现。
+- 旧 `context/read/mission/status/achievement/pack/changelog/memory` JSON 实现与旧 `.claude/skills` 已删除，不得恢复兼容层；`pack`、`status`、`achievement`、`mission`、`memory` 已按 SQLite 合约重新实现。
 - 新数据不迁移旧 JSON；UI/Agent 完成切换后再删除剩余旧模块和 `docs/schema/` 迁移对照文档。
 - 新数据平台的权威设计位于 `docs/design/`，旧 UI 的现状说明位于 `docs/architecture.md`。
 
@@ -20,7 +20,7 @@ src-tauri/src/
   storage/sqlite/                 SQLite migrations 与 Repository adapter
   storage/json_repository.rs      SQLite ↔ 确定性 JSON Codec
   bin/arcana_data.rs              新数据 CLI 入口
-  bin/arcana_data/                CLI contract、Record、Pack、Status、Achievement、Skill、Mission、runtime/json 模块
+  bin/arcana_data/                CLI contract、Record、Pack、Status、Achievement、Skill、Mission、Memory、runtime/json 模块
   commands/ models/ services/     尚未迁移的 UI/Agent 旧实现
   agent/                          尚未迁移的内置 Rust Agent
 docs/design/                      新数据平台权威文档
@@ -58,6 +58,7 @@ arcana-data status [--runtime <directory>] <action>
 arcana-data achievement [--runtime <directory>] <action>
 arcana-data skill [--runtime <directory>] list
 arcana-data mission [--runtime <directory>] <action>
+arcana-data memory [--runtime <directory>] <action>
 arcana-data json import|export ...
 ```
 
@@ -88,6 +89,7 @@ arcana-data json import|export ...
 - 只同步已接受 Mission；pending/rejected MissionSuggestion 仅本机。
 - Mission 的 create/suggest 由系统生成 UUIDv7 与时间；complete/archive 是幂等生命周期命令，update 完整替换可编辑字段。
 - AssistantMemory 同步长期语义，不同步 Agent Session。
+- Memory create 由系统生成 UUIDv7 与时间；update 保留 ID/created_at，只在 kind/content 变化时刷新 updated_at；delete 是 hard delete。
 - 不建立 changelog、operation log、通用 tombstone 或旧 JSON 迁移。
 
 完整 Schema 和事务语义见：

@@ -1,6 +1,6 @@
 # Mission 与 AssistantMemory
 
-> **状态**：Mission Domain/Application/CLI 已实现；AssistantMemory Commands 与 Tauri UI 尚未切换
+> **状态**：Mission/AssistantMemory Domain、Application 与 CLI 已实现；Tauri UI 尚未切换
 > **最后更新**：2026-08-16
 
 ## 1. MissionSuggestion 与 Mission
@@ -164,6 +164,16 @@ Dashboard Mission 展示使用固定 slot：`countdown`、`progress`、`hint_1`�
 - `created_at` 和 `updated_at` 必填，使用带时区偏移的 RFC 3339，且 updated 不早于 created。
 - 不保存来源会话、模型、置信度、证据对象、过期标记、软删除状态或用户权威事实的副本。
 - 未定义字段和 JSON `null` 一律拒绝。
+
+当前 AssistantMemory CLI 提供：
+
+```text
+memory list [--memory-id <id>] [--kind <kind>]
+memory create|update [--file <json>]
+memory delete <memory_id>
+```
+
+`create` 只接收 kind/content，由系统生成 UUIDv7，并把 created_at/updated_at 设为同一当前时间。`update` 完整替换 kind/content，保留 ID 与 created_at；实际内容没有变化时返回 `changed: false` 且不刷新 updated_at。`delete` 是 hard delete，恢复依赖 JSON/Git 历史。
 
 ## 8. Memory 精炼与清理
 

@@ -1,4 +1,5 @@
 mod achievement_commands;
+mod memory_commands;
 mod mission_commands;
 mod pack_commands;
 mod record_commands;
@@ -10,6 +11,10 @@ mod status_commands;
 pub use achievement_commands::{
     AchievementAvailability, AchievementCommands, AchievementEntry, AchievementStateResult,
     QueryAchievements, SetAchievementState,
+};
+pub use memory_commands::{
+    AssistantMemoryDeleteResult, AssistantMemoryResult, CreateAssistantMemory, MemoryCommands,
+    QueryAssistantMemory, UpdateAssistantMemory,
 };
 pub use mission_commands::{
     CreateMission, MissionCommands, MissionDeleteResult, MissionResult,
