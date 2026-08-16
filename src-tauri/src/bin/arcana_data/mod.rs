@@ -2,6 +2,7 @@ mod contract;
 mod pack_commands;
 mod record_commands;
 mod runtime_commands;
+mod status_commands;
 
 use clap::{error::ErrorKind, Parser, Subcommand};
 use contract::{capabilities, render_json, CliError, EXIT_SUCCESS};
@@ -9,6 +10,7 @@ use pack_commands::{execute_pack, PackAction};
 use record_commands::{execute_record, RecordAction};
 use runtime_commands::{execute_init, execute_json, JsonAction};
 use serde_json::Value;
+use status_commands::{execute_status, StatusAction};
 use std::path::PathBuf;
 
 #[derive(Parser)]
@@ -47,6 +49,14 @@ enum Commands {
         runtime: Option<PathBuf>,
         #[command(subcommand)]
         action: PackAction,
+    },
+    /// List and evaluate Status Dimensions and manage five local display slots
+    Status {
+        /// Runtime directory containing arcana.sqlite3
+        #[arg(long, value_name = "DIRECTORY", global = true)]
+        runtime: Option<PathBuf>,
+        #[command(subcommand)]
+        action: StatusAction,
     },
     /// Convert between SQLite and a canonical JSON directory without Git
     Json {
@@ -98,6 +108,7 @@ fn execute(command: Commands) -> Result<Value, CliError> {
         Commands::Init { runtime } => execute_init(runtime),
         Commands::Record { runtime, action } => execute_record(runtime, action),
         Commands::Pack { runtime, action } => execute_pack(runtime, action),
+        Commands::Status { runtime, action } => execute_status(runtime, action),
         Commands::Json { action } => execute_json(action),
     }
 }
@@ -112,7 +123,6 @@ mod tests {
             "context",
             "read",
             "mission",
-            "status",
             "achievement",
             "changelog",
             "memory",
@@ -151,6 +161,28 @@ mod tests {
                 matches!(
                     Cli::try_parse_from(argv).unwrap().command,
                     Commands::Pack { .. }
+                ),
+                "failed to parse {arguments:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn parses_every_status_command() {
+        let commands: &[&[&str]] = &[
+            &["status", "list-dimensions"],
+            &["status", "evaluate"],
+            &["status", "evaluate", "fitness::physical"],
+            &["status", "select", "0", "fitness::physical"],
+            &["status", "select", "0", "--clear"],
+        ];
+        for arguments in commands {
+            let mut argv = vec!["arcana-data"];
+            argv.extend_from_slice(arguments);
+            assert!(
+                matches!(
+                    Cli::try_parse_from(argv).unwrap().command,
+                    Commands::Status { .. }
                 ),
                 "failed to parse {arguments:?}"
             );

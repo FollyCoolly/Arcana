@@ -30,6 +30,7 @@ fn capabilities_succeeds_without_runtime_and_compact_only_changes_layout() {
     assert_eq!(value["contract_version"], 1);
     assert_eq!(value["features"]["structured_errors"], true);
     assert_eq!(value["commands"]["pack"]["version"], 1);
+    assert_eq!(value["commands"]["status"]["version"], 1);
     assert!(utf8(&pretty.stdout).lines().count() > 1);
 
     let compact = arcana_data(&["--compact", "capabilities"]);
@@ -218,4 +219,146 @@ fn invalid_pack_json_and_missing_pack_use_stable_errors() {
     assert!(!missing.status.success());
     assert!(missing.stdout.is_empty());
     assert_eq!(parse_json(&missing.stderr)["code"], "pack_not_found");
+}
+
+#[test]
+fn status_commands_evaluate_records_and_preserve_disabled_selection() {
+    let directory = tempfile::tempdir().unwrap();
+    let runtime = directory.path().join("runtime");
+    let runtime_arg = path_string(&runtime);
+    assert!(arcana_data(&["init", "--runtime", &runtime_arg])
+        .status
+        .success());
+
+    let pack = serde_json::json!({
+        "manifest": {
+            "schema_version": 1,
+            "id": "fitness",
+            "name": "Fitness"
+        },
+        "record_definitions": {
+            "definitions": [
+                {
+                    "kind": "scalar",
+                    "id": "fitness.endurance",
+                    "name": "Endurance",
+                    "value_type": "number"
+                },
+                {
+                    "kind": "scalar",
+                    "id": "fitness.strength",
+                    "name": "Strength",
+                    "value_type": "integer"
+                }
+            ]
+        },
+        "dimensions": {
+            "dimensions": [{
+                "id": "fitness::physical",
+                "name": "Physical",
+                "level_titles": ["Awake", "Growing", "Skilled", "Excellent", "Peak"],
+                "level_thresholds": [25, 50, 75, 90],
+                "scores": [
+                    {
+                        "id": "endurance",
+                        "name": "Endurance",
+                        "weight": 1,
+                        "expression": "record('fitness.endurance') * 2"
+                    },
+                    {
+                        "id": "strength",
+                        "name": "Strength",
+                        "weight": 3,
+                        "expression": "record('fitness.strength')"
+                    }
+                ]
+            }]
+        }
+    });
+    let pack_file = directory.path().join("fitness.json");
+    std::fs::write(&pack_file, serde_json::to_vec(&pack).unwrap()).unwrap();
+    let pack_arg = path_string(&pack_file);
+    assert!(arcana_data(&[
+        "pack",
+        "--runtime",
+        &runtime_arg,
+        "write",
+        "--file",
+        &pack_arg,
+    ])
+    .status
+    .success());
+    assert!(
+        arcana_data(&["pack", "--runtime", &runtime_arg, "enable", "fitness",])
+            .status
+            .success()
+    );
+
+    for (name, value) in [("endurance", 40), ("strength", 50)] {
+        let command = serde_json::json!({
+            "definition_id": format!("fitness.{name}"),
+            "value": value
+        });
+        let path = directory.path().join(format!("{name}.json"));
+        std::fs::write(&path, serde_json::to_vec(&command).unwrap()).unwrap();
+        let path_arg = path_string(&path);
+        let output = arcana_data(&[
+            "record",
+            "--runtime",
+            &runtime_arg,
+            "set",
+            "--file",
+            &path_arg,
+        ]);
+        assert!(output.status.success(), "{}", utf8(&output.stderr));
+    }
+
+    let select = arcana_data(&[
+        "status",
+        "--runtime",
+        &runtime_arg,
+        "select",
+        "1",
+        "fitness::physical",
+    ]);
+    assert!(select.status.success(), "{}", utf8(&select.stderr));
+    assert_eq!(parse_json(&select.stdout)["selection"]["changed"], true);
+
+    let evaluated = arcana_data(&[
+        "status",
+        "--runtime",
+        &runtime_arg,
+        "evaluate",
+        "fitness::physical",
+    ]);
+    assert!(evaluated.status.success(), "{}", utf8(&evaluated.stderr));
+    let evaluation = &parse_json(&evaluated.stdout)["evaluations"][0];
+    assert_eq!(evaluation["selected_position"], 1);
+    assert_eq!(evaluation["score"], 57.5);
+    assert_eq!(evaluation["level"], 3);
+    assert_eq!(evaluation["level_title"], "Skilled");
+
+    assert!(
+        arcana_data(&["pack", "--runtime", &runtime_arg, "disable", "fitness",])
+            .status
+            .success()
+    );
+    let listed = arcana_data(&["status", "--runtime", &runtime_arg, "list-dimensions"]);
+    assert!(listed.status.success(), "{}", utf8(&listed.stderr));
+    let listing = parse_json(&listed.stdout);
+    assert_eq!(listing["dimensions"], serde_json::json!([]));
+    assert_eq!(listing["selections"][0]["available"], false);
+
+    let unresolved = arcana_data(&[
+        "status",
+        "--runtime",
+        &runtime_arg,
+        "evaluate",
+        "fitness::physical",
+    ]);
+    assert!(!unresolved.status.success());
+    assert_eq!(
+        parse_json(&unresolved.stderr)["code"],
+        "status_dimension_unresolved"
+    );
 }

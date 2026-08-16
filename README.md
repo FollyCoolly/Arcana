@@ -199,9 +199,10 @@ cargo build --manifest-path src-tauri/Cargo.toml --bin arcana-data
 ./src-tauri/target/debug/arcana-data capabilities
 ./src-tauri/target/debug/arcana-data init
 ./src-tauri/target/debug/arcana-data pack list
+./src-tauri/target/debug/arcana-data status list-dimensions
 ```
 
-`arcana-data init` creates the SQLite runtime and the `basic` Pack; it does not populate the legacy UI or onboarding missions. The Record and Pack command families have migrated; canonical Agent Skills will return after their required SQLite Status, Achievement, Mission, and Memory commands exist.
+`arcana-data init` creates the SQLite runtime and the `basic` Pack; it does not populate the legacy UI or onboarding missions. The Record, Pack, and Status command families have migrated; canonical Agent Skills will return after their required SQLite Achievement, Mission, and Memory commands exist.
 
 > [!NOTE]
 > If you want to use the agent binaries — primarily `agent-telegram`, which starts a listener service for controlling your local assistant remotely via Telegram — you will need to configure an LLM provider. Set your API key via environment variable (`ANTHROPIC_API_KEY`) or config file (`~/.arcana/agent_config.json`). See [AI Agent](#ai-agent) for details.

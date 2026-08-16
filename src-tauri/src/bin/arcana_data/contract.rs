@@ -15,6 +15,7 @@ pub enum RepositoryOperation {
     Record,
     Pack,
     PackAsset,
+    Status,
     JsonImport,
     JsonExport,
 }
@@ -105,6 +106,7 @@ fn repository_error_code(
             RepositoryOperation::Record => "record_not_found",
             RepositoryOperation::Pack => "pack_not_found",
             RepositoryOperation::PackAsset => "pack_asset_not_found",
+            RepositoryOperation::Status => "status_dimension_not_found",
             RepositoryOperation::JsonImport => "json_import_not_found",
         },
         RepositoryErrorCode::Conflict => match operation {
@@ -112,6 +114,7 @@ fn repository_error_code(
             RepositoryOperation::Record => "record_conflict",
             RepositoryOperation::Pack => "pack_conflict",
             RepositoryOperation::PackAsset => "pack_asset_conflict",
+            RepositoryOperation::Status => "status_conflict",
             RepositoryOperation::JsonImport => "json_import_conflict",
             RepositoryOperation::JsonExport => "json_export_conflict",
         },
@@ -119,6 +122,7 @@ fn repository_error_code(
             RepositoryOperation::Record => "record_unresolved",
             RepositoryOperation::Pack => "pack_unresolved",
             RepositoryOperation::PackAsset => "pack_asset_unresolved",
+            RepositoryOperation::Status => "status_dimension_unresolved",
             RepositoryOperation::Initialize
             | RepositoryOperation::JsonImport
             | RepositoryOperation::JsonExport => "unresolved_reference",
@@ -166,6 +170,10 @@ pub fn capabilities() -> Value {
                     "enable",
                     "disable"
                 ]
+            },
+            "status": {
+                "version": 1,
+                "actions": ["list-dimensions", "evaluate", "select"]
             },
             "json": {
                 "version": 1,

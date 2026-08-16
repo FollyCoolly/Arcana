@@ -1,7 +1,7 @@
 # Status 目标模型
 
-> **状态**：Target / 同步 Schema、表达式和 SQLite 结构已确定
-> **最后更新**：2026-08-15
+> **状态**：Implemented in Domain/Application/CLI；Tauri UI 尚未切换
+> **最后更新**：2026-08-16
 
 ## 1. 定位
 
@@ -202,6 +202,17 @@ UI 选择只保存在本机 SQLite 的 `status_dimension_selection`：
 - `status_dimension_selection` 只保存本机五项顺序。
 - 子 Score、原始表达式结果、clamp 后结果、Dimension 分数和等级都即时计算，不持久化。
 - Pack 启用或导入时解析表达式、校验 RecordDefinition 引用；读取 Status 时只加载已验证 Definition 和一致性 Record 快照。
+
+当前 CLI 提供：
+
+```text
+status list-dimensions
+status evaluate [dimension_id]
+status select <position> <dimension_id>
+status select <position> --clear
+```
+
+`list-dimensions` 同时返回当前本机 selection 的 available 状态；`evaluate` 返回原始子值、clamp 后子分数、缺失 Record、总分、等级和等级标题。读取与计算使用一个 SQLite 事务快照，所有派生结果只返回、不入库。
 
 ## 10. 被替代的旧模型
 

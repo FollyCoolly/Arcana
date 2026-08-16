@@ -20,7 +20,7 @@ src-tauri/src/
   storage/sqlite/                 SQLite migrations 与 Repository adapter
   storage/json_repository.rs      SQLite ↔ 确定性 JSON Codec
   bin/arcana_data.rs              新数据 CLI 入口
-  bin/arcana_data/                CLI contract、Record、Pack、runtime/json 模块
+  bin/arcana_data/                CLI contract、Record、Pack、Status、runtime/json 模块
   commands/ models/ services/     尚未迁移的 UI/Agent 旧实现
   agent/                          尚未迁移的内置 Rust Agent
 docs/design/                      新数据平台权威文档
@@ -54,6 +54,7 @@ arcana-data capabilities
 arcana-data init [--runtime <directory>]
 arcana-data record [--runtime <directory>] <action>
 arcana-data pack [--runtime <directory>] <action>
+arcana-data status [--runtime <directory>] <action>
 arcana-data json import|export ...
 ```
 
@@ -65,6 +66,7 @@ arcana-data json import|export ...
 - `--help` 面向人类，`--compact` 只改变 JSON 空白。
 - CLI 不直接执行 SQL，不绕过领域校验，不读写旧 `<data_dir>` JSON。
 - `pack write` 只替换结构化 Pack 内容并保留已有 asset；asset 只能通过 `pack asset-put|asset-delete` 修改。
+- Status 分数/等级只从当前 Record 即时计算；五个 `status select` 展示位只保存在本机 SQLite。
 - `json import|export` 不执行 Git 操作，也不覆盖已有导出目录。
 
 ## 新数据模型硬约束
