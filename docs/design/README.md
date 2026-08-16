@@ -51,7 +51,7 @@
 2. 已完成：进程间锁、运行时初始化与 Record、Pack、Status、Achievement、Mission、AssistantMemory Application Commands，以及 Arcana Skill 派生查询。
 3. 进行中：确定性 JSON Codec 和持有运行时独占锁的 SQLite import/export 已完成；已有目录的防覆盖 digest、崩溃恢复 journal、临时数据库切换和 Git 编排待实现。
 4. 已完成：全部目标领域 command；AssistantMemory 也已接入 Application 与 CLI。
-5. 进行中：`arcana-data capabilities`、`init`、`context summary`、用户状态 mutation 的 `--dry-run`/`batch apply`、`record ...`、`pack ...`、`status ...`、`achievement ...`、`skill list`、`mission ...`、`memory ...` 和 `json import|export` 已接入新运行时，使用直接业务 JSON、结构化错误与稳定退出语义；旧 JSON CLI 和旧 `.claude/skills` 已删除。Tauri UI 和 canonical Agent Skill 待实现。
+5. 已完成：`arcana-data capabilities`、`init`、`context summary`、用户状态 mutation 的 `--dry-run`/`batch apply`、全部目标领域命令与 `json import|export` 已接入新运行时；canonical Arcana plugin、三项 Agent Skills、contract fixtures、固定 eval 场景和 `.claude` 生成镜像已恢复。Tauri UI 仍待迁移。
 
 ### 暂不处理
 

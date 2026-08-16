@@ -1,7 +1,62 @@
+use arcana_lib::application::{ApplyMutationBatch, PackContent};
 use serde_json::Value;
-use std::path::Path;
+use std::collections::{BTreeMap, BTreeSet};
+use std::ffi::OsStr;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 use uuid::Uuid;
+
+fn contract_fixture_path(name: &str) -> PathBuf {
+    repository_path("plugins/arcana/fixtures/contract-v1").join(name)
+}
+
+fn contract_fixture(name: &str) -> Value {
+    serde_json::from_slice(&std::fs::read(contract_fixture_path(name)).unwrap()).unwrap()
+}
+
+fn skill_eval_fixture() -> Value {
+    let path = repository_path("plugins/arcana/evals/scenarios.json");
+    serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap()
+}
+
+fn repository_path(relative: &str) -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("..")
+        .join(relative)
+}
+
+fn collect_tree(root: &Path, omit_agents: bool) -> BTreeMap<String, Vec<u8>> {
+    fn visit(
+        root: &Path,
+        current: &Path,
+        omit_agents: bool,
+        files: &mut BTreeMap<String, Vec<u8>>,
+    ) {
+        for entry in std::fs::read_dir(current).unwrap() {
+            let path = entry.unwrap().path();
+            if path.is_dir() {
+                visit(root, &path, omit_agents, files);
+            } else {
+                let relative = path.strip_prefix(root).unwrap();
+                if omit_agents
+                    && relative
+                        .components()
+                        .any(|component| component.as_os_str() == OsStr::new("agents"))
+                {
+                    continue;
+                }
+                files.insert(
+                    relative.to_string_lossy().replace('\\', "/"),
+                    std::fs::read(path).unwrap(),
+                );
+            }
+        }
+    }
+
+    let mut files = BTreeMap::new();
+    visit(root, root, omit_agents, &mut files);
+    files
+}
 
 fn arcana_data(args: &[&str]) -> Output {
     Command::new(env!("CARGO_BIN_EXE_arcana-data"))
@@ -37,6 +92,183 @@ fn data_revision(runtime: &Path) -> i64 {
             |row| row.get(0),
         )
         .unwrap()
+}
+
+#[test]
+fn published_contract_fixtures_match_the_cli_and_serde_types() {
+    let expected_capabilities = contract_fixture("capabilities.json");
+    let output = arcana_data(&["--compact", "capabilities"]);
+    assert!(output.status.success(), "{}", utf8(&output.stderr));
+    assert_eq!(parse_json(&output.stdout), expected_capabilities);
+
+    let all_operations = contract_fixture("batch-all-operations.json");
+    let batch: ApplyMutationBatch = serde_json::from_value(all_operations).unwrap();
+    let operation_names: Vec<_> = batch
+        .operations
+        .iter()
+        .map(|operation| operation.operation_name())
+        .collect();
+    let advertised_names: Vec<_> = expected_capabilities["commands"]["batch"]["operations"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|name| name.as_str().unwrap())
+        .collect();
+    assert_eq!(operation_names, advertised_names);
+
+    serde_json::from_value::<PackContent>(contract_fixture("pack-content.json")).unwrap();
+}
+
+#[test]
+fn published_skill_eval_scenarios_cover_the_quality_gates() {
+    let fixture = skill_eval_fixture();
+    assert_eq!(fixture["schema_version"], 1);
+    let scenarios = fixture["scenarios"].as_array().unwrap();
+    let mut ids = BTreeSet::new();
+    let mut tags = BTreeSet::new();
+    let known_skills = BTreeSet::from(["pack-manager", "phan-site", "velvet-room"]);
+
+    for scenario in scenarios {
+        let id = scenario["id"].as_str().unwrap();
+        assert!(ids.insert(id), "duplicate eval scenario id: {id}");
+        assert!(known_skills.contains(scenario["skill"].as_str().unwrap()));
+        assert!(!scenario["prompt"].as_str().unwrap().trim().is_empty());
+        for tag in scenario["tags"].as_array().unwrap() {
+            tags.insert(tag.as_str().unwrap());
+        }
+        for field in [
+            "required_behaviors",
+            "forbidden_behaviors",
+            "required_operations",
+            "forbidden_operations",
+        ] {
+            assert!(scenario["expected"][field].is_array(), "{id}: {field}");
+        }
+    }
+
+    for required in [
+        "ordinary_success",
+        "information_insufficient",
+        "correction",
+        "duplicate_input",
+        "explicit_completion",
+        "revoke",
+        "missing_pack",
+        "truthfulness",
+        "idempotency",
+        "pack_quality",
+    ] {
+        assert!(
+            tags.contains(required),
+            "missing eval quality gate: {required}"
+        );
+    }
+}
+
+#[test]
+fn generated_claude_skill_and_fixture_mirrors_match_the_plugin_sources() {
+    assert_eq!(
+        collect_tree(&repository_path("plugins/arcana/skills"), true),
+        collect_tree(&repository_path(".claude/skills"), false)
+    );
+    assert_eq!(
+        collect_tree(&repository_path("plugins/arcana/fixtures"), false),
+        collect_tree(&repository_path(".claude/fixtures"), false)
+    );
+}
+
+#[test]
+fn published_fixtures_cover_success_dry_run_and_atomic_failure() {
+    let directory = tempfile::tempdir().unwrap();
+    let runtime = directory.path().join("runtime");
+    let runtime_arg = path_string(&runtime);
+    assert!(arcana_data(&["init", "--runtime", &runtime_arg])
+        .status
+        .success());
+
+    let pack_fixture = path_string(&contract_fixture_path("pack-content.json"));
+    let pack_validation = arcana_data(&[
+        "pack",
+        "--runtime",
+        &runtime_arg,
+        "validate",
+        "--file",
+        &pack_fixture,
+    ]);
+    assert!(
+        pack_validation.status.success(),
+        "{}",
+        utf8(&pack_validation.stderr)
+    );
+    assert_eq!(
+        parse_json(&pack_validation.stdout)["validation"]["valid"],
+        true
+    );
+
+    let daily_update = path_string(&contract_fixture_path("velvet-room-daily-update.json"));
+    let preview = arcana_data(&[
+        "batch",
+        "--runtime",
+        &runtime_arg,
+        "apply",
+        "--file",
+        &daily_update,
+        "--dry-run",
+    ]);
+    assert!(preview.status.success(), "{}", utf8(&preview.stderr));
+    assert_eq!(parse_json(&preview.stdout)["dry_run"], true);
+    let nickname = arcana_data(&[
+        "record",
+        "--runtime",
+        &runtime_arg,
+        "get",
+        "identity.nickname",
+    ]);
+    assert!(nickname.status.success(), "{}", utf8(&nickname.stderr));
+    assert!(parse_json(&nickname.stdout)["record"].is_null());
+
+    let applied = arcana_data(&[
+        "batch",
+        "--runtime",
+        &runtime_arg,
+        "apply",
+        "--file",
+        &daily_update,
+    ]);
+    assert!(applied.status.success(), "{}", utf8(&applied.stderr));
+    assert_eq!(parse_json(&applied.stdout)["dry_run"], false);
+
+    let unresolved = path_string(&contract_fixture_path("batch-unresolved.json"));
+    let failed = arcana_data(&[
+        "batch",
+        "--runtime",
+        &runtime_arg,
+        "apply",
+        "--file",
+        &unresolved,
+    ]);
+    assert_eq!(failed.status.code(), Some(1));
+    assert!(failed.stdout.is_empty());
+    assert_eq!(
+        parse_json(&failed.stderr),
+        contract_fixture("batch-unresolved-error.json")
+    );
+    let nickname = arcana_data(&[
+        "record",
+        "--runtime",
+        &runtime_arg,
+        "get",
+        "identity.nickname",
+    ]);
+    assert_eq!(parse_json(&nickname.stdout)["record"]["value"], "Alice");
+
+    let invalid_dry_run = arcana_data(&["capabilities", "--dry-run"]);
+    assert_eq!(invalid_dry_run.status.code(), Some(2));
+    assert!(invalid_dry_run.stdout.is_empty());
+    assert_eq!(
+        parse_json(&invalid_dry_run.stderr),
+        contract_fixture("dry-run-read-error.json")
+    );
 }
 
 #[test]

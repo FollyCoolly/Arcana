@@ -124,7 +124,7 @@ Arcana 内置 AI 助手，可作为个人生活助手运行，支持多种入口
 
 | 入口 | 说明 |
 |------|------|
-| **外部 AI harness** | canonical Skill 正在基于 SQLite CLI 重建；过时的项目级 `.claude/skills` 已删除。 |
+| **外部 AI harness** | 本地 Arcana plugin 已提供基于 SQLite CLI 的 Velvet Room、Phan Site 与 Pack Manager canonical Skills。 |
 | **Telegram** | 可选的移动端 / 远程访问机器人（`agent-telegram`），按需编译和运行。 |
 | **Data CLI** | 脚本和未来 Agent Skill 使用的机器可读 SQLite 数据工具（`arcana-data`）。 |
 
@@ -207,7 +207,7 @@ cargo build --manifest-path src-tauri/Cargo.toml --bin arcana-data
 ./src-tauri/target/debug/arcana-data memory list
 ```
 
-`arcana-data init` 只创建 SQLite runtime 和 `basic` Pack，不会填充旧 UI 或新手任务。Record、Pack、Status、Achievement、Arcana Skill 查询、Mission、AssistantMemory、紧凑 Agent 上下文、dry-run 与原子用户状态 batch 已经迁移；Tauri UI 迁移和 canonical Agent Skill 仍待完成。
+`arcana-data init` 只创建 SQLite runtime 和 `basic` Pack，不会填充旧 UI 或新手任务。Record、Pack、Status、Achievement、Arcana Skill 查询、Mission、AssistantMemory、紧凑 Agent 上下文、dry-run、原子用户状态 batch、contract fixtures 与 canonical 外部 Skills 已经迁移；Tauri UI 仍使用旧数据层。
 
 > [!NOTE]
 > 如果你需要使用 agent 二进制——主要是 `agent-telegram`，它会启动一个监听服务，让你通过 Telegram 远程控制本地助手——则需要额外配置 LLM provider。通过环境变量（`ANTHROPIC_API_KEY`）或配置文件（`~/.arcana/agent_config.json`）设置 API key 即可。详见 [AI 助手](#ai-助手)。
@@ -317,7 +317,7 @@ python scripts/fetch_douban.py --status all
 
 - **当前处于分层迁移状态**：Tauri UI 与内置 Agent 仍使用旧 JSON；`arcana-data` 已使用 SQLite 和确定性 JSON import/export。
 - **内容包体系**：成就和技能通过用户可扩展的内容包加载。
-- **Agent 迁移尚未完成**：内置 CLI/Telegram Agent 仍使用旧 JSON。SQLite 领域命令、dry-run 和原子 batch 已经齐全，但 canonical 外部 Skill 要等 contract fixture 与 eval 完成后再恢复。
+- **Agent 仍处于分层迁移**：内置 CLI/Telegram Agent 仍使用旧 JSON；canonical 外部 Skills 已位于 `plugins/arcana/skills`，并提供生成式 `.claude/skills` 镜像、版本化 contract fixtures 与固定 eval 场景。
 - **前置条件校验**：当前 Achievement 模型把 prerequisites 校验为 DAG；Skill 在 UI 中呈现为紧凑的蜂窝状节点图。
 - **明确的迁移边界**：`services/` 只属于旧 UI/Agent；SQLite CLI 使用 `application/`、`domain/` 和 `storage/sqlite/`。
 

@@ -1,0 +1,10 @@
+{
+  "code": "batch_operation_unresolved",
+  "message": "RecordDefinition 'missing.value' is not supplied by an enabled Pack",
+  "details": {
+    "operation": "record.set",
+    "operation_index": 1,
+    "repository_code": "unresolved",
+    "validation_issues": []
+  }
+}

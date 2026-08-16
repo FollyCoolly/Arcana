@@ -1,0 +1,27 @@
+{
+  "name": "arcana",
+  "version": "0.1.0",
+  "description": "Operate Arcana's local data, missions, achievements, and content packs.",
+  "author": {
+    "name": "FollyCoolly",
+    "url": "https://github.com/FollyCoolly"
+  },
+  "homepage": "https://github.com/FollyCoolly/Arcana",
+  "repository": "https://github.com/FollyCoolly/Arcana",
+  "license": "MIT",
+  "keywords": ["arcana", "achievements", "missions", "personal-data"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Arcana",
+    "shortDescription": "Use Arcana's local-first personal data system.",
+    "longDescription": "Record user-provided facts and progress, suggest missions, and create validated Arcana content packs through the local SQLite CLI.",
+    "developerName": "FollyCoolly",
+    "category": "Productivity",
+    "capabilities": ["Read", "Write"],
+    "defaultPrompt": [
+      "Record what I accomplished today in Arcana.",
+      "Suggest a few useful missions for me.",
+      "Help me create an Arcana content pack."
+    ]
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "operations": [
+    {
+      "operation": "record.set",
+      "input": {
+        "definition_id": "identity.nickname",
+        "value": "Alice"
+      }
+    },
+    {
+      "operation": "mission.create",
+      "input": {
+        "title": "Review today's notes",
+        "difficulty": "D"
+      }
+    },
+    {
+      "operation": "memory.create",
+      "input": {
+        "kind": "preference",
+        "content": "Prefers short review missions after finishing a study session."
+      }
+    }
+  ]
+}

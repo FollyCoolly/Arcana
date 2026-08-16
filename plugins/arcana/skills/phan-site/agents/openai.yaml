@@ -1,0 +1,4 @@
+interface:
+  display_name: "Phan Site"
+  short_description: "Generate relevant Arcana mission suggestions"
+  default_prompt: "Use $phan-site to suggest my next Arcana missions."

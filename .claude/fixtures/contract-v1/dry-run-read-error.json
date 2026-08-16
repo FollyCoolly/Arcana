@@ -1,0 +1,8 @@
+{
+  "code": "invalid_command_input",
+  "message": "--dry-run is only supported by user-state mutations and batch apply",
+  "details": {
+    "command": "capabilities",
+    "operation": "capabilities"
+  }
+}

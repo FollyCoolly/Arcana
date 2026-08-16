@@ -1,0 +1,4 @@
+interface:
+  display_name: "Pack Manager"
+  short_description: "Create and refine valid Arcana domain packs"
+  default_prompt: "Use $pack-manager to create or improve an Arcana pack."

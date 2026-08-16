@@ -1,0 +1,219 @@
+{
+  "operations": [
+    {
+      "operation": "record.set",
+      "input": {
+        "definition_id": "identity.nickname",
+        "value": "Alice",
+        "effective_at": "2026-08-16"
+      }
+    },
+    {
+      "operation": "record.increment",
+      "input": {
+        "definition_id": "fitness.run_count",
+        "delta": 1,
+        "effective_at": "2026-08-16"
+      }
+    },
+    {
+      "operation": "record.correct",
+      "input": {
+        "definition_id": "identity.nickname",
+        "value": "Alice"
+      }
+    },
+    {
+      "operation": "record.create-empty-collection",
+      "input": {
+        "definition_id": "cooking.learned_dishes"
+      }
+    },
+    {
+      "operation": "record.create-empty-event",
+      "input": {
+        "definition_id": "fitness.running"
+      }
+    },
+    {
+      "operation": "record.add-item",
+      "input": {
+        "definition_id": "cooking.learned_dishes",
+        "item_id": "dish:tomato-and-eggs",
+        "fields": {
+          "learned_at": "2026-08-16",
+          "name": "Tomato and eggs"
+        }
+      }
+    },
+    {
+      "operation": "record.correct-item",
+      "input": {
+        "definition_id": "cooking.learned_dishes",
+        "item_id": "dish:tomato-and-eggs",
+        "fields": {
+          "learned_at": "2026-08-15",
+          "name": "Tomato and eggs"
+        }
+      }
+    },
+    {
+      "operation": "record.remove-item",
+      "input": {
+        "definition_id": "cooking.learned_dishes",
+        "item_id": "dish:tomato-and-eggs"
+      }
+    },
+    {
+      "operation": "record.append-event",
+      "input": {
+        "definition_id": "fitness.running",
+        "event_id": "run:2026-08-16-morning",
+        "occurred_at": "2026-08-16T07:30:00+08:00",
+        "fields": {
+          "distance_km": 5.2,
+          "duration_minutes": 31
+        }
+      }
+    },
+    {
+      "operation": "record.correct-event",
+      "input": {
+        "definition_id": "fitness.running",
+        "event_id": "run:2026-08-16-morning",
+        "occurred_at": "2026-08-16T07:35:00+08:00",
+        "fields": {
+          "distance_km": 5.2,
+          "duration_minutes": 30
+        }
+      }
+    },
+    {
+      "operation": "record.delete-event",
+      "input": {
+        "definition_id": "fitness.running",
+        "event_id": "run:2026-08-16-morning"
+      }
+    },
+    {
+      "operation": "record.delete",
+      "input": {
+        "definition_id": "identity.nickname"
+      }
+    },
+    {
+      "operation": "status.select",
+      "input": {
+        "position": 0,
+        "dimension_id": "fitness::physical"
+      }
+    },
+    {
+      "operation": "status.clear",
+      "input": {
+        "position": 0
+      }
+    },
+    {
+      "operation": "achievement.state-set",
+      "input": {
+        "achievement_id": "cooking::first_dish",
+        "status": "achieved",
+        "achieved_at": "2026-08-16"
+      }
+    },
+    {
+      "operation": "achievement.state-revoke",
+      "input": {
+        "achievement_id": "cooking::first_dish"
+      }
+    },
+    {
+      "operation": "mission.create",
+      "input": {
+        "title": "Practice knife skills",
+        "description": "Prepare one meal with deliberate knife practice.",
+        "progress": 0,
+        "difficulty": "D",
+        "deadline": "2026-08-23"
+      }
+    },
+    {
+      "operation": "mission.update",
+      "input": {
+        "mission_id": "mission-id",
+        "title": "Practice knife skills twice",
+        "progress": 50,
+        "difficulty": "C"
+      }
+    },
+    {
+      "operation": "mission.complete",
+      "input": {
+        "mission_id": "mission-id"
+      }
+    },
+    {
+      "operation": "mission.archive",
+      "input": {
+        "mission_id": "mission-id"
+      }
+    },
+    {
+      "operation": "mission.delete",
+      "input": {
+        "mission_id": "mission-id"
+      }
+    },
+    {
+      "operation": "mission.suggest",
+      "input": {
+        "title": "The Mise en Place Trial",
+        "description": "Prepare every ingredient before cooking one dinner.",
+        "difficulty": "D",
+        "deadline": "2026-08-23",
+        "parent_mission_id": "mission-id",
+        "reason": "Build a repeatable preparation habit."
+      }
+    },
+    {
+      "operation": "mission.accept",
+      "input": {
+        "suggestion_id": "suggestion-id"
+      }
+    },
+    {
+      "operation": "mission.reject",
+      "input": {
+        "suggestion_id": "suggestion-id"
+      }
+    },
+    {
+      "operation": "mission.suggestion-delete",
+      "input": {
+        "suggestion_id": "suggestion-id"
+      }
+    },
+    {
+      "operation": "memory.create",
+      "input": {
+        "kind": "preference",
+        "content": "Prefers missions that can be completed within one week."
+      }
+    },
+    {
+      "operation": "memory.update",
+      "input": {
+        "memory_id": "memory-id",
+        "kind": "preference",
+        "content": "Prefers missions with a concrete result and a one-week scope."
+      }
+    },
+    {
+      "operation": "memory.delete",
+      "input": {
+        "memory_id": "memory-id"
+      }
+    }
+  ]
+}

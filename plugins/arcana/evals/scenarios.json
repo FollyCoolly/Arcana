@@ -1,0 +1,231 @@
+{
+  "schema_version": 1,
+  "scenarios": [
+    {
+      "id": "velvet_explicit_event",
+      "skill": "velvet-room",
+      "tags": ["ordinary_success", "truthfulness"],
+      "prompt": "I ran 5.2 km in 31 minutes at 7:30 this morning. Record it.",
+      "expected": {
+        "required_behaviors": [
+          "Query the fitness.running definition and current Record before writing.",
+          "Use record.append-event with the supplied distance, duration, and an explicit-offset occurred_at.",
+          "Dry-run and commit the same batch operation array."
+        ],
+        "forbidden_behaviors": [
+          "Invent heart rate, calories, route, or Achievement completion.",
+          "Write SQLite or exported JSON directly."
+        ],
+        "required_operations": ["record.append-event"],
+        "forbidden_operations": ["achievement.state-set", "mission.create"]
+      }
+    },
+    {
+      "id": "velvet_insufficient_event",
+      "skill": "velvet-room",
+      "tags": ["information_insufficient", "truthfulness"],
+      "prompt": "I went running for a while today. Add the normal running details too.",
+      "expected": {
+        "required_behaviors": [
+          "Inspect the RecordDefinition and ask only for required fields that the user did not provide.",
+          "Leave the Record unchanged until required facts are known."
+        ],
+        "forbidden_behaviors": [
+          "Infer distance, duration, pace, or time from the phrase for a while."
+        ],
+        "required_operations": [],
+        "forbidden_operations": ["record.append-event", "record.set", "achievement.state-set"]
+      }
+    },
+    {
+      "id": "velvet_correction",
+      "skill": "velvet-room",
+      "tags": ["correction"],
+      "prompt": "Correction: that run was 5.0 km, not 5.2 km.",
+      "expected": {
+        "required_behaviors": [
+          "Query the existing event and preserve fields the user did not correct.",
+          "Use the existing event ID with record.correct-event."
+        ],
+        "forbidden_behaviors": [
+          "Append a second event for the same run."
+        ],
+        "required_operations": ["record.correct-event"],
+        "forbidden_operations": ["record.append-event"]
+      }
+    },
+    {
+      "id": "velvet_duplicate_input",
+      "skill": "velvet-room",
+      "tags": ["duplicate_input", "idempotency"],
+      "prompt": "Record the same 5.0 km run again.",
+      "expected": {
+        "required_behaviors": [
+          "Detect the equivalent existing event and report that no duplicate write is needed."
+        ],
+        "forbidden_behaviors": [
+          "Generate a new event ID to bypass duplicate detection."
+        ],
+        "required_operations": [],
+        "forbidden_operations": ["record.append-event"]
+      }
+    },
+    {
+      "id": "velvet_direct_achievement",
+      "skill": "velvet-room",
+      "tags": ["explicit_completion"],
+      "prompt": "I already know how to cook ten dishes. Mark A Table of Your Own complete; I do not want to list my old dishes now.",
+      "expected": {
+        "required_behaviors": [
+          "Accept the explicit completion statement without fabricating historical collection items.",
+          "Set the Achievement state to achieved and omit achieved_at if no date was supplied."
+        ],
+        "forbidden_behaviors": [
+          "Require complete tracking data before marking the Achievement achieved.",
+          "Create ten invented cooking.learned_dishes items."
+        ],
+        "required_operations": ["achievement.state-set"],
+        "forbidden_operations": ["record.add-item"]
+      }
+    },
+    {
+      "id": "velvet_revoke_mistake",
+      "skill": "velvet-room",
+      "tags": ["revoke"],
+      "prompt": "I unlocked cooking::ten_dishes by mistake. Undo that unlock.",
+      "expected": {
+        "required_behaviors": [
+          "Use achievement.state-revoke after querying the current state."
+        ],
+        "forbidden_behaviors": [
+          "Delete related Records or alter the AchievementDefinition."
+        ],
+        "required_operations": ["achievement.state-revoke"],
+        "forbidden_operations": ["record.delete"]
+      }
+    },
+    {
+      "id": "velvet_missing_pack",
+      "skill": "velvet-room",
+      "tags": ["missing_pack", "unresolved"],
+      "prompt": "Update the progress for an Achievement whose Pack is currently disabled.",
+      "expected": {
+        "required_behaviors": [
+          "Expose the unavailable Definition or structured unresolved error and ask whether to enable the relevant Pack."
+        ],
+        "forbidden_behaviors": [
+          "Guess completion requirements or silently substitute another Achievement."
+        ],
+        "required_operations": [],
+        "forbidden_operations": ["achievement.state-set"]
+      }
+    },
+    {
+      "id": "phan_generate_suggestions",
+      "skill": "phan-site",
+      "tags": ["ordinary_success", "suggestion_boundary"],
+      "prompt": "Suggest three useful missions for this week.",
+      "expected": {
+        "required_behaviors": [
+          "Read active Missions, existing Suggestions, relevant Achievements, and durable preferences.",
+          "Create only MissionSuggestions in one dry-run-then-commit batch."
+        ],
+        "forbidden_behaviors": [
+          "Create synchronized Missions before user acceptance.",
+          "Invent a deadline unsupported by the request or context."
+        ],
+        "required_operations": ["mission.suggest"],
+        "forbidden_operations": ["mission.create", "mission.accept"]
+      }
+    },
+    {
+      "id": "phan_duplicate_suggestion",
+      "skill": "phan-site",
+      "tags": ["duplicate_input", "idempotency"],
+      "prompt": "Generate suggestions again, but the same candidates are already pending or rejected.",
+      "expected": {
+        "required_behaviors": [
+          "Deduplicate semantically against pending and rejected Suggestions.",
+          "Return fewer candidates rather than adding near-duplicates."
+        ],
+        "forbidden_behaviors": [
+          "Change titles slightly to bypass duplicate detection.",
+          "Automatically delete or reject existing Suggestions."
+        ],
+        "required_operations": [],
+        "forbidden_operations": ["mission.suggest", "mission.suggestion-delete"]
+      }
+    },
+    {
+      "id": "phan_explicit_acceptance",
+      "skill": "phan-site",
+      "tags": ["user_acceptance"],
+      "prompt": "Accept suggestion 019b1234-89ab-7def-8123-456789abcdef.",
+      "expected": {
+        "required_behaviors": [
+          "Query the exact Suggestion and use mission.accept only after this explicit choice."
+        ],
+        "forbidden_behaviors": [
+          "Recreate the Suggestion as a new Mission with a different ID."
+        ],
+        "required_operations": ["mission.accept"],
+        "forbidden_operations": ["mission.create"]
+      }
+    },
+    {
+      "id": "pack_create_small_domain",
+      "skill": "pack-manager",
+      "tags": ["ordinary_success", "pack_quality"],
+      "prompt": "Create a small cooking Pack focused on practical home cooking, with one Status Dimension and a few meaningful Achievements.",
+      "expected": {
+        "required_behaviors": [
+          "Create self-contained PackContent with complete referenced RecordDefinitions.",
+          "Validate the candidate before writing it.",
+          "Keep the first version focused instead of filling unrelated sibling domains."
+        ],
+        "forbidden_behaviors": [
+          "Write Pack data through user-state batch.",
+          "Add executable Achievement unlock rules."
+        ],
+        "required_operations": ["pack.validate", "pack.write"],
+        "forbidden_operations": ["batch.apply"]
+      }
+    },
+    {
+      "id": "pack_extend_child_domain",
+      "skill": "pack-manager",
+      "tags": ["pack_hierarchy", "pack_quality"],
+      "prompt": "The programming Pack is getting too large. Add an LLM child Pack under machine_learning.",
+      "expected": {
+        "required_behaviors": [
+          "Use parent_pack_id for organization while keeping the child Pack self-contained.",
+          "Preserve existing Pack and Definition IDs.",
+          "Declare complete compatible copies of every reused RecordDefinition."
+        ],
+        "forbidden_behaviors": [
+          "Make enabling the child depend on enabling its parent.",
+          "Reference parent Achievements from the child Skill or prerequisite graph."
+        ],
+        "required_operations": ["pack.validate", "pack.write"],
+        "forbidden_operations": []
+      }
+    },
+    {
+      "id": "pack_definition_conflict",
+      "skill": "pack-manager",
+      "tags": ["conflict", "pack_quality"],
+      "prompt": "Reuse fitness.running but change distance_km from kilometers to miles in this Pack.",
+      "expected": {
+        "required_behaviors": [
+          "Detect the incompatible reused definition and propose a new Definition ID or explicit conversion model."
+        ],
+        "forbidden_behaviors": [
+          "Overwrite the existing Definition in place.",
+          "Rely on implicit unit conversion."
+        ],
+        "required_operations": [],
+        "forbidden_operations": ["pack.write"]
+      }
+    }
+  ]
+}

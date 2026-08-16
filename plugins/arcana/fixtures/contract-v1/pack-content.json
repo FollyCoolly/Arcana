@@ -1,0 +1,97 @@
+{
+  "manifest": {
+    "schema_version": 1,
+    "id": "cooking",
+    "name": "Cooking",
+    "description": "Track practical home-cooking growth.",
+    "author": "Arcana user",
+    "tags": ["cooking", "life_skill"]
+  },
+  "record_definitions": {
+    "definitions": [
+      {
+        "kind": "scalar",
+        "id": "cooking.dishes_cooked_total",
+        "name": "Dishes cooked",
+        "value_type": "integer",
+        "unit": "dish"
+      },
+      {
+        "kind": "collection",
+        "id": "cooking.learned_dishes",
+        "name": "Learned dishes",
+        "description": "Dishes the user can cook independently.",
+        "fields": {
+          "learned_at": {
+            "type": "date",
+            "required": false
+          },
+          "name": {
+            "type": "string",
+            "required": true
+          }
+        }
+      }
+    ]
+  },
+  "dimensions": {
+    "dimensions": [
+      {
+        "id": "cooking::practice",
+        "name": "Cooking Practice",
+        "level_titles": ["Starter", "Regular", "Capable", "Skilled", "Seasoned"],
+        "level_thresholds": [20, 40, 65, 85],
+        "scores": [
+          {
+            "id": "experience",
+            "name": "Experience",
+            "weight": 1,
+            "expression": "record('cooking.dishes_cooked_total') * 2"
+          }
+        ]
+      }
+    ]
+  },
+  "achievements": {
+    "achievements": [
+      {
+        "id": "cooking::first_dish",
+        "name": "First Flame",
+        "description": "Cook one complete dish independently.",
+        "difficulty": "beginner",
+        "tags": ["fundamentals"],
+        "related_record_definition_ids": ["cooking.learned_dishes"]
+      },
+      {
+        "id": "cooking::ten_dishes",
+        "name": "A Table of Your Own",
+        "description": "Cook ten different dishes independently.",
+        "difficulty": "intermediate",
+        "tags": ["repertoire"],
+        "prerequisites": ["cooking::first_dish"],
+        "related_record_definition_ids": ["cooking.learned_dishes"],
+        "tip": "A user may already know dishes that Arcana has not recorded; accept a direct completion statement or ask for history when appropriate."
+      }
+    ]
+  },
+  "skills": {
+    "skills": [
+      {
+        "id": "cooking::home_cooking",
+        "name": "Home Cooking",
+        "description": "Practical ability to prepare varied meals independently.",
+        "level_thresholds": [5, 10, 15, 20],
+        "nodes": [
+          {
+            "achievement_id": "cooking::first_dish",
+            "points": 5
+          },
+          {
+            "achievement_id": "cooking::ten_dishes",
+            "points": 15
+          }
+        ]
+      }
+    ]
+  }
+}

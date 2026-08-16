@@ -1,0 +1,4 @@
+interface:
+  display_name: "Velvet Room"
+  short_description: "Record facts and progress safely in Arcana"
+  default_prompt: "Use $velvet-room to record what I did today in Arcana."

@@ -1,0 +1,18 @@
+{
+  "operations": [
+    {
+      "operation": "record.set",
+      "input": {
+        "definition_id": "identity.nickname",
+        "value": "Must roll back"
+      }
+    },
+    {
+      "operation": "record.set",
+      "input": {
+        "definition_id": "missing.value",
+        "value": 1
+      }
+    }
+  ]
+}

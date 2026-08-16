@@ -1,0 +1,124 @@
+{
+  "commands": {
+    "achievement": {
+      "actions": ["list", "state-set", "state-revoke"],
+      "version": 1
+    },
+    "batch": {
+      "actions": ["apply"],
+      "operations": [
+        "record.set",
+        "record.increment",
+        "record.correct",
+        "record.create-empty-collection",
+        "record.create-empty-event",
+        "record.add-item",
+        "record.correct-item",
+        "record.remove-item",
+        "record.append-event",
+        "record.correct-event",
+        "record.delete-event",
+        "record.delete",
+        "status.select",
+        "status.clear",
+        "achievement.state-set",
+        "achievement.state-revoke",
+        "mission.create",
+        "mission.update",
+        "mission.complete",
+        "mission.archive",
+        "mission.delete",
+        "mission.suggest",
+        "mission.accept",
+        "mission.reject",
+        "mission.suggestion-delete",
+        "memory.create",
+        "memory.update",
+        "memory.delete"
+      ],
+      "version": 1
+    },
+    "context": {
+      "actions": ["summary"],
+      "version": 1
+    },
+    "init": {
+      "version": 1
+    },
+    "json": {
+      "actions": ["import", "export"],
+      "version": 1
+    },
+    "memory": {
+      "actions": ["list", "create", "update", "delete"],
+      "version": 1
+    },
+    "mission": {
+      "actions": [
+        "list",
+        "create",
+        "update",
+        "complete",
+        "archive",
+        "delete",
+        "suggestion-list",
+        "suggest",
+        "accept",
+        "reject",
+        "suggestion-delete"
+      ],
+      "version": 1
+    },
+    "pack": {
+      "actions": [
+        "list",
+        "show",
+        "scaffold",
+        "validate",
+        "write",
+        "asset-put",
+        "asset-delete",
+        "enable",
+        "disable"
+      ],
+      "version": 1
+    },
+    "record": {
+      "actions": [
+        "get",
+        "query",
+        "set",
+        "increment",
+        "correct",
+        "create-empty-collection",
+        "create-empty-event",
+        "add-item",
+        "correct-item",
+        "remove-item",
+        "append-event",
+        "correct-event",
+        "delete-event",
+        "delete"
+      ],
+      "version": 1
+    },
+    "skill": {
+      "actions": ["list"],
+      "version": 1
+    },
+    "status": {
+      "actions": ["list-dimensions", "evaluate", "select"],
+      "version": 1
+    }
+  },
+  "contract_version": 1,
+  "features": {
+    "batch": true,
+    "dry_run": true,
+    "git_sync": false,
+    "structured_errors": true
+  },
+  "pack_schema_version": 1,
+  "repository_schema_version": 1,
+  "sqlite_schema_version": 1
+}

@@ -1,6 +1,6 @@
 # 外部 Agent Skill 与 CLI 合约
 
-> **状态**：Target / 分发、边界与质量门已确定
+> **状态**：Canonical plugin、Skills、contract fixtures 与固定 eval 场景已实现
 > **最后更新**：2026-08-16
 
 ## 1. 术语与边界
@@ -12,22 +12,25 @@ Agent Skill 不属于用户数据，不进入用户 Git 同步仓库，也不拥
 
 ## 2. 唯一源码与分发
 
-目标仓库结构：
+当前仓库结构：
 
 ```text
 plugins/arcana/
 ├── .codex-plugin/plugin.json
+├── fixtures/contract-v1/
+├── evals/scenarios.json
 └── skills/
-    ├── velvet-room/SKILL.md
-    ├── phan-site/SKILL.md
-    └── pack-manager/SKILL.md
+    ├── velvet-room/{SKILL.md,agents/,references/}
+    ├── phan-site/{SKILL.md,agents/,references/}
+    └── pack-manager/{SKILL.md,agents/,references/}
 
-.claude/skills/                 # 由兼容脚本生成，不手工维护
+.claude/{skills,fixtures}/      # 由兼容脚本生成，不手工维护
+scripts/sync_agent_skills.py    # generate / --check
 ```
 
 - `plugins/arcana/skills` 是唯一人工维护的 Skill 源码。
 - Codex 使用本地 plugin/marketplace 安装；其他 harness 由构建脚本复制或转换 canonical Skill。
-- Windows 不依赖符号链接；生成脚本提供 `generate` 和 `--check`，CI 检查镜像没有漂移。
+- Windows 不依赖符号链接；运行 `python scripts/sync_agent_skills.py` 生成镜像，运行 `python scripts/sync_agent_skills.py --check` 检查漂移。
 - Skill 与 CLI 合约变更必须在同一提交更新；不维护一套内置 prompt 和一套外部 Skill 业务规则。
 - 用户数据 Pack 与 Agent plugin 是两种独立分发物，不能混放。
 
@@ -85,7 +88,7 @@ sync status|import|export|pull|push|run
 
 `json import|export` 是不接触 Git 的底层完整目录转换命令；`sync` 后续在它之上增加 managed path digest、防覆盖、恢复 journal 和显式 Git 操作。
 
-当前实现已经提供新运行时的 `capabilities`、`init`、`context summary`、用户状态 mutation 的 `--dry-run` 与 `batch apply`、完整 `record`、`pack`、`status`、`achievement`、`mission`、`memory` 命令族、只读 `skill list` 和 `json import|export`，并实现直接业务 JSON、结构化错误和稳定退出语义。`arcana-data init [--runtime <directory>]` 创建只含启用状态 `basic` Pack 的新 SQLite；领域命令统一使用 `arcana-data <record|pack|status|achievement|skill|mission|memory> [--runtime <directory>] <action>`，省略 runtime 时读取本机 settings 或默认目录。Record `get` 返回当前 Record，`query` 可按 `--definition-id`、`--namespace`、`--pack`、`--kind`、`--has-value` 组合过滤；修改复杂 payload 的命令从 stdin 或 `--file` 读取对应 Application Command JSON。旧 JSON 实现和旧 `.claude/skills` 已删除，全部目标领域命令已按 SQLite 合约重新实现；发布 canonical Agent Skill 前仍需完成 contract fixture 与 eval。
+当前实现已经提供新运行时的 `capabilities`、`init`、`context summary`、用户状态 mutation 的 `--dry-run` 与 `batch apply`、完整 `record`、`pack`、`status`、`achievement`、`mission`、`memory` 命令族、只读 `skill list` 和 `json import|export`，并实现直接业务 JSON、结构化错误和稳定退出语义。`arcana-data init [--runtime <directory>]` 创建只含启用状态 `basic` Pack 的新 SQLite；领域命令统一使用 `arcana-data <record|pack|status|achievement|skill|mission|memory> [--runtime <directory>] <action>`，省略 runtime 时读取本机 settings 或默认目录。Record `get` 返回当前 Record，`query` 可按 `--definition-id`、`--namespace`、`--pack`、`--kind`、`--has-value` 组合过滤；修改复杂 payload 的命令从 stdin 或 `--file` 读取对应 Application Command JSON。全部目标领域命令和 canonical Agent Skills 已按 SQLite 合约实现；固定 fixture 直接由 Rust process test 读取，确保 capabilities、Serde payload、错误、dry-run、原子回滚与 PackContent 样例不会漂移。
 
 `batch apply` 输入采用稳定的相邻标签格式：
 
@@ -190,4 +193,4 @@ Memory `list` 支持按 ID 和 kind 精确过滤。`create` 由系统生成 UUID
 - Pack quality：重复 Definition、DAG 环、不可达 Skill Lv.5、无效表达式和路径穿越必须被拒绝。
 - Windows/macOS fixture：路径、编码、换行和 CLI 启动方式均通过。
 
-CI 只验证确定性能力；自然语言判断质量使用固定场景的人工/模型 eval 报告。未通过质量门的 Skill 不随正式构建发布。
+Rust process test 验证确定性能力；`plugins/arcana/evals/scenarios.json` 固定自然语言判断的输入、必需行为、禁用行为与 operation 边界，供人工或后续模型 eval runner 使用。当前没有把模型判断接入确定性 CI，也不把一次模型输出当作 Schema 正确性的替代品。

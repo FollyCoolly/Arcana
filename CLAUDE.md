@@ -6,7 +6,7 @@ Arcana 是一个 Persona 5 风格的游戏化人生管理桌面应用。项目�
 
 - Tauri UI 与内置 Rust Agent 暂时仍使用 `models/`、`services/` 和旧 JSON storage；只修复必要问题，不在这套模型上增加新数据平台功能。
 - `arcana-data` 已完全停止暴露旧 JSON 命令，只使用 `application/`、`domain/`、`storage/sqlite/` 和 JSON Repository Codec。
-- 旧 `context/read/mission/status/achievement/pack/changelog/memory` JSON 实现与旧 `.claude/skills` 已删除，不得恢复兼容层；`pack`、`status`、`achievement`、`mission`、`memory` 已按 SQLite 合约重新实现。
+- 旧 `context/read/mission/status/achievement/pack/changelog/memory` JSON 实现与旧 Skill 内容已删除，不得恢复兼容层；新的 canonical Agent Skills 只使用 SQLite CLI，`.claude/skills` 是生成镜像，不得手工维护。
 - 新数据不迁移旧 JSON；UI/Agent 完成切换后再删除剩余旧模块和 `docs/schema/` 迁移对照文档。
 - 新数据平台的权威设计位于 `docs/design/`，旧 UI 的现状说明位于 `docs/architecture.md`。
 
@@ -24,6 +24,8 @@ src-tauri/src/
   commands/ models/ services/     尚未迁移的 UI/Agent 旧实现
   agent/                          尚未迁移的内置 Rust Agent
 docs/design/                      新数据平台权威文档
+plugins/arcana/                   canonical Agent plugin、Skills、contract fixtures 与 eval 场景
+.claude/skills|fixtures/          由 scripts/sync_agent_skills.py 生成的兼容镜像
 docs/schema/                      旧 JSON Schema，仅作迁移对照
 data-example/                     旧 UI JSON 示例，不由新 init 使用
 static/                           UI 静态资源
@@ -41,6 +43,7 @@ cargo build --manifest-path src-tauri/Cargo.toml --bin arcana-data
 cargo test --manifest-path src-tauri/Cargo.toml
 cargo fmt --manifest-path src-tauri/Cargo.toml --check
 cargo clippy --manifest-path src-tauri/Cargo.toml --lib --bins --tests
+python scripts/sync_agent_skills.py --check
 ```
 
 提交前至少通过 `npm run check`、完整 Rust 测试、Rust fmt check 和 `git diff --check`。
@@ -110,7 +113,8 @@ arcana-data json import|export ...
 
 - Rust 领域规则放在 Domain/Application 层，CLI 只解析输入、分发 typed command 和呈现结构化结果。
 - 所有读改写必须在 Repository transaction 内完成；不能由调用方先读再写。
-- 新 CLI 错误码属于机器合约，修改时必须同步 contract fixture 和设计文档。
+- 新 CLI 错误码或命令 payload 属于机器合约，修改时必须同步 `plugins/arcana/fixtures`、Agent Skill reference、eval 场景和设计文档，再运行 `python scripts/sync_agent_skills.py`。
+- `plugins/arcana/skills` 是唯一人工维护的 Agent Skill 源码；禁止直接修改 `.claude/skills` 或 `.claude/fixtures`。
 - 不把 SQLite row id、本机路径、凭证、Agent Session 或缓存字段写入同步 JSON。
 - TypeScript/Svelte 使用 2 空格缩进和 strict 模式；Rust 遵循 `cargo fmt`。
 - Commit 使用 Conventional Commits 和祈使语气。
