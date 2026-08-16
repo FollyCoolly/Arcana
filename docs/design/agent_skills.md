@@ -1,7 +1,7 @@
 # 外部 Agent Skill 与 CLI 合约
 
 > **状态**：Target / 分发、边界与质量门已确定
-> **最后更新**：2026-08-15
+> **最后更新**：2026-08-16
 
 ## 1. 术语与边界
 
@@ -33,29 +33,30 @@ plugins/arcana/
 
 ## 3. CLI 合约
 
-`arcana-data` 是所有 Agent Skill 的唯一数据写入口。CLI 提供稳定整数 `contract_version = 1`，所有结果使用 JSON：
+`arcana-data` 是所有 Agent Skill 的唯一数据写入口。CLI 使用稳定整数 `contract_version = 1`。成功时进程以 0 退出，并把业务 JSON 直接写到 stdout：
 
 ```json
 {
-  "ok": true,
-  "contract_version": 1,
-  "data": {}
-}
-```
-
-```json
-{
-  "ok": false,
-  "contract_version": 1,
-  "error": {
-    "code": "record_unresolved",
-    "message": "RecordDefinition is unavailable.",
-    "details": {}
+  "record": {
+    "definition_id": "identity.nickname",
+    "value": "Alice",
+    "recorded_at": "2026-08-15T12:00:00Z"
   }
 }
 ```
 
-- Agent 只判断 `ok`、稳定 error code 和结构化 details，不解析人类错误文本。
+失败时进程以非零状态退出，stdout 为空，stderr 只包含结构化 JSON：
+
+```json
+{
+  "code": "record_unresolved",
+  "message": "RecordDefinition is unavailable.",
+  "details": {}
+}
+```
+
+- JSON 是 CLI 的数据交换格式；不增加包含 `ok`、`data` 和重复版本号的结果 Envelope。Agent 先判断退出状态，失败时只读取稳定 error code 和结构化 details，不解析人类错误文本。
+- `--help` / `--version` 是面向人的普通文本，不属于机器结果；`--compact` 只改变 JSON 空白，不改变字段。
 - `capabilities` 返回 CLI contract、仓库 Schema、Pack Schema 和支持命令版本；Skill 开始写操作前必须检查兼容性。
 - 读命令支持精确 ID、namespace、Pack 和状态过滤，避免每次把完整用户仓库塞入上下文。
 - 所有普通领域数据修改命令支持 `--dry-run`，返回将修改的实体和验证结果但不提交；新仓库使用独立的 `init` 命令，不提供旧 JSON 数据迁移命令。
@@ -82,9 +83,9 @@ sync status|import|export|pull|push|run
 
 `json import|export` 是不接触 Git 的底层完整目录转换命令；`sync` 后续在它之上增加 managed path digest、防覆盖、恢复 journal 和显式 Git 操作。
 
-当前过渡实现已经提供新运行时的 `init`、完整 `record` 命令族和 `json import|export`。`arcana-data init [--runtime <directory>]` 创建只含启用状态 `basic` Pack 的新 SQLite；Record 命令统一使用 `arcana-data record [--runtime <directory>] <action>`，省略 runtime 时读取本机 settings 或默认目录。`get` 返回当前 Record，`query` 可按 `--definition-id`、`--namespace`、`--pack`、`--kind`、`--has-value` 组合过滤；修改复杂 payload 的命令从 stdin 或 `--file` 读取对应 Application Command JSON。结果 Envelope、稳定错误 code、`--dry-run`、batch 和 `capabilities` 仍属于后续 CLI contract 切换，Agent Skill 暂不能把当前过渡输出当成稳定 v1 合约。
+当前实现已经提供新运行时的 `capabilities`、`init`、完整 `record` 命令族和 `json import|export`，并实现直接业务 JSON、结构化错误和稳定退出语义。`arcana-data init [--runtime <directory>]` 创建只含启用状态 `basic` Pack 的新 SQLite；Record 命令统一使用 `arcana-data record [--runtime <directory>] <action>`，省略 runtime 时读取本机 settings 或默认目录。`get` 返回当前 Record，`query` 可按 `--definition-id`、`--namespace`、`--pack`、`--kind`、`--has-value` 组合过滤；修改复杂 payload 的命令从 stdin 或 `--file` 读取对应 Application Command JSON。旧 `context/read/mission/status/achievement/pack/changelog/memory` JSON CLI 和旧 `.claude/skills` 已删除，必须等对应 SQLite 命令完成后再发布 canonical Agent Skill；`--dry-run` 和 batch 尚未实现。
 
-实际 flag 和请求体由 CLI `--help --json` 生成文档；Skill 不复制完整 JSON Schema，而是在需要时查询 capabilities/schema，避免随代码漂移。
+实际 flag 以 CLI `--help` 为准；机器先查询 `capabilities` 确认合约、Schema、命令版本和 feature。请求体 Schema 随后由 canonical Skill 的 fixture 覆盖，避免文档示例与 Serde 类型漂移。
 
 ## 4. Velvet Room
 
@@ -134,7 +135,7 @@ sync status|import|export|pull|push|run
 
 每个 Agent Skill 发布前必须通过：
 
-- CLI contract fixture：支持版本、未知版本、结构化错误和 dry-run。
+- CLI contract fixture：固定 capabilities 版本与命令集、结构化错误、退出状态和 dry-run feature 标记；Skill 遇到未知 contract version 时拒绝写入。
 - Golden scenario：普通成功、信息不足、用户纠正、重复输入、撤销和 Pack 缺失。
 - 数据真实性 eval：不得从模糊语言虚构 Record 或 achieved。
 - 幂等性 eval：重复处理同一句输入不得重复 item/event/MissionSuggestion。

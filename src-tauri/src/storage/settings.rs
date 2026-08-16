@@ -4,14 +4,14 @@ use std::path::PathBuf;
 
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct ArcanaSettings {
-    /// Legacy JSON v1 location. The new data platform ignores it; current
-    /// commands still need it until their entry points switch to SQLite.
+    /// Legacy JSON v1 location. Only the not-yet-migrated UI and Rust Agent use
+    /// it; the new data CLI ignores it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub data_dir: Option<String>,
     /// Target Git synchronization repository. Not used by current commands yet.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub repository_dir: Option<String>,
-    /// Target SQLite/lock/backup directory. Not used by current commands yet.
+    /// SQLite/lock/backup directory used by the new data CLI and future UI.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub runtime_dir: Option<String>,
     /// Settings owned by other modules must survive a data-platform path update.

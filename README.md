@@ -124,11 +124,11 @@ Arcana includes a built-in AI agent that acts as a personal life assistant. Ther
 
 | Channel | Description |
 |---------|-------------|
-| **External AI harness** | The primary interface. Project-local Skill definitions currently live under `.claude/skills`; other harnesses can use `arcana-data`. |
+| **External AI harness** | Canonical Skills are being rebuilt against the SQLite CLI; the obsolete project-local `.claude/skills` have been removed. |
 | **Telegram** | Optional bot adapter for mobile / remote access (`agent-telegram`). Compile and run only when needed. |
-| **Data CLI** | Structured data operations used by AI skills and scripts (`arcana-data`). |
+| **Data CLI** | Machine-readable SQLite operations for scripts and future Skills (`arcana-data`). |
 
-All paths share a common services layer (`src-tauri/src/services/`) and data format, so updates from any channel are immediately visible everywhere.
+The desktop UI and built-in Rust agent still use the legacy JSON services during migration. `arcana-data` now uses the new Application/Repository/SQLite stack, so its data is not yet displayed by the desktop UI.
 
 > `agent-cli` is a minimal debug harness for testing the agent loop without Tauri. It is not needed for normal use.
 
@@ -145,8 +145,8 @@ The agent can:
 
 - **Framework**: [Tauri v2](https://v2.tauri.app/) (Rust backend + webview frontend)
 - **Frontend**: Svelte 5 + SvelteKit v2 + TypeScript + Tailwind CSS v4 + Three.js
-- **Backend**: Rust (IPC commands, AI agent, JSON data layer)
-- **Data**: Local JSON files in the configured user data directory — current implementation; `data-example/` contains tracked initialization templates, while the target architecture uses SQLite locally and Git JSON for sync
+- **Backend**: Rust (IPC commands, AI agent, legacy JSON services, and the new SQLite Repository)
+- **Data**: The migrating UI/agent still use local JSON; `arcana-data` uses SQLite locally and deterministic JSON for import/export
 - **AI**: Direct Anthropic API integration with tool-calling loop
 
 ---
@@ -164,12 +164,14 @@ src/                    # SvelteKit frontend
 src-tauri/src/          # Rust backend
   ├── commands/         #   Tauri IPC commands (status, achievements, skills, missions, items, gallery, weather)
   ├── models/           #   Serde data structures
-  ├── storage/          #   JSON read/write & validation
-  ├── services/         #   Shared business logic (used by agent, arcana-data CLI, and Tauri commands)
+  ├── domain/           #   New data-platform domain model
+  ├── application/      #   New typed commands and runtime boundary
+  ├── storage/          #   SQLite/JSON codec plus legacy JSON storage
+  ├── services/         #   Legacy business logic used by the UI and built-in agent
   ├── agent/            #   AI agent subsystem (runner, LLM, tools, prompt, config, session)
   └── bin/              #   Standalone binaries: agent_cli, agent_telegram, arcana_data
 data/                   # Ignored local development data
-data-example/           # Tracked templates copied by `arcana-data init`
+data-example/           # Legacy tracked JSON templates retained for the not-yet-migrated UI
   ├── packs/<pack_id>/  #   Content packs (manifest.json, achievements.json, skills.json)
   └── *.json            #   missions, status, achievement_progress, etc.
 docs/                   # Architecture docs, schema specs, UI design guides
@@ -186,17 +188,19 @@ static/                 # Static assets (icons, images)
 # 1. Install dependencies
 npm install
 
-# 2. Build the data CLI
-cargo build --manifest-path src-tauri/Cargo.toml --bin arcana-data
-
-# 3. Initialize your data directory
-./src-tauri/target/debug/arcana-data init
-
-# 4. Run the app
+# 2. Run the current desktop app
 npm run tauri dev
 ```
 
-After the app opens, the onboarding missions will already be active in the Missions screen. In a harness that loads the project-local `.claude/skills`, run `/velvet-room`; other harnesses can use the structured `arcana-data` CLI until their plugin packages are completed.
+The SQLite data platform can be exercised separately while the desktop UI migration is in progress:
+
+```bash
+cargo build --manifest-path src-tauri/Cargo.toml --bin arcana-data
+./src-tauri/target/debug/arcana-data capabilities
+./src-tauri/target/debug/arcana-data init
+```
+
+`arcana-data init` creates the SQLite runtime and the `basic` Pack; it does not populate the legacy UI or onboarding missions. Canonical Agent Skills will return after their required SQLite Pack, Status, Achievement, Mission, and Memory commands exist.
 
 > [!NOTE]
 > If you want to use the agent binaries — primarily `agent-telegram`, which starts a listener service for controlling your local assistant remotely via Telegram — you will need to configure an LLM provider. Set your API key via environment variable (`ANTHROPIC_API_KEY`) or config file (`~/.arcana/agent_config.json`). See [AI Agent](#ai-agent) for details.
@@ -246,7 +250,7 @@ npm run dev
 # Build desktop release
 npm run tauri build
 
-# Build the data CLI (required for AI skills and onboarding)
+# Build the SQLite data CLI
 cargo build --manifest-path src-tauri/Cargo.toml --bin arcana-data
 
 # Build agent binaries (optional / on-demand)
@@ -304,11 +308,11 @@ python scripts/fetch_douban.py --status all
 
 ## Current Implementation Notes
 
-- **Tauri + JSON in the current release**: The current code uses JSON for runtime data. The target architecture keeps Tauri, moves runtime state to SQLite, and exports human-readable JSON for Git sync.
+- **Split migration state**: The Tauri UI and built-in agent still use legacy JSON; `arcana-data` already uses SQLite and deterministic JSON import/export.
 - **Content Pack system**: Achievements and skills are loaded via user-extensible packs.
-- **Agent decoupled from UI**: The AI agent runs independently of the desktop GUI (CLI / Telegram), sharing the same data layer.
+- **Agent migration pending**: The built-in CLI/Telegram agent remains on the legacy JSON layer; canonical external Skills are temporarily removed until the SQLite command surface is complete.
 - **Prerequisite validation**: The current Achievement model validates prerequisites as a DAG; Skills present the result as a compact honeycomb-style node map.
-- **Shared services layer**: `services/` contains all business logic, consumed by Tauri commands, arcana-data CLI, and the Rust agent alike.
+- **Explicit migration boundary**: `services/` is legacy UI/agent logic; the SQLite CLI uses `application/`, `domain/`, and `storage/sqlite/`.
 
 ---
 

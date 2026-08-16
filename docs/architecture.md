@@ -1,11 +1,11 @@
 # Arcana 架构设计文档
 
 > **版本**: v0.1.0
-> **最后更新**: 2026-08-15
+> **最后更新**: 2026-08-16
 > **状态**: Current implementation
 
 > [!IMPORTANT]
-> 本文描述当前已实现的 JSON 架构，不是下一阶段的数据平台目标。SQLite、RecordDefinition/Record、Status 新评分模型、Achievement 用户状态与 PackForest 的目标设计见 [`docs/design/`](./design/README.md)。迁移完成前请勿把两套 Schema 混用。
+> 本文主要描述尚未迁移的 Tauri UI 与内置 Rust Agent JSON 架构。`arcana-data` 已切到 SQLite/Record 新模型并删除旧 JSON 命令，其当前合约见 [`docs/design/agent_skills.md`](./design/agent_skills.md)。SQLite、RecordDefinition/Record、Status 新评分模型、Achievement 用户状态与 PackForest 的完整目标设计见 [`docs/design/`](./design/README.md)。
 
 Arcana 是一个 Persona 5 风格的游戏化人生管理桌面应用，也就是给 “Earth Online” 加一层用户界面。当前实现已经从早期的 Status MVP 演进为一个本地优先的桌面 HUD：前端负责高表现力的菜单与模块屏幕，Rust 后端负责本地 JSON 数据、校验、系统指标计算、AI agent 与结构化数据入口。
 
@@ -18,9 +18,9 @@ Arcana 采用 **Local-First + Tauri Shell + Shared Services** 架构。
 核心原则：
 
 - **本地优先**：运行时数据存在用户数据目录中的 JSON 文件，不依赖数据库；默认目录为 `~/.arcana/data`，也可通过 `ARCANA_DATA_DIR` 或 `~/.arcana/settings.json` 配置。仓库中的 `data-example/` 是初始化模板，`data/` 是被忽略的本地开发目录。
-- **共享业务层**：Tauri IPC、独立 AI agent、`arcana-data` CLI 都复用 `src-tauri/src/services/`，避免多入口各写一套数据规则。
+- **旧共享业务层**：尚未迁移的 Tauri IPC 与独立 Rust agent 复用 `src-tauri/src/services/`；新的 `arcana-data` 只通过 Application Commands 与 Repository 访问 SQLite。
 - **数据驱动 UI**：Status、Missions、Achievements、Skills、Items、Gallery 都从 JSON 数据和 content packs 渲染，不在 UI 中硬编码用户进度。
-- **AI 可审计写入**：AI 写 missions/status/achievement progress 后必须写 `ai_changelog.json`，更新类变更保留 `old_value`。
+- **旧 Agent 审计**：尚未迁移的内置 Agent 写 missions/status/achievement progress 后仍写 `ai_changelog.json`；新数据平台不保留 changelog。
 - **Persona 5 风格表达层**：视觉风格集中在 Svelte 组件、全局 CSS、静态资源与设计文档中，后端保持数据和规则纯净。
 
 ### 1.1 当前系统图
@@ -43,13 +43,17 @@ flowchart TB
         Storage["storage/*\nJSON IO, settings, validation, date utils"]
         Models["models/*\nSerde data models"]
         Agent["agent/*\nLLM runner, tools, prompt, session, channels"]
-        Bins["bin/*\nagent-cli / agent-telegram / arcana-data"]
+        AgentBins["bin/agent-*\nlegacy agent entry points"]
+        DataCli["bin/arcana_data/*\nSQLite data CLI"]
+        Application["application/*\ntyped commands + runtime"]
+        Repository["domain + storage/sqlite\nvalidation + repository"]
     end
 
-    subgraph Data["Local JSON data"]
+    subgraph Data["Local runtime data"]
         DataFiles["<data_dir>/*.json\nmissions, status, progress, changelog, memory"]
         Packs["<data_dir>/packs/<pack_id>/\nmanifest, achievements, skills"]
         Sessions["<data_dir>/sessions/\nagent JSONL history"]
+        RuntimeDb["<runtime_dir>/arcana.sqlite3\nnew data CLI runtime"]
     end
 
     Frontend -->|"invoke(...)"| TauriCommands
@@ -60,8 +64,10 @@ flowchart TB
     Storage --> DataFiles
     Storage --> Packs
     Agent --> Services
-    Bins --> Agent
-    Bins --> Services
+    AgentBins --> Agent
+    DataCli --> Application
+    Application --> Repository
+    Repository --> RuntimeDb
     Agent --> Sessions
 ```
 
@@ -133,7 +139,7 @@ flowchart TB
 
 位置：`src-tauri/src/services/`
 
-`services/` 是当前架构的关键边界。Tauri commands、Rust agent、`arcana-data` CLI 都应该优先复用这里的业务操作。
+`services/` 是旧 JSON UI/Agent 的共享边界。Tauri commands 与 Rust agent 仍复用这里的业务操作；`arcana-data` 已退出该层，改用 `application/`、`domain/` 和 `storage/sqlite/`。新增数据平台功能不得再接入旧 services。
 
 | 模块 | 职责 |
 | --- | --- |
@@ -186,7 +192,7 @@ Data dir resolution 优先级：
 | --- | --- |
 | `agent-cli` | 终端运行的对话 agent |
 | `agent-telegram` | Telegram bot 适配器 |
-| `arcana-data` | 面向 Codex/脚本/AI skills 的结构化数据操作 CLI |
+| `arcana-data` | 新 SQLite 数据平台的机器可读 CLI；当前支持 capabilities、init、Record 和 JSON 转换 |
 
 Agent 子系统：
 
@@ -210,7 +216,7 @@ Agent 当前工具集：
 - `update_achievement`
 - `write_changelog`
 
-`arcana-data` CLI 提供相同方向的结构化操作：`context`、`read`、`mission update/create/update-menu`、`status update`、`achievement update`、`changelog write`、`memory update`。
+`arcana-data` 不再代理上述旧 Agent tools，也不读写 `<data_dir>` JSON。当前只提供 `capabilities`、SQLite `init`、完整 Record Commands 和不接触 Git 的 `json import|export`；旧 `context/read/mission/status/achievement/pack/changelog/memory` 子命令已删除。
 
 ---
 
@@ -385,10 +391,12 @@ sequenceDiagram
 ```mermaid
 flowchart LR
     Skill["Codex skill / script"] --> CLI["arcana-data command"]
-    CLI --> Services["services/*"]
-    Services --> Validate["storage::validate"]
-    Validate --> JSON["user data directory/*.json"]
+    CLI --> Application["application/* typed command"]
+    Application --> Repository["SQLite Repository transaction"]
+    Repository --> SQLite["runtime/arcana.sqlite3"]
 ```
+
+成功结果以退出码 0 和 stdout 业务 JSON 返回；失败结果使用非零退出码和 stderr 结构化 JSON。`capabilities` 不打开 SQLite，可用于检查 CLI contract 与 Schema 版本。
 
 ---
 
@@ -441,13 +449,13 @@ Rust 写入路径使用 `write_and_validate` 时会在校验失败后恢复旧�
 
 ### 8.2 为什么抽出 `services/`
 
-早期 Tauri commands 直接读写 JSON 已经不够用，因为同一份数据现在有三类调用方：
+早期 Tauri commands 直接读写 JSON 已经不够用，当时同一份数据有三类调用方：
 
 - 桌面 UI
 - Rust agent
-- `arcana-data` CLI / AI skills
+- 旧 `arcana-data` CLI / AI skills
 
-共享 services 让校验、changelog、回滚和业务规则集中在一处。commands 可以保留 UI 友好的 response shape；agent/CLI 可以保留工具友好的 input shape；二者底层复用同一套写入规则。
+共享 services 仍让旧 UI 和内置 Agent 的校验、changelog、回滚和业务规则集中在一处。新的 `arcana-data` 已迁往 Application/Repository 层；services 只作为待删除的迁移边界，不再扩展。
 
 ### 8.3 为什么 Status 使用 definitions + values
 
