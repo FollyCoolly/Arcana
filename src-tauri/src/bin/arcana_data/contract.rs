@@ -18,6 +18,8 @@ pub enum RepositoryOperation {
     Status,
     Achievement,
     Skill,
+    Mission,
+    MissionSuggestion,
     JsonImport,
     JsonExport,
 }
@@ -111,6 +113,8 @@ fn repository_error_code(
             RepositoryOperation::Status => "status_dimension_not_found",
             RepositoryOperation::Achievement => "achievement_not_found",
             RepositoryOperation::Skill => "skill_not_found",
+            RepositoryOperation::Mission => "mission_not_found",
+            RepositoryOperation::MissionSuggestion => "mission_suggestion_not_found",
             RepositoryOperation::JsonImport => "json_import_not_found",
         },
         RepositoryErrorCode::Conflict => match operation {
@@ -121,6 +125,8 @@ fn repository_error_code(
             RepositoryOperation::Status => "status_conflict",
             RepositoryOperation::Achievement => "achievement_conflict",
             RepositoryOperation::Skill => "skill_conflict",
+            RepositoryOperation::Mission => "mission_conflict",
+            RepositoryOperation::MissionSuggestion => "mission_suggestion_conflict",
             RepositoryOperation::JsonImport => "json_import_conflict",
             RepositoryOperation::JsonExport => "json_export_conflict",
         },
@@ -131,6 +137,8 @@ fn repository_error_code(
             RepositoryOperation::Status => "status_dimension_unresolved",
             RepositoryOperation::Achievement => "achievement_unresolved",
             RepositoryOperation::Skill => "skill_unresolved",
+            RepositoryOperation::Mission => "mission_unresolved",
+            RepositoryOperation::MissionSuggestion => "mission_suggestion_unresolved",
             RepositoryOperation::Initialize
             | RepositoryOperation::JsonImport
             | RepositoryOperation::JsonExport => "unresolved_reference",
@@ -190,6 +198,22 @@ pub fn capabilities() -> Value {
             "skill": {
                 "version": 1,
                 "actions": ["list"]
+            },
+            "mission": {
+                "version": 1,
+                "actions": [
+                    "list",
+                    "create",
+                    "update",
+                    "complete",
+                    "archive",
+                    "delete",
+                    "suggestion-list",
+                    "suggest",
+                    "accept",
+                    "reject",
+                    "suggestion-delete"
+                ]
             },
             "json": {
                 "version": 1,

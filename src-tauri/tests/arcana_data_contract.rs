@@ -1,6 +1,7 @@
 use serde_json::Value;
 use std::path::Path;
 use std::process::{Command, Output};
+use uuid::Uuid;
 
 fn arcana_data(args: &[&str]) -> Output {
     Command::new(env!("CARGO_BIN_EXE_arcana-data"))
@@ -33,6 +34,7 @@ fn capabilities_succeeds_without_runtime_and_compact_only_changes_layout() {
     assert_eq!(value["commands"]["status"]["version"], 1);
     assert_eq!(value["commands"]["achievement"]["version"], 1);
     assert_eq!(value["commands"]["skill"]["version"], 1);
+    assert_eq!(value["commands"]["mission"]["version"], 1);
     assert!(utf8(&pretty.stdout).lines().count() > 1);
 
     let compact = arcana_data(&["--compact", "capabilities"]);
@@ -556,5 +558,179 @@ fn achievement_commands_derive_availability_and_revoke_unresolved_state() {
     assert_eq!(
         parse_json(&repeated.stdout)["achievement_state"]["changed"],
         false
+    );
+}
+
+#[test]
+fn mission_commands_cover_accepted_and_local_suggestion_lifecycles() {
+    let directory = tempfile::tempdir().unwrap();
+    let runtime = directory.path().join("runtime");
+    let runtime_arg = path_string(&runtime);
+    assert!(arcana_data(&["init", "--runtime", &runtime_arg])
+        .status
+        .success());
+
+    let create = serde_json::json!({
+        "title": "Read Rust Book",
+        "description": "Finish every chapter",
+        "progress": 20,
+        "difficulty": "B",
+        "deadline": "2026-12-31"
+    });
+    let create_file = directory.path().join("create-mission.json");
+    std::fs::write(&create_file, serde_json::to_vec(&create).unwrap()).unwrap();
+    let create_arg = path_string(&create_file);
+    let created = arcana_data(&[
+        "mission",
+        "--runtime",
+        &runtime_arg,
+        "create",
+        "--file",
+        &create_arg,
+    ]);
+    assert!(created.status.success(), "{}", utf8(&created.stderr));
+    let created = parse_json(&created.stdout);
+    assert_eq!(created["changed"], true);
+    let mission_id = created["mission"]["id"].as_str().unwrap().to_string();
+    assert_eq!(Uuid::parse_str(&mission_id).unwrap().get_version_num(), 7);
+    assert_eq!(created["mission"]["status"], "active");
+
+    let update = serde_json::json!({
+        "mission_id": mission_id,
+        "title": "Read and practice Rust",
+        "progress": 60,
+        "difficulty": "A"
+    });
+    let update_file = directory.path().join("update-mission.json");
+    std::fs::write(&update_file, serde_json::to_vec(&update).unwrap()).unwrap();
+    let update_arg = path_string(&update_file);
+    let updated = arcana_data(&[
+        "mission",
+        "--runtime",
+        &runtime_arg,
+        "update",
+        "--file",
+        &update_arg,
+    ]);
+    assert!(updated.status.success(), "{}", utf8(&updated.stderr));
+    let updated = parse_json(&updated.stdout);
+    assert_eq!(updated["mission"]["title"], "Read and practice Rust");
+    assert!(updated["mission"].get("description").is_none());
+    assert!(updated["mission"].get("deadline").is_none());
+
+    let completed = arcana_data(&[
+        "mission",
+        "--runtime",
+        &runtime_arg,
+        "complete",
+        &mission_id,
+    ]);
+    assert!(completed.status.success(), "{}", utf8(&completed.stderr));
+    let completed = parse_json(&completed.stdout);
+    assert_eq!(completed["mission"]["status"], "completed");
+    assert_eq!(completed["mission"]["progress"], 100);
+    assert!(completed["mission"]["completed_at"].is_string());
+    let repeated = arcana_data(&[
+        "mission",
+        "--runtime",
+        &runtime_arg,
+        "complete",
+        &mission_id,
+    ]);
+    assert!(repeated.status.success(), "{}", utf8(&repeated.stderr));
+    assert_eq!(parse_json(&repeated.stdout)["changed"], false);
+
+    let archived = arcana_data(&["mission", "--runtime", &runtime_arg, "archive", &mission_id]);
+    assert!(archived.status.success(), "{}", utf8(&archived.stderr));
+    assert_eq!(
+        parse_json(&archived.stdout)["mission"]["status"],
+        "archived"
+    );
+
+    let suggestion = serde_json::json!({
+        "title": "Try Rustlings",
+        "difficulty": "C",
+        "reason": "Practice the ownership model"
+    });
+    let suggestion_file = directory.path().join("suggest-mission.json");
+    std::fs::write(&suggestion_file, serde_json::to_vec(&suggestion).unwrap()).unwrap();
+    let suggestion_arg = path_string(&suggestion_file);
+    let suggested = arcana_data(&[
+        "mission",
+        "--runtime",
+        &runtime_arg,
+        "suggest",
+        "--file",
+        &suggestion_arg,
+    ]);
+    assert!(suggested.status.success(), "{}", utf8(&suggested.stderr));
+    let suggested = parse_json(&suggested.stdout);
+    let suggestion_id = suggested["suggestion"]["id"].as_str().unwrap().to_string();
+    assert_eq!(
+        Uuid::parse_str(&suggestion_id).unwrap().get_version_num(),
+        7
+    );
+    assert_eq!(suggested["suggestion"]["status"], "pending");
+
+    let rejected = arcana_data(&[
+        "mission",
+        "--runtime",
+        &runtime_arg,
+        "reject",
+        &suggestion_id,
+    ]);
+    assert!(rejected.status.success(), "{}", utf8(&rejected.stderr));
+    assert_eq!(
+        parse_json(&rejected.stdout)["suggestion"]["status"],
+        "rejected"
+    );
+
+    let accepted = arcana_data(&[
+        "mission",
+        "--runtime",
+        &runtime_arg,
+        "accept",
+        &suggestion_id,
+    ]);
+    assert!(accepted.status.success(), "{}", utf8(&accepted.stderr));
+    let accepted = parse_json(&accepted.stdout);
+    assert_eq!(accepted["mission"]["id"], suggestion_id);
+    assert_eq!(accepted["mission"]["status"], "active");
+
+    let suggestions = arcana_data(&["mission", "--runtime", &runtime_arg, "suggestion-list"]);
+    assert!(
+        suggestions.status.success(),
+        "{}",
+        utf8(&suggestions.stderr)
+    );
+    assert_eq!(
+        parse_json(&suggestions.stdout)["suggestions"],
+        serde_json::json!([])
+    );
+
+    let filtered = arcana_data(&[
+        "mission",
+        "--runtime",
+        &runtime_arg,
+        "list",
+        "--status",
+        "active",
+    ]);
+    assert!(filtered.status.success(), "{}", utf8(&filtered.stderr));
+    let filtered = parse_json(&filtered.stdout);
+    assert_eq!(filtered["missions"].as_array().unwrap().len(), 1);
+    assert_eq!(filtered["missions"][0]["id"], suggestion_id);
+
+    let missing = arcana_data(&[
+        "mission",
+        "--runtime",
+        &runtime_arg,
+        "reject",
+        "missing-suggestion",
+    ]);
+    assert!(!missing.status.success());
+    assert_eq!(
+        parse_json(&missing.stderr)["code"],
+        "mission_suggestion_not_found"
     );
 }

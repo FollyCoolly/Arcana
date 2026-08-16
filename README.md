@@ -89,11 +89,11 @@ Honeycomb-style skill progression tightly coupled with achievements.
 
 AI-driven quest system for current goals and next actions.
 
-- Missions are proposed by the AI agent based on current goals and context, styled as Persona 5 "Phan-Site" requests.
-- Lifecycle: `proposed` → `active` → `completed` / `archived` / `rejected`.
+- AI proposals remain local MissionSuggestions until the user accepts them as synchronized Missions.
+- Lifecycle: pending/rejected Suggestion; accepted Mission → `active` → `completed` / `archived`.
 - AI-maintained 0–100 progress, deadlines, and completion timestamps.
 - Main menu integration for countdowns, progress prompts, and rotating mission hints.
-- Missions can link to achievements for cross-system progression.
+- Mission completion can inform later Achievement judgment without storing a static cross-system link.
 
 ### Items
 
@@ -202,9 +202,10 @@ cargo build --manifest-path src-tauri/Cargo.toml --bin arcana-data
 ./src-tauri/target/debug/arcana-data status list-dimensions
 ./src-tauri/target/debug/arcana-data achievement list
 ./src-tauri/target/debug/arcana-data skill list
+./src-tauri/target/debug/arcana-data mission list
 ```
 
-`arcana-data init` creates the SQLite runtime and the `basic` Pack; it does not populate the legacy UI or onboarding missions. The Record, Pack, Status, Achievement, and Arcana Skill query command families have migrated; canonical Agent Skills will return after their required SQLite Mission and Memory commands exist.
+`arcana-data init` creates the SQLite runtime and the `basic` Pack; it does not populate the legacy UI or onboarding missions. The Record, Pack, Status, Achievement, Arcana Skill query, and Mission command families have migrated; canonical Agent Skills will return after their required SQLite Memory commands exist.
 
 > [!NOTE]
 > If you want to use the agent binaries — primarily `agent-telegram`, which starts a listener service for controlling your local assistant remotely via Telegram — you will need to configure an LLM provider. Set your API key via environment variable (`ANTHROPIC_API_KEY`) or config file (`~/.arcana/agent_config.json`). See [AI Agent](#ai-agent) for details.

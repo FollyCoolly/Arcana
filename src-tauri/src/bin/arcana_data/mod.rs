@@ -1,5 +1,6 @@
 mod achievement_commands;
 mod contract;
+mod mission_commands;
 mod pack_commands;
 mod record_commands;
 mod runtime_commands;
@@ -9,6 +10,7 @@ mod status_commands;
 use achievement_commands::{execute_achievement, AchievementAction};
 use clap::{error::ErrorKind, Parser, Subcommand};
 use contract::{capabilities, render_json, CliError, EXIT_SUCCESS};
+use mission_commands::{execute_mission, MissionAction};
 use pack_commands::{execute_pack, PackAction};
 use record_commands::{execute_record, RecordAction};
 use runtime_commands::{execute_init, execute_json, JsonAction};
@@ -78,6 +80,14 @@ enum Commands {
         #[command(subcommand)]
         action: SkillAction,
     },
+    /// Manage accepted Missions and local MissionSuggestions
+    Mission {
+        /// Runtime directory containing arcana.sqlite3
+        #[arg(long, value_name = "DIRECTORY", global = true)]
+        runtime: Option<PathBuf>,
+        #[command(subcommand)]
+        action: MissionAction,
+    },
     /// Convert between SQLite and a canonical JSON directory without Git
     Json {
         #[command(subcommand)]
@@ -131,6 +141,7 @@ fn execute(command: Commands) -> Result<Value, CliError> {
         Commands::Status { runtime, action } => execute_status(runtime, action),
         Commands::Achievement { runtime, action } => execute_achievement(runtime, action),
         Commands::Skill { runtime, action } => execute_skill(runtime, action),
+        Commands::Mission { runtime, action } => execute_mission(runtime, action),
         Commands::Json { action } => execute_json(action),
     }
 }
@@ -252,6 +263,42 @@ mod tests {
                 matches!(
                     Cli::try_parse_from(argv).unwrap().command,
                     Commands::Skill { .. }
+                ),
+                "failed to parse {arguments:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn parses_every_mission_command() {
+        let commands: &[&[&str]] = &[
+            &["mission", "list"],
+            &[
+                "mission",
+                "list",
+                "--status",
+                "active",
+                "--parent-id",
+                "parent-id",
+            ],
+            &["mission", "create", "--file", "mission.json"],
+            &["mission", "update", "--file", "mission.json"],
+            &["mission", "complete", "mission-id"],
+            &["mission", "archive", "mission-id"],
+            &["mission", "delete", "mission-id"],
+            &["mission", "suggestion-list", "--status", "pending"],
+            &["mission", "suggest", "--file", "suggestion.json"],
+            &["mission", "accept", "suggestion-id"],
+            &["mission", "reject", "suggestion-id"],
+            &["mission", "suggestion-delete", "suggestion-id"],
+        ];
+        for arguments in commands {
+            let mut argv = vec!["arcana-data"];
+            argv.extend_from_slice(arguments);
+            assert!(
+                matches!(
+                    Cli::try_parse_from(argv).unwrap().command,
+                    Commands::Mission { .. }
                 ),
                 "failed to parse {arguments:?}"
             );

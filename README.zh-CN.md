@@ -89,11 +89,11 @@ Arcana **不是**一个靠连续打卡和复选框驱动的习惯追踪器，也
 
 面向当前目标和下一步行动的 AI 任务系统。
 
-- 任务由 AI 助手根据当前目标和上下文提出，风格类似 Persona 5 的 “Phan-Site” 请求。
-- 生命周期：`proposed` → `active` → `completed` / `archived` / `rejected`。
+- AI 提议在用户接受前只是保留于本机的 MissionSuggestion；接受后才成为可同步的 Mission。
+- 生命周期：pending/rejected Suggestion；接受后的 Mission → `active` → `completed` / `archived`。
 - 支持由 AI 维护的 0-100 进度、截止日期和完成时间。
 - 主菜单可展示倒计时、进度提示和轮换任务提示。
-- 任务可以关联到成就，形成跨系统进展。
+- Mission 完成可以成为后续判断 Achievement 的上下文，但不保存静态跨系统链接。
 
 ### 物品
 
@@ -203,9 +203,10 @@ cargo build --manifest-path src-tauri/Cargo.toml --bin arcana-data
 ./src-tauri/target/debug/arcana-data status list-dimensions
 ./src-tauri/target/debug/arcana-data achievement list
 ./src-tauri/target/debug/arcana-data skill list
+./src-tauri/target/debug/arcana-data mission list
 ```
 
-`arcana-data init` 只创建 SQLite runtime 和 `basic` Pack，不会填充旧 UI 或新手任务。Record、Pack、Status、Achievement 与 Arcana Skill 查询命令族已经迁移；等 SQLite Mission 和 Memory 命令完成后，再恢复 canonical Agent Skill。
+`arcana-data init` 只创建 SQLite runtime 和 `basic` Pack，不会填充旧 UI 或新手任务。Record、Pack、Status、Achievement、Arcana Skill 查询与 Mission 命令族已经迁移；等 SQLite Memory 命令完成后，再恢复 canonical Agent Skill。
 
 > [!NOTE]
 > 如果你需要使用 agent 二进制——主要是 `agent-telegram`，它会启动一个监听服务，让你通过 Telegram 远程控制本地助手——则需要额外配置 LLM provider。通过环境变量（`ANTHROPIC_API_KEY`）或配置文件（`~/.arcana/agent_config.json`）设置 API key 即可。详见 [AI 助手](#ai-助手)。

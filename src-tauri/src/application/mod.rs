@@ -1,4 +1,5 @@
 mod achievement_commands;
+mod mission_commands;
 mod pack_commands;
 mod record_commands;
 mod runtime;
@@ -9,6 +10,11 @@ mod status_commands;
 pub use achievement_commands::{
     AchievementAvailability, AchievementCommands, AchievementEntry, AchievementStateResult,
     QueryAchievements, SetAchievementState,
+};
+pub use mission_commands::{
+    CreateMission, MissionCommands, MissionDeleteResult, MissionResult,
+    MissionSuggestionDeleteResult, MissionSuggestionResult, QueryMissionSuggestions, QueryMissions,
+    SuggestMission, UpdateMission,
 };
 pub use pack_commands::{
     PackAssetSummary, PackCommands, PackContent, PackDetails, PackEnabledState, PackSummary,

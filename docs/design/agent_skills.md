@@ -73,7 +73,7 @@ record get|query|set|increment|correct|create-empty-collection|create-empty-even
 achievement list|state-set|state-revoke
 skill list
 mission list|create|update|complete|archive|delete
-mission suggestion-list|suggest|accept|reject|delete
+mission suggestion-list|suggest|accept|reject|suggestion-delete
 memory list|create|update|delete
 pack list|show|scaffold|validate|write|asset-put|asset-delete|enable|disable
 status list-dimensions|evaluate|select
@@ -84,7 +84,7 @@ sync status|import|export|pull|push|run
 
 `json import|export` 是不接触 Git 的底层完整目录转换命令；`sync` 后续在它之上增加 managed path digest、防覆盖、恢复 journal 和显式 Git 操作。
 
-当前实现已经提供新运行时的 `capabilities`、`init`、完整 `record`、`pack`、`status`、`achievement` 命令族、只读 `skill list` 和 `json import|export`，并实现直接业务 JSON、结构化错误和稳定退出语义。`arcana-data init [--runtime <directory>]` 创建只含启用状态 `basic` Pack 的新 SQLite；领域命令统一使用 `arcana-data <record|pack|status|achievement|skill> [--runtime <directory>] <action>`，省略 runtime 时读取本机 settings 或默认目录。Record `get` 返回当前 Record，`query` 可按 `--definition-id`、`--namespace`、`--pack`、`--kind`、`--has-value` 组合过滤；修改复杂 payload 的命令从 stdin 或 `--file` 读取对应 Application Command JSON。旧 `context/read/mission/status/achievement/pack/changelog/memory` JSON 实现和旧 `.claude/skills` 已删除，其中 `pack`、`status`、`achievement` 已按 SQLite 合约重新实现；必须等其他领域 SQLite 命令完成后再发布 canonical Agent Skill。`--dry-run` 和 batch 尚未实现。
+当前实现已经提供新运行时的 `capabilities`、`init`、完整 `record`、`pack`、`status`、`achievement`、`mission` 命令族、只读 `skill list` 和 `json import|export`，并实现直接业务 JSON、结构化错误和稳定退出语义。`arcana-data init [--runtime <directory>]` 创建只含启用状态 `basic` Pack 的新 SQLite；领域命令统一使用 `arcana-data <record|pack|status|achievement|skill|mission> [--runtime <directory>] <action>`，省略 runtime 时读取本机 settings 或默认目录。Record `get` 返回当前 Record，`query` 可按 `--definition-id`、`--namespace`、`--pack`、`--kind`、`--has-value` 组合过滤；修改复杂 payload 的命令从 stdin 或 `--file` 读取对应 Application Command JSON。旧 `context/read/mission/status/achievement/pack/changelog/memory` JSON 实现和旧 `.claude/skills` 已删除，其中 `pack`、`status`、`achievement`、`mission` 已按 SQLite 合约重新实现；必须等 Memory SQLite 命令完成后再发布 canonical Agent Skill。`--dry-run` 和 batch 尚未实现。
 
 `pack scaffold <id> --name <name>` 直接输出可交给 `pack validate|write` 的 `PackContent` JSON，不要求 runtime 已初始化。`PackContent` 只包含 `manifest` 以及可选的 `record_definitions`、`dimensions`、`achievements`、`skills`；它不是新的持久化 Schema，也不包含 asset bytes。`pack validate` 使用当前 Pack 已有 asset，把候选内容放入当前仓库快照做全量校验但不写入。`pack write` 在单事务中插入或替换结构化内容，并保留原 enabled 状态和全部 asset。asset bytes 只通过 `asset-put <pack_id> <assets/...> --file <local_file>` 与 `asset-delete` 修改；`show` 只返回 asset path 和 byte size，不把二进制编码进 JSON。启用/停用不级联父子 Pack，重复操作返回 `changed: false`。
 
@@ -93,6 +93,8 @@ sync status|import|export|pull|push|run
 `achievement list` 返回已启用 Pack 的 Definition，并额外返回 definition 不可用但仍有用户状态的 unresolved 项；支持 `--achievement-id`、`--pack`、`--status` 和 `--related-record-definition-id` 组合过滤。`availability` 是即时投影的 `locked/available/tracked/achieved/unresolved`，不入库。`state-set` 从 stdin 或 `--file` 读取 `{achievement_id,status,achieved_at?}`；prerequisites 只影响投影，不阻止直接设置 achieved。只有当前有效 Definition 可以 set；`state-revoke <id>` 在 Definition 或 Pack 不可用时仍可删除状态。重复操作返回 `changed: false`。
 
 `skill list` 只查询已启用 Pack 的 Arcana Skill，支持 `--skill-id` 和 `--pack` 精确过滤。结果包含完整 SkillDefinition、节点 `availability`、当前/最高积分、已完成节点数和 Lv.0～Lv.5；全部结果从当前 Achievement 状态即时派生，不存在 Skill 用户状态或派生缓存。
+
+Mission `create`/`suggest` 由系统生成 UUIDv7 和当前时间；`update` 完整替换可编辑字段，省略可选字段表示清除。`complete`、`archive` 和 `reject` 幂等；删除仍有 child 的 Mission 会返回 conflict。Suggestion 仅保存在本机，`accept` 在同一事务中把它转换为同 ID 的 active Mission，随后只有正式 Mission 进入 JSON 同步。
 
 实际 flag 以 CLI `--help` 为准；机器先查询 `capabilities` 确认合约、Schema、命令版本和 feature。请求体 Schema 随后由 canonical Skill 的 fixture 覆盖，避免文档示例与 Serde 类型漂移。
 

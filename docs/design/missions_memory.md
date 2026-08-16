@@ -1,7 +1,7 @@
 # Mission 与 AssistantMemory
 
-> **状态**：Target / 领域语义、同步 Schema 与 SQLite 结构已确定
-> **最后更新**：2026-08-15
+> **状态**：Mission Domain/Application/CLI 已实现；AssistantMemory Commands 与 Tauri UI 尚未切换
+> **最后更新**：2026-08-16
 
 ## 1. MissionSuggestion 与 Mission
 
@@ -97,6 +97,20 @@ AssistantMemory 可以同步，并使用普通 Git 冲突处理方式。
 `days_remaining` 从 deadline 与本机当前日期计算。Mission 完成可以成为 Agent 判断 Achievement 的上下文，但不会自动修改 Achievement，也不保存静态跨模块链接。
 
 生命周期命令固定为：`complete` 将状态改为 completed、把已有 progress 设为 100 并记录完成时间；`archive` 可以归档 active 或 completed Mission，且不抹掉 progress 或已有 `completed_at`。显式删除使用 hard delete；仍被子 Mission 的 `parent_id` 引用时拒绝删除，必须先移除或修改这些引用。
+
+当前 Mission CLI 提供：
+
+```text
+mission list [--mission-id <id>] [--status <status>] [--parent-id <id>]
+mission create|update [--file <json>]
+mission complete|archive|delete <mission_id>
+mission suggestion-list [--suggestion-id <id>] [--status <status>]
+mission suggest [--file <json>]
+mission accept|reject <suggestion_id>
+mission suggestion-delete <suggestion_id>
+```
+
+`create` 和 `suggest` 不接受调用方提供 ID 或时间，由系统生成 UUIDv7 和当前 RFC 3339 时间。`update` 的输入完整替换 title 及全部可编辑可选字段，省略可选字段表示清除；status、ID、created/completed time 只能由生命周期命令维护。重复 complete/archive/reject 返回 `changed: false`。Suggestion 被 accept 时在同一事务中创建同 ID 的 active Mission 并删除本机 Suggestion；显式接受已 rejected 的 Suggestion 也被允许，因为它代表用户改变决定。
 
 ## 5. 本机 MissionSuggestion
 
