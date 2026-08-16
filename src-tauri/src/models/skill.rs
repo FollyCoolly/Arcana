@@ -99,9 +99,8 @@ pub struct SkillLevelResult {
 
 /// Evaluate a skill's current level against the set of unlocked achievement IDs.
 ///
-/// This is the single source of truth for skill-level computation. Used by both the
-/// Skills screen (`commands/skills.rs`) and the Mastery dimension
-/// (`commands/status.rs::compute_skill_sys_metrics`).
+/// Legacy JSON skill-level computation retained for the old Agent model. The desktop
+/// Skills screen now derives levels through `application::SkillCommands`.
 pub fn compute_skill_level(skill: &SkillDef, unlocked_ids: &HashSet<String>) -> SkillLevelResult {
     let total_points: u32 = skill
         .nodes

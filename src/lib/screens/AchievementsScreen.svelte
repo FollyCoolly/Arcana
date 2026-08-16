@@ -13,6 +13,7 @@
     } from "$lib/types/achievement";
     import KeyHint from "$lib/KeyHint.svelte";
     import PromptWord from "$lib/PromptWord.svelte";
+    import { dataCommandErrorMessage } from "$lib/types/data_platform";
 
     type SortKey = "default" | "name" | "difficulty" | "unlocked";
     type SortDir = "asc" | "desc";
@@ -31,6 +32,7 @@
     let achievementError = $state<string | null>(null);
     let achievementData = $state<AchievementData | null>(externalData);
     let selectedPackIndex = $state(0);
+    let changingAchievementId = $state<string | null>(null);
 
     // Sidebar refs for selection quad
     let sidebarRef = $state<HTMLElement | undefined>(undefined);
@@ -128,7 +130,7 @@
                 !selectedDifficulties.has(a.difficulty)
             )
                 return false;
-            if (showUnlockedOnly && !achievementData?.progress[a.id])
+            if (showUnlockedOnly && !isAchieved(a.id))
                 return false;
             return true;
         });
@@ -145,8 +147,8 @@
                         (DIFFICULTY_ORDER[b.difficulty] ?? 0))
                 );
             if (sortKey === "unlocked") {
-                const ua = achievementData?.progress[a.id] ? 1 : 0;
-                const ub = achievementData?.progress[b.id] ? 1 : 0;
+                const ua = isAchieved(a.id) ? 1 : 0;
+                const ub = isAchieved(b.id) ? 1 : 0;
                 return dir * (ub - ua);
             }
             return 0;
@@ -199,6 +201,10 @@
         return achievementData?.packs[selectedPackIndex] ?? null;
     }
 
+    function isAchieved(achievementId: string): boolean {
+        return achievementData?.progress[achievementId]?.status === "achieved";
+    }
+
     function handleKeydown(event: KeyboardEvent) {
         if (event.key === "Escape") {
             event.preventDefault();
@@ -243,18 +249,38 @@
 
         try {
             achievementData =
-                await invoke<AchievementData>("load_achievements");
+                await invoke<AchievementData>("load_achievement_dashboard");
             if (achievementData && onAchievementDataLoaded) {
                 onAchievementDataLoaded(achievementData);
             }
         } catch (error) {
-            achievementError =
-                typeof error === "string"
-                    ? error
-                    : "Failed to load achievement data.";
+            achievementError = dataCommandErrorMessage(
+                error,
+                "Failed to load achievement data.",
+            );
             achievementData = null;
         } finally {
             achievementLoading = false;
+        }
+    }
+
+    async function toggleAchievement(achievement: Achievement) {
+        if (changingAchievementId) return;
+        changingAchievementId = achievement.id;
+        achievementError = null;
+        try {
+            const command = isAchieved(achievement.id)
+                ? "revoke_achievement_state"
+                : "set_achievement_achieved";
+            await invoke(command, { achievementId: achievement.id });
+            await loadAchievementData();
+        } catch (error) {
+            achievementError = dataCommandErrorMessage(
+                error,
+                "Failed to update Achievement state.",
+            );
+        } finally {
+            changingAchievementId = null;
         }
     }
 
@@ -395,6 +421,8 @@
                             <div class="rm-achievement-grid">
                                 {#each filteredAchievements as achievement}
                                     {@const unlocked =
+                                        isAchieved(achievement.id)}
+                                    {@const progress =
                                         achievementData!.progress[
                                             achievement.id
                                         ]}
@@ -420,14 +448,9 @@
                                         <p class="rm-achievement-desc">
                                             {achievement.description}
                                         </p>
-                                        {#if unlocked?.achieved_at}
+                                        {#if progress?.achieved_at}
                                             <p class="rm-achievement-date">
-                                                {unlocked.achieved_at}
-                                            </p>
-                                        {/if}
-                                        {#if unlocked?.note}
-                                            <p class="rm-achievement-note">
-                                                {unlocked.note}
+                                                {progress.achieved_at}
                                             </p>
                                         {/if}
                                         {#if achievement.prerequisites.length > 0}
@@ -443,6 +466,26 @@
                                                     >
                                                 {/each}
                                             </div>
+                                        {/if}
+                                        {#if achievement.enabled}
+                                            <button
+                                                type="button"
+                                                class="rm-achievement-action"
+                                                class:is-revoke={unlocked}
+                                                disabled={changingAchievementId !==
+                                                    null}
+                                                onclick={() =>
+                                                    void toggleAchievement(
+                                                        achievement,
+                                                    )}
+                                            >
+                                                {changingAchievementId ===
+                                                achievement.id
+                                                    ? "…"
+                                                    : unlocked
+                                                      ? "Revoke"
+                                                      : "Mark achieved"}
+                                            </button>
                                         {/if}
                                     </article>
                                 {/each}
@@ -817,15 +860,6 @@
         letter-spacing: 0.04em;
     }
 
-    .rm-achievement-note {
-        margin: 0;
-        padding: 0 clamp(0.7rem, 0.9vw, 1.6rem) clamp(0.2rem, 0.25vw, 0.4rem)
-            clamp(1.2rem, 1.4vw, 2.4rem);
-        font-size: clamp(0.55rem, 0.48vw, 0.85rem);
-        color: rgba(255, 255, 255, 0.45);
-        font-style: italic;
-    }
-
     .rm-achievement-prereqs {
         display: flex;
         flex-wrap: wrap;
@@ -842,5 +876,27 @@
         color: rgba(255, 255, 255, 0.35);
         border: 1px solid rgba(255, 255, 255, 0.15);
         padding: 0.1rem 0.4rem;
+    }
+
+    .rm-achievement-action {
+        align-self: flex-end;
+        margin: auto clamp(0.7rem, 0.9vw, 1.6rem) clamp(0.6rem, 0.7vw, 1rem);
+        border: 0;
+        background: var(--rm-white, #fff);
+        color: var(--rm-black, #000);
+        padding: 0.35em 0.7em;
+        font: 800 clamp(0.6rem, 0.58vw, 1rem) "p5hatty", "Orbitron", sans-serif;
+        text-transform: uppercase;
+        cursor: pointer;
+    }
+
+    .rm-achievement-action.is-revoke {
+        background: var(--rm-red, #e5191c);
+        color: var(--rm-white, #fff);
+    }
+
+    .rm-achievement-action:disabled {
+        cursor: wait;
+        opacity: 0.6;
     }
 </style>

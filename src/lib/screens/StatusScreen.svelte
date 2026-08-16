@@ -3,11 +3,8 @@
     import { invoke } from "@tauri-apps/api/core";
     import RadarChart from "$lib/components/RadarChart.svelte";
     import StatusDetailView from "$lib/screens/StatusDetailView.svelte";
-    import type {
-        DataCommandError,
-        DimensionData,
-        StatusData,
-    } from "$lib/types/status";
+    import type { DimensionData, StatusData } from "$lib/types/status";
+    import { dataCommandErrorMessage } from "$lib/types/data_platform";
     import KeyHint from "$lib/KeyHint.svelte";
     import PromptWord from "$lib/PromptWord.svelte";
 
@@ -39,16 +36,10 @@
     );
 
     function errorText(error: unknown): string {
-        if (typeof error === "string") return error;
-        if (
-            error &&
-            typeof error === "object" &&
-            "message" in error &&
-            typeof (error as DataCommandError).message === "string"
-        ) {
-            return (error as DataCommandError).message;
-        }
-        return "Failed to load Status data from the local database.";
+        return dataCommandErrorMessage(
+            error,
+            "Failed to load Status data from the local database.",
+        );
     }
 
     function handleDimensionSelect(id: string) {

@@ -394,7 +394,9 @@
         if (item.id === "skills" && !achievementData) {
             try {
                 achievementData =
-                    await invoke<AchievementData>("load_achievements");
+                    await invoke<AchievementData>(
+                        "load_achievement_dashboard",
+                    );
             } catch {
                 // skill screen will work without it
             }

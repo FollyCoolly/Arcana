@@ -33,8 +33,8 @@ pub use mutation_commands::{
     MutationOperationResult, RecordTarget, StatusPositionInput, StatusSelectionInput,
 };
 pub use pack_commands::{
-    PackAssetSummary, PackCommands, PackContent, PackDetails, PackEnabledState, PackSummary,
-    PackValidation,
+    PackAssetContent, PackAssetSummary, PackCommands, PackContent, PackDetails, PackEnabledState,
+    PackSummary, PackValidation,
 };
 pub use record_commands::{
     AddCollectionItem, AppendEvent, CorrectCollectionItem, CorrectEvent, CreateEmptyRecord,

@@ -128,7 +128,7 @@ Arcana includes a built-in AI agent that acts as a personal life assistant. Ther
 | **Telegram** | Optional bot adapter for mobile / remote access (`agent-telegram`). Compile and run only when needed. |
 | **Data CLI** | Machine-readable SQLite operations for scripts and future Skills (`arcana-data`). |
 
-The Status screen now uses the Application/Repository/SQLite stack, including the five local Dimension selections. The remaining desktop screens and the built-in Rust agent still use legacy JSON services during migration.
+The Status, Achievement, and Skill screens now use the Application/Repository/SQLite stack. The remaining desktop screens and the built-in Rust agent still use legacy JSON services during migration.
 
 > `agent-cli` is a minimal debug harness for testing the agent loop without Tauri. It is not needed for normal use.
 
@@ -206,7 +206,7 @@ cargo build --manifest-path src-tauri/Cargo.toml --bin arcana-data
 ./src-tauri/target/debug/arcana-data memory list
 ```
 
-`arcana-data init` creates the SQLite runtime and the `basic` Pack; it does not populate onboarding missions. The Record, Pack, Status, Achievement, Arcana Skill query, Mission, AssistantMemory, compact Agent context, dry-run, atomic user-state batch, contract fixtures, and canonical external Skills have migrated. The Tauri Status screen also uses this runtime; the remaining desktop screens are still being migrated.
+`arcana-data init` creates the SQLite runtime and the `basic` Pack; it does not populate onboarding missions. The Record, Pack, Status, Achievement, Arcana Skill query, Mission, AssistantMemory, compact Agent context, dry-run, atomic user-state batch, contract fixtures, and canonical external Skills have migrated. The Tauri Status, Achievement, and Skill screens also use this runtime; the remaining desktop screens are still being migrated.
 
 > [!NOTE]
 > If you want to use the agent binaries — primarily `agent-telegram`, which starts a listener service for controlling your local assistant remotely via Telegram — you will need to configure an LLM provider. Set your API key via environment variable (`ANTHROPIC_API_KEY`) or config file (`~/.arcana/agent_config.json`). See [AI Agent](#ai-agent) for details.
@@ -314,11 +314,11 @@ python scripts/fetch_douban.py --status all
 
 ## Current Implementation Notes
 
-- **Split migration state**: The Tauri Status screen and `arcana-data` use SQLite; the remaining Tauri screens and built-in agent still use legacy JSON.
+- **Split migration state**: The Tauri Status, Achievement, and Skill screens plus `arcana-data` use SQLite; the remaining Tauri screens and built-in agent still use legacy JSON.
 - **Content Pack system**: Achievements and skills are loaded via user-extensible packs.
 - **Split agent migration**: The built-in CLI/Telegram agent remains on the legacy JSON layer. Canonical external Skills now live in `plugins/arcana/skills`, with generated `.claude/skills` mirrors, versioned contract fixtures, and fixed eval scenarios.
 - **Prerequisite validation**: The current Achievement model validates prerequisites as a DAG; Skills present the result as a compact honeycomb-style node map.
-- **Explicit migration boundary**: `services/` is legacy UI/agent logic; the Status IPC and SQLite CLI use `application/`, `domain/`, and `storage/sqlite/`.
+- **Explicit migration boundary**: `services/` is legacy UI/agent logic; migrated Tauri IPC and the SQLite CLI use `application/`, `domain/`, and `storage/sqlite/`.
 
 ---
 

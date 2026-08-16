@@ -2,16 +2,15 @@
     import { onMount } from "svelte";
     import { invoke } from "@tauri-apps/api/core";
     import CollageLabel from "$lib/CollageLabel.svelte";
-    import type {
-        SkillData,
-        SkillWithLevel,
-        SkillNode,
-    } from "$lib/types/skill";
+    import type { SkillData, SkillNode } from "$lib/types/skill";
     import type { AchievementData } from "$lib/types/achievement";
-    import type { UiEvent } from "$lib/types/ui_event";
     import { formatGroupName } from "$lib/utils/format";
     import KeyHint from "$lib/KeyHint.svelte";
     import PromptWord from "$lib/PromptWord.svelte";
+    import {
+        dataCommandErrorMessage,
+        type PackAssetContent,
+    } from "$lib/types/data_platform";
 
     let {
         onBack,
@@ -28,9 +27,9 @@
     let skillData = $state<SkillData | null>(null);
     let selectedIndex = $state(0);
     let showAllSkills = $state(false);
-
-    /** Achievement IDs that changed since last view (from ui_events) */
-    let changedAchievementIds = $state<Set<string>>(new Set());
+    let skillCardImageUrl = $state("/card_examples/fool.png");
+    let activeAssetObjectUrl: string | null = null;
+    let assetRequestId = 0;
 
     /** Achievement currently shown in the detail modal, or null */
     let detailAchievementId = $state<string | null>(null);
@@ -71,26 +70,10 @@
     let toggleBusy = $state(false);
     let toggleError = $state<string | null>(null);
 
-    /** IDs of direct prerequisites that are not yet achieved. */
-    function unmetPrereqs(achievementId: string): string[] {
-        const ach = findAchievement(achievementId);
-        if (!ach || ach.prerequisites.length === 0) return [];
-        return ach.prerequisites.filter(
-            (p) => achievementData?.progress[p]?.status !== "achieved",
-        );
-    }
-
-    let detailUnmetPrereqs = $derived(
-        detailAchievementId ? unmetPrereqs(detailAchievementId) : [],
-    );
-
-    /** True when the toggle button should be shown:
-     *  - already achieved (button locks it), OR
-     *  - not achieved and all prereqs are met (button unlocks it) */
+    /** Prerequisites guide progression but never block explicit completion. */
     let canShowToggle = $derived.by(() => {
         if (!detailAchievementId || !detailAchievement) return false;
-        if (detailProgress?.status === "achieved") return true;
-        return detailUnmetPrereqs.length === 0;
+        return detailAchievement.enabled;
     });
 
     async function toggleAchievement() {
@@ -98,20 +81,32 @@
         toggleBusy = true;
         toggleError = null;
         const isAchieved = detailProgress?.status === "achieved";
+        const selectedSkillId = selectedSkill?.definition.id;
         try {
             if (isAchieved) {
-                await invoke<string>("lock_achievement", {
+                await invoke("revoke_achievement_state", {
                     achievementId: detailAchievementId,
                 });
             } else {
-                await invoke<string>("set_achievement_achieved", {
+                await invoke("set_achievement_achieved", {
                     achievementId: detailAchievementId,
                 });
             }
-            const fresh = await invoke<AchievementData>("load_achievements");
-            onAchievementDataLoaded?.(fresh);
+            const [freshAchievements, freshSkills] = await Promise.all([
+                invoke<AchievementData>("load_achievement_dashboard"),
+                invoke<SkillData>("load_skill_dashboard"),
+            ]);
+            onAchievementDataLoaded?.(freshAchievements);
+            skillData = freshSkills;
+            const refreshedVisibleSkills = showAllSkills
+                ? freshSkills.skills
+                : freshSkills.skills.filter((skill) => skill.level > 0);
+            const refreshedIndex = refreshedVisibleSkills.findIndex(
+                (skill) => skill.definition.id === selectedSkillId,
+            );
+            selectedIndex = refreshedIndex >= 0 ? refreshedIndex : 0;
         } catch (e) {
-            toggleError = typeof e === "string" ? e : "Operation failed.";
+            toggleError = dataCommandErrorMessage(e, "Operation failed.");
         } finally {
             toggleBusy = false;
         }
@@ -121,7 +116,7 @@
         skillData
             ? showAllSkills
                 ? skillData.skills
-                : skillData.skills.filter((s) => s.current_level > 0)
+                : skillData.skills.filter((s) => s.level > 0)
             : [],
     );
 
@@ -131,16 +126,43 @@
         visibleSkills.length > 0 ? visibleSkills[selectedIndex] : null,
     );
 
-    let totalSkills = $derived(visibleSkills.length);
+    $effect(() => {
+        const skill = selectedSkill;
+        const assetPath = skill?.definition.card_image;
+        const requestId = ++assetRequestId;
+        if (!skill || !assetPath) {
+            if (activeAssetObjectUrl) URL.revokeObjectURL(activeAssetObjectUrl);
+            activeAssetObjectUrl = null;
+            skillCardImageUrl = "/card_examples/fool.png";
+            return;
+        }
 
-    let currentLevelTitle = $derived.by(() => {
-        if (!selectedSkill) return null;
-        const titles = selectedSkill.skill.level_titles;
-        if (!titles || titles.length === 0 || selectedSkill.current_level === 0)
-            return null;
-        const idx = Math.min(selectedSkill.current_level, titles.length) - 1;
-        return titles[idx] ?? null;
+        void invoke<PackAssetContent>("load_pack_asset", {
+            packId: skill.pack_id,
+            assetPath,
+        })
+            .then((asset) => {
+                if (requestId !== assetRequestId) return;
+                const objectUrl = URL.createObjectURL(
+                    new Blob([new Uint8Array(asset.content)], {
+                        type: asset.media_type,
+                    }),
+                );
+                if (activeAssetObjectUrl)
+                    URL.revokeObjectURL(activeAssetObjectUrl);
+                activeAssetObjectUrl = objectUrl;
+                skillCardImageUrl = objectUrl;
+            })
+            .catch(() => {
+                if (requestId !== assetRequestId) return;
+                if (activeAssetObjectUrl)
+                    URL.revokeObjectURL(activeAssetObjectUrl);
+                activeAssetObjectUrl = null;
+                skillCardImageUrl = "/card_examples/fool.png";
+            });
     });
+
+    let totalSkills = $derived(visibleSkills.length);
 
     const ROMAN_NUMERALS = [
         "0",
@@ -160,17 +182,8 @@
         return ROMAN_NUMERALS[n] ?? String(n);
     }
 
-    function getSkillProgressPercent(s: SkillWithLevel): number {
-        if (s.max_points === 0) return 0;
-        return (s.current_points / s.max_points) * 100;
-    }
-
     function isNodeUnlocked(achievementId: string): boolean {
-        return !!achievementData?.progress[achievementId];
-    }
-
-    function isNodeNew(achievementId: string): boolean {
-        return changedAchievementIds.has(achievementId);
+        return achievementData?.progress[achievementId]?.status === "achieved";
     }
 
     function getAchievementName(achievementId: string): string {
@@ -305,26 +318,9 @@
 
     let sortedNodes = $derived(
         selectedSkill
-            ? sortNodes(selectedSkill.skill.nodes, achievementData)
+            ? sortNodes(selectedSkill.nodes, achievementData)
             : [],
     );
-
-    /** Set of skill IDs that have newly unlocked nodes */
-    let skillsWithNewNodes = $derived.by(() => {
-        if (!skillData || changedAchievementIds.size === 0)
-            return new Set<string>();
-        const ids = new Set<string>();
-        for (const s of skillData.skills) {
-            if (
-                s.skill.nodes.some((n) =>
-                    changedAchievementIds.has(n.achievement_id),
-                )
-            ) {
-                ids.add(s.skill.id);
-            }
-        }
-        return ids;
-    });
 
     function computeHexRows(nodes: SkillNode[], cols: number): SkillNode[][] {
         const rows: SkillNode[][] = [];
@@ -382,30 +378,14 @@
         skillError = null;
 
         try {
-            const [skills, events] = await Promise.all([
-                invoke<SkillData>("load_skills"),
-                invoke<UiEvent[]>("get_pending_events", {
-                    eventType: "achievement_status_change",
-                }),
-            ]);
-            skillData = skills;
+            skillData = await invoke<SkillData>("load_skill_dashboard");
             selectedIndex = 0;
             showAllSkills = false;
-
-            // Extract changed achievement IDs from consumed events
-            const ids = new Set<string>();
-            for (const evt of events) {
-                const achId = evt.data?.achievement_id;
-                if (typeof achId === "string") {
-                    ids.add(achId);
-                }
-            }
-            changedAchievementIds = ids;
         } catch (error) {
-            skillError =
-                typeof error === "string"
-                    ? error
-                    : "Failed to load skill data.";
+            skillError = dataCommandErrorMessage(
+                error,
+                "Failed to load skill data.",
+            );
             skillData = null;
         } finally {
             skillLoading = false;
@@ -420,6 +400,9 @@
         window.addEventListener("keydown", handleKeydown);
         return () => {
             window.removeEventListener("keydown", handleKeydown);
+            assetRequestId += 1;
+            if (activeAssetObjectUrl)
+                URL.revokeObjectURL(activeAssetObjectUrl);
         };
     });
 </script>
@@ -478,7 +461,7 @@
         <div class="rm-skill-detail">
             <div class="rm-skill-detail-left">
                 <div class="rm-skill-detail-header">
-                    <CollageLabel text={selectedSkill.skill.name} />
+                    <CollageLabel text={selectedSkill.definition.name} />
                     <span class="rm-skill-level-badge">
                         <span
                             class="rm-skill-lv-frag"
@@ -487,28 +470,23 @@
                         <span
                             class="rm-skill-lv-frag rm-skill-lv-inv"
                             style:transform="rotate(4deg)"
-                            >{selectedSkill.current_level >=
-                            selectedSkill.skill.max_level
+                            >{selectedSkill.level >= 5
                                 ? "MAX"
-                                : selectedSkill.current_level}</span
+                                : selectedSkill.level}</span
                         >
                     </span>
-                    {#if currentLevelTitle}
-                        <CollageLabel text={currentLevelTitle} />
-                    {/if}
                 </div>
 
                 <div class="rm-skill-image-card">
                     <img
-                        src={selectedSkill.skill.card_image ??
-                            "/card_examples/fool.png"}
-                        alt={selectedSkill.skill.name}
+                        src={skillCardImageUrl}
+                        alt={selectedSkill.definition.name}
                     />
                 </div>
 
-                {#if selectedSkill.skill.description}
+                {#if selectedSkill.definition.description}
                     <p class="rm-skill-description">
-                        {selectedSkill.skill.description}
+                        {selectedSkill.definition.description}
                     </p>
                 {/if}
             </div>
@@ -524,13 +502,10 @@
                                 {@const unlocked = isNodeUnlocked(
                                     node.achievement_id,
                                 )}
-                                {@const isNew =
-                                    unlocked && isNodeNew(node.achievement_id)}
                                 <button
                                     type="button"
                                     class="rm-hex-border"
                                     class:rm-hex-border--unlocked={unlocked}
-                                    class:rm-hex-border--new={isNew}
                                     onclick={() =>
                                         openNodeDetail(node.achievement_id)}
                                     aria-label={getAchievementName(
@@ -540,7 +515,6 @@
                                     <span
                                         class="rm-skill-node-hex"
                                         class:rm-skill-node-hex--unlocked={unlocked}
-                                        class:rm-skill-node-hex--new={isNew}
                                     >
                                         <span class="rm-node-name"
                                             >{getAchievementName(
@@ -567,7 +541,7 @@
     {#if detailAchievementId}
         {@const ach = detailAchievement}
         {@const prog = detailProgress}
-        {@const unlocked = !!prog}
+        {@const unlocked = prog?.status === "achieved"}
         <div
             class="rm-node-modal-backdrop"
             role="presentation"
@@ -614,7 +588,7 @@
                                 <span class="rm-node-modal-badge rm-unlocked"
                                     >Achieved</span
                                 >
-                            {:else if unlocked && prog?.status === "tracked"}
+                            {:else if prog?.status === "tracked"}
                                 <span class="rm-node-modal-badge rm-tracked"
                                     >Tracked</span
                                 >
@@ -630,13 +604,6 @@
                         <div class="rm-node-modal-meta-row">
                             <dt>Achieved</dt>
                             <dd>{prog.achieved_at}</dd>
-                        </div>
-                    {/if}
-
-                    {#if prog?.tracked_at}
-                        <div class="rm-node-modal-meta-row">
-                            <dt>Tracked</dt>
-                            <dd>{prog.tracked_at}</dd>
                         </div>
                     {/if}
 
@@ -687,9 +654,9 @@
                             {#if toggleBusy}
                                 …
                             {:else if unlocked && prog?.status === "achieved"}
-                                Lock
+                                Revoke
                             {:else}
-                                Unlock
+                                Mark achieved
                             {/if}
                         </button>
                         {#if toggleError}
@@ -700,20 +667,6 @@
                     </div>
                 {/if}
 
-                {#if prog?.note}
-                    <p class="rm-node-modal-note">{prog.note}</p>
-                {/if}
-
-                {#if prog?.progress_detail && prog.progress_detail.length > 0}
-                    <div class="rm-node-modal-progress">
-                        <div class="rm-node-modal-progress-label">Progress</div>
-                        <ul class="rm-node-modal-progress-list">
-                            {#each prog.progress_detail as line}
-                                <li>{line}</li>
-                            {/each}
-                        </ul>
-                    </div>
-                {/if}
             </div>
         </div>
     {/if}
@@ -1128,58 +1081,6 @@
         color: rgba(255, 255, 255, 0.55);
         border: 1px solid rgba(255, 255, 255, 0.25);
         padding: 0.12rem 0.5rem;
-    }
-
-    .rm-node-modal-note {
-        margin: clamp(0.4rem, 0.6vw, 0.8rem) clamp(0.4rem, 0.5vw, 0.8rem)
-            clamp(0.8rem, 1vw, 1.2rem);
-        padding: clamp(0.5rem, 0.7vw, 0.9rem) clamp(0.8rem, 1vw, 1.4rem);
-        font-size: clamp(0.78rem, 0.78vw, 1.1rem);
-        font-style: italic;
-        color: rgba(255, 255, 255, 0.7);
-        background: rgba(255, 255, 255, 0.06);
-        border-left: 3px solid var(--rm-gold, #f5a623);
-    }
-
-    .rm-node-modal-progress {
-        margin-top: clamp(0.6rem, 0.9vw, 1.1rem);
-        padding: 0 clamp(0.4rem, 0.5vw, 0.8rem);
-    }
-
-    .rm-node-modal-progress-label {
-        font-family: "p5hatty", "Orbitron", Arial, sans-serif;
-        font-size: clamp(0.7rem, 0.7vw, 1rem);
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        color: rgba(255, 255, 255, 0.45);
-        margin-bottom: clamp(0.3rem, 0.4vw, 0.5rem);
-    }
-
-    .rm-node-modal-progress-list {
-        list-style: none;
-        margin: 0;
-        padding: 0;
-        display: flex;
-        flex-direction: column;
-        gap: clamp(0.2rem, 0.3vw, 0.4rem);
-    }
-
-    .rm-node-modal-progress-list li {
-        position: relative;
-        padding-left: clamp(0.9rem, 1vw, 1.3rem);
-        font-size: clamp(0.78rem, 0.78vw, 1.1rem);
-        color: rgba(255, 255, 255, 0.75);
-        line-height: 1.5;
-    }
-
-    .rm-node-modal-progress-list li::before {
-        content: "▶";
-        position: absolute;
-        left: 0;
-        top: 0.2em;
-        font-size: 0.6em;
-        color: var(--rm-red);
     }
 
     .rm-difficulty {

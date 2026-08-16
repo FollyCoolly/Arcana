@@ -26,8 +26,3 @@ export type StatusData = {
     game_days: number | null;
     dimensions: DimensionData[];
 };
-
-export type DataCommandError = {
-    code: string;
-    message: string;
-};

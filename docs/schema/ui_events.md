@@ -1,9 +1,9 @@
 # UI Events Schema
 
-> **状态**：Current JSON v1 / Local only
-> 目标架构仍允许本机 UI 事件机制，但它不属于用户同步数据，具体实现可以在迁移时替换。参见 [`docs/design/data_platform.md`](../design/data_platform.md)。
+> **状态**：Legacy JSON v1 / 仅供旧内置 Agent
+> 已迁移的 Achievement / Skill 页面在 mutation 成功后直接刷新 SQLite 派生查询，不再读取本队列。旧内置 Agent 完成迁移后删除该实现；它不属于用户同步数据。参见 [`docs/design/data_platform.md`](../design/data_platform.md)。
 
-UI 待消费事件队列。数据变更方写入事件，前端读取后清除。
+旧 Agent 数据变更事件队列。旧实现的数据变更方写入事件；当前前端不再消费。
 
 ## 文件路径
 
@@ -41,8 +41,8 @@ UI 待消费事件队列。数据变更方写入事件，前端读取后清除�
 | `old_status` | string \| null | 变更前状态（`null` 表示新追踪，之前不存在） |
 | `new_status` | string | 变更后状态：`"tracked"` / `"achieved"` |
 
-## 消费规则
+## 旧消费规则
 
-- 前端通过 `get_pending_events` command 读取并清除事件
+- 已删除的旧 Tauri command 曾通过 `get_pending_events` 读取并清除事件
 - 消费是原子的：读取即删除，不会重复消费
 - 可按 `type` 过滤消费

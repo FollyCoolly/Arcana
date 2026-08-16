@@ -1,6 +1,6 @@
 # Achievement、Skill 与 Content Pack
 
-> **状态**：Achievement/Skill Domain、Application 与 CLI 已实现；Tauri UI 尚未切换
+> **状态**：Achievement/Skill Domain、Application、CLI 与 Tauri UI 已实现
 > **最后更新**：2026-08-16
 
 ## 1. 依赖方向

@@ -1,7 +1,7 @@
 use crate::domain::{
-    AchievementFile, ArcanaRepository, ArcanaRepositoryReader, ArcanaRepositoryTransaction,
-    DimensionFile, Pack, PackManifest, RecordDefinitionFile, RepositoryError, RepositoryErrorCode,
-    RepositoryResult, SkillFile, Validate, SCHEMA_VERSION,
+    is_portable_asset_path, AchievementFile, ArcanaRepository, ArcanaRepositoryReader,
+    ArcanaRepositoryTransaction, DimensionFile, Pack, PackManifest, RecordDefinitionFile,
+    RepositoryError, RepositoryErrorCode, RepositoryResult, SkillFile, Validate, SCHEMA_VERSION,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -89,6 +89,13 @@ pub struct PackAssetSummary {
     pub size_bytes: usize,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct PackAssetContent {
+    pub path: String,
+    pub media_type: String,
+    pub content: Vec<u8>,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct PackDetails {
     pub enabled: bool,
@@ -159,6 +166,46 @@ where
                 .is_ok(),
             &snapshot.packs,
         ))
+    }
+
+    pub fn read_asset(
+        &self,
+        pack_id: &str,
+        asset_path: &str,
+    ) -> RepositoryResult<PackAssetContent> {
+        if !is_portable_asset_path(asset_path) {
+            return Err(RepositoryError::new(
+                RepositoryErrorCode::ValidationFailed,
+                format!("Pack asset path is not portable: {asset_path}"),
+            ));
+        }
+        let snapshot = self.repository.load_synced_snapshot()?;
+        let pack = snapshot
+            .packs
+            .get(pack_id)
+            .ok_or_else(|| pack_not_found(pack_id))?;
+        let content = pack.assets.get(asset_path).cloned().ok_or_else(|| {
+            RepositoryError::new(
+                RepositoryErrorCode::NotFound,
+                format!("Pack asset '{pack_id}/{asset_path}' was not found"),
+            )
+        })?;
+        let media_type = match asset_path.rsplit('.').next().unwrap_or_default() {
+            "png" => "image/png",
+            "jpg" | "jpeg" => "image/jpeg",
+            "webp" => "image/webp",
+            extension => {
+                return Err(RepositoryError::new(
+                    RepositoryErrorCode::ValidationFailed,
+                    format!("Pack asset type is not supported by the UI: {extension}"),
+                ))
+            }
+        };
+        Ok(PackAssetContent {
+            path: asset_path.to_string(),
+            media_type: media_type.to_string(),
+            content,
+        })
     }
 
     /// Validate a candidate exactly as `write` would, while preserving current
@@ -474,6 +521,10 @@ mod tests {
             .unwrap();
         content.skills.as_mut().unwrap().skills[0].card_image = Some("assets/card.png".to_string());
         commands.write(content).unwrap();
+
+        let asset = commands.read_asset("stats", "assets/card.png").unwrap();
+        assert_eq!(asset.media_type, "image/png");
+        assert_eq!(asset.content, b"\x89PNG\r\n\x1a\n");
 
         let error = commands
             .delete_asset("stats", "assets/card.png")

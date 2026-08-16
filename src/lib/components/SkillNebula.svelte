@@ -28,7 +28,7 @@
 
     for (let i = 0; i < count; i++) {
       const skill = skills[i];
-      const levelFrac = skill.current_level / Math.max(1, skill.skill.max_level);
+      const levelFrac = skill.level / 5;
       const radialBias = 1.0 - levelFrac * 0.55;
 
       const theta = Math.acos(1 - 2 * seededRandom(i, 0));
@@ -46,19 +46,19 @@
   }
 
   function buildCardElement(skill: SkillWithLevel): HTMLDivElement {
-    const leveled = skill.current_level > 0;
+    const leveled = skill.level > 0;
     const progressPct = skill.max_points > 0
-      ? (skill.current_points / skill.max_points) * 100
+      ? (skill.points / skill.max_points) * 100
       : 0;
 
     const el = document.createElement('div');
     el.className = `rm-tarot-card rm-nebula-card${leveled ? ' rm-tarot-card--leveled' : ''}`;
     el.style.width = '160px';
 
-    const cardImage = skill.skill.card_image ?? '/card_examples/fool.png';
+    const cardImage = '/card_examples/fool.png';
     el.className = 'rm-nebula-card rm-nebula-image-card';
-    const titleSvg = buildCardTitleSvg(skill.skill.name, hashStr(skill.skill.id));
-    el.innerHTML = `<img src="${escapeHtml(cardImage)}" alt="${escapeHtml(skill.skill.name)}" />`
+    const titleSvg = buildCardTitleSvg(skill.definition.name, hashStr(skill.definition.id));
+    el.innerHTML = `<img src="${escapeHtml(cardImage)}" alt="${escapeHtml(skill.definition.name)}" />`
       + `<div class="rm-nebula-title-area">${titleSvg}</div>`;
 
     return el;

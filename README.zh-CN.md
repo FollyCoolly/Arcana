@@ -128,7 +128,7 @@ Arcana 内置 AI 助手，可作为个人生活助手运行，支持多种入口
 | **Telegram** | 可选的移动端 / 远程访问机器人（`agent-telegram`），按需编译和运行。 |
 | **Data CLI** | 脚本和未来 Agent Skill 使用的机器可读 SQLite 数据工具（`arcana-data`）。 |
 
-Status 页面已经使用新的 Application/Repository/SQLite 栈，包括五个本机 Dimension 展示槽位。其余桌面页面和内置 Rust Agent 在迁移期间仍使用旧 JSON services。
+Status、Achievement 和 Skill 页面已经使用新的 Application/Repository/SQLite 栈。其余桌面页面和内置 Rust Agent 在迁移期间仍使用旧 JSON services。
 
 > `agent-cli` 是一个最简调试工具，用于在不启动 Tauri 的情况下测试 agent 循环，日常使用不需要编译它。
 
@@ -207,7 +207,7 @@ cargo build --manifest-path src-tauri/Cargo.toml --bin arcana-data
 ./src-tauri/target/debug/arcana-data memory list
 ```
 
-`arcana-data init` 只创建 SQLite runtime 和 `basic` Pack，不会填充新手任务。Record、Pack、Status、Achievement、Arcana Skill 查询、Mission、AssistantMemory、紧凑 Agent 上下文、dry-run、原子用户状态 batch、contract fixtures 与 canonical 外部 Skills 已经迁移；Tauri Status 页面也已使用该运行时，其余桌面页面仍在迁移。
+`arcana-data init` 只创建 SQLite runtime 和 `basic` Pack，不会填充新手任务。Record、Pack、Status、Achievement、Arcana Skill 查询、Mission、AssistantMemory、紧凑 Agent 上下文、dry-run、原子用户状态 batch、contract fixtures 与 canonical 外部 Skills 已经迁移；Tauri Status、Achievement 和 Skill 页面也已使用该运行时，其余桌面页面仍在迁移。
 
 > [!NOTE]
 > 如果你需要使用 agent 二进制——主要是 `agent-telegram`，它会启动一个监听服务，让你通过 Telegram 远程控制本地助手——则需要额外配置 LLM provider。通过环境变量（`ANTHROPIC_API_KEY`）或配置文件（`~/.arcana/agent_config.json`）设置 API key 即可。详见 [AI 助手](#ai-助手)。
@@ -315,11 +315,11 @@ python scripts/fetch_douban.py --status all
 
 ## 当前实现说明
 
-- **当前处于分层迁移状态**：Tauri Status 页面与 `arcana-data` 已使用 SQLite；其余 Tauri 页面与内置 Agent 仍使用旧 JSON。
+- **当前处于分层迁移状态**：Tauri Status、Achievement、Skill 页面与 `arcana-data` 已使用 SQLite；其余 Tauri 页面与内置 Agent 仍使用旧 JSON。
 - **内容包体系**：成就和技能通过用户可扩展的内容包加载。
 - **Agent 仍处于分层迁移**：内置 CLI/Telegram Agent 仍使用旧 JSON；canonical 外部 Skills 已位于 `plugins/arcana/skills`，并提供生成式 `.claude/skills` 镜像、版本化 contract fixtures 与固定 eval 场景。
 - **前置条件校验**：当前 Achievement 模型把 prerequisites 校验为 DAG；Skill 在 UI 中呈现为紧凑的蜂窝状节点图。
-- **明确的迁移边界**：`services/` 只属于旧 UI/Agent；Status IPC 与 SQLite CLI 使用 `application/`、`domain/` 和 `storage/sqlite/`。
+- **明确的迁移边界**：`services/` 只属于旧 UI/Agent；已迁移的 Tauri IPC 与 SQLite CLI 使用 `application/`、`domain/` 和 `storage/sqlite/`。
 
 ---
 

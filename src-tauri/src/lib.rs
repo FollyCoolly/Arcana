@@ -275,17 +275,17 @@ pub fn run() {
             commands::data_platform::load_status_dashboard,
             commands::data_platform::select_status_dimension,
             commands::data_platform::clear_status_dimension,
+            commands::data_platform::load_achievement_dashboard,
+            commands::data_platform::set_achievement_achieved,
+            commands::data_platform::revoke_achievement_state,
+            commands::data_platform::load_skill_dashboard,
+            commands::data_platform::load_pack_asset,
             commands::weather::get_weather,
-            commands::achievements::load_achievements,
-            commands::achievements::set_achievement_achieved,
-            commands::achievements::lock_achievement,
-            commands::skills::load_skills,
             commands::items::load_items,
             commands::gallery::load_gallery,
             commands::missions::load_missions,
             commands::missions::load_main_menu_missions,
             commands::missions::update_mission_status,
-            commands::ui_events::get_pending_events,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

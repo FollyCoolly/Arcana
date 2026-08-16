@@ -1,36 +1,37 @@
+import type { Achievement } from "$lib/types/achievement";
+
+export type AchievementAvailability = Achievement["availability"];
+
 export type SkillNode = {
-  node_id: string;
-  achievement_id: string;
-  points: number;
+    achievement_id: string;
+    points: number;
 };
 
-export type LevelThreshold = {
-  level: number;
-  points_required: number;
-  required_key_achievements: string[];
+export type SkillNodeEvaluation = SkillNode & {
+    availability: AchievementAvailability;
 };
 
 export type SkillDef = {
-  id: string;
-  name: string;
-  description: string;
-  max_level: number;
-  level_titles?: string[];
-  level_thresholds: LevelThreshold[];
-  nodes: SkillNode[];
-  card_image?: string;
+    id: string;
+    name: string;
+    description?: string;
+    level_thresholds: number[];
+    nodes: SkillNode[];
+    card_image?: string;
 };
 
 export type SkillWithLevel = {
-  skill: SkillDef;
-  pack_id: string;
-  pack_name: string;
-  current_level: number;
-  current_points: number;
-  max_points: number;
-  next_threshold: LevelThreshold | null;
+    pack_id: string;
+    pack_name: string;
+    definition: SkillDef;
+    points: number;
+    max_points: number;
+    level: number;
+    achieved_node_count: number;
+    node_count: number;
+    nodes: SkillNodeEvaluation[];
 };
 
 export type SkillData = {
-  skills: SkillWithLevel[];
+    skills: SkillWithLevel[];
 };
