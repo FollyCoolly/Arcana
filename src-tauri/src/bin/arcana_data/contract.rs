@@ -12,6 +12,7 @@ const EXIT_RUNTIME_ERROR: i32 = 3;
 #[derive(Debug, Clone, Copy)]
 pub enum RepositoryOperation {
     Initialize,
+    Context,
     Record,
     Pack,
     PackAsset,
@@ -108,6 +109,7 @@ fn repository_error_code(
             RepositoryOperation::Initialize | RepositoryOperation::JsonExport => {
                 "runtime_not_initialized"
             }
+            RepositoryOperation::Context => "context_not_found",
             RepositoryOperation::Record => "record_not_found",
             RepositoryOperation::Pack => "pack_not_found",
             RepositoryOperation::PackAsset => "pack_asset_not_found",
@@ -121,6 +123,7 @@ fn repository_error_code(
         },
         RepositoryErrorCode::Conflict => match operation {
             RepositoryOperation::Initialize => "runtime_already_initialized",
+            RepositoryOperation::Context => "context_conflict",
             RepositoryOperation::Record => "record_conflict",
             RepositoryOperation::Pack => "pack_conflict",
             RepositoryOperation::PackAsset => "pack_asset_conflict",
@@ -134,6 +137,7 @@ fn repository_error_code(
             RepositoryOperation::JsonExport => "json_export_conflict",
         },
         RepositoryErrorCode::Unresolved => match operation {
+            RepositoryOperation::Context => "context_unresolved",
             RepositoryOperation::Record => "record_unresolved",
             RepositoryOperation::Pack => "pack_unresolved",
             RepositoryOperation::PackAsset => "pack_asset_unresolved",
@@ -158,6 +162,10 @@ pub fn capabilities() -> Value {
         "sqlite_schema_version": DATABASE_SCHEMA_VERSION,
         "commands": {
             "init": { "version": 1 },
+            "context": {
+                "version": 1,
+                "actions": ["summary"]
+            },
             "record": {
                 "version": 1,
                 "actions": [

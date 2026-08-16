@@ -1,4 +1,5 @@
 mod achievement_commands;
+mod context_commands;
 mod memory_commands;
 mod mission_commands;
 mod pack_commands;
@@ -11,6 +12,10 @@ mod status_commands;
 pub use achievement_commands::{
     AchievementAvailability, AchievementCommands, AchievementEntry, AchievementStateResult,
     QueryAchievements, SetAchievementState,
+};
+pub use context_commands::{
+    ContextAchievementState, ContextCommands, ContextMission, ContextStatusSelection,
+    ContextSummary,
 };
 pub use memory_commands::{
     AssistantMemoryDeleteResult, AssistantMemoryResult, CreateAssistantMemory, MemoryCommands,

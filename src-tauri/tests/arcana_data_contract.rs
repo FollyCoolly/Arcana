@@ -22,6 +22,12 @@ fn path_string(path: &Path) -> String {
     path.to_string_lossy().into_owned()
 }
 
+fn write_json_argument(directory: &Path, name: &str, value: &Value) -> String {
+    let path = directory.join(name);
+    std::fs::write(&path, serde_json::to_vec(value).unwrap()).unwrap();
+    path_string(&path)
+}
+
 #[test]
 fn capabilities_succeeds_without_runtime_and_compact_only_changes_layout() {
     let pretty = arcana_data(&["capabilities"]);
@@ -36,6 +42,7 @@ fn capabilities_succeeds_without_runtime_and_compact_only_changes_layout() {
     assert_eq!(value["commands"]["skill"]["version"], 1);
     assert_eq!(value["commands"]["mission"]["version"], 1);
     assert_eq!(value["commands"]["memory"]["version"], 1);
+    assert_eq!(value["commands"]["context"]["version"], 1);
     assert!(utf8(&pretty.stdout).lines().count() > 1);
 
     let compact = arcana_data(&["--compact", "capabilities"]);
@@ -46,7 +53,7 @@ fn capabilities_succeeds_without_runtime_and_compact_only_changes_layout() {
 
 #[test]
 fn invalid_and_removed_commands_return_structured_json_errors() {
-    for command in ["does-not-exist", "context", "changelog"] {
+    for command in ["does-not-exist", "read", "changelog"] {
         let output = arcana_data(&[command]);
         assert!(!output.status.success());
         assert!(output.stdout.is_empty());
@@ -57,6 +64,176 @@ fn invalid_and_removed_commands_return_structured_json_errors() {
             .is_some_and(|value| !value.is_empty()));
         assert_eq!(error["details"], serde_json::json!({}));
     }
+}
+
+#[test]
+fn context_summary_combines_current_user_state_without_bulk_repository_data() {
+    let directory = tempfile::tempdir().unwrap();
+    let runtime = directory.path().join("runtime");
+    let runtime_arg = path_string(&runtime);
+    assert!(arcana_data(&["init", "--runtime", &runtime_arg])
+        .status
+        .success());
+
+    let pack = serde_json::json!({
+        "manifest": {
+            "schema_version": 1,
+            "id": "wellbeing",
+            "name": "Wellbeing"
+        },
+        "record_definitions": {
+            "definitions": [{
+                "kind": "scalar",
+                "id": "wellbeing.energy",
+                "name": "Energy",
+                "value_type": "integer"
+            }]
+        },
+        "dimensions": {
+            "dimensions": [{
+                "id": "wellbeing::daily",
+                "name": "Daily wellbeing",
+                "level_titles": ["Awake", "Steady", "Strong", "Excellent", "Peak"],
+                "level_thresholds": [20, 40, 60, 80],
+                "scores": [{
+                    "id": "energy",
+                    "name": "Energy",
+                    "weight": 1,
+                    "expression": "record('wellbeing.energy')"
+                }]
+            }]
+        },
+        "achievements": {
+            "achievements": [{
+                "id": "wellbeing::morning_walk",
+                "name": "Morning walk",
+                "description": "Take a morning walk",
+                "difficulty": "beginner",
+                "related_record_definition_ids": ["wellbeing.energy"]
+            }]
+        }
+    });
+    let pack_arg = write_json_argument(directory.path(), "wellbeing.json", &pack);
+    assert!(arcana_data(&[
+        "pack",
+        "--runtime",
+        &runtime_arg,
+        "write",
+        "--file",
+        &pack_arg,
+    ])
+    .status
+    .success());
+    assert!(
+        arcana_data(&["pack", "--runtime", &runtime_arg, "enable", "wellbeing",])
+            .status
+            .success()
+    );
+
+    let record_arg = write_json_argument(
+        directory.path(),
+        "energy.json",
+        &serde_json::json!({
+            "definition_id": "wellbeing.energy",
+            "value": 72
+        }),
+    );
+    assert!(arcana_data(&[
+        "record",
+        "--runtime",
+        &runtime_arg,
+        "set",
+        "--file",
+        &record_arg,
+    ])
+    .status
+    .success());
+    assert!(arcana_data(&[
+        "status",
+        "--runtime",
+        &runtime_arg,
+        "select",
+        "2",
+        "wellbeing::daily",
+    ])
+    .status
+    .success());
+
+    let achievement_arg = write_json_argument(
+        directory.path(),
+        "achievement.json",
+        &serde_json::json!({
+            "achievement_id": "wellbeing::morning_walk",
+            "status": "tracked"
+        }),
+    );
+    assert!(arcana_data(&[
+        "achievement",
+        "--runtime",
+        &runtime_arg,
+        "state-set",
+        "--file",
+        &achievement_arg,
+    ])
+    .status
+    .success());
+
+    let mission_arg = write_json_argument(
+        directory.path(),
+        "mission.json",
+        &serde_json::json!({ "title": "Walk before breakfast" }),
+    );
+    assert!(arcana_data(&[
+        "mission",
+        "--runtime",
+        &runtime_arg,
+        "create",
+        "--file",
+        &mission_arg,
+    ])
+    .status
+    .success());
+
+    let memory_arg = write_json_argument(
+        directory.path(),
+        "memory.json",
+        &serde_json::json!({
+            "kind": "preference",
+            "content": "Prefers short morning walks"
+        }),
+    );
+    assert!(arcana_data(&[
+        "memory",
+        "--runtime",
+        &runtime_arg,
+        "create",
+        "--file",
+        &memory_arg,
+    ])
+    .status
+    .success());
+
+    let output = arcana_data(&["context", "--runtime", &runtime_arg, "summary"]);
+    assert!(output.status.success(), "{}", utf8(&output.stderr));
+    let summary = parse_json(&output.stdout);
+    assert_eq!(summary["as_of_date"].as_str().unwrap().len(), 10);
+    assert_eq!(summary["status_selections"][0]["position"], 2);
+    assert_eq!(summary["status_selections"][0]["evaluation"]["score"], 72.0);
+    assert_eq!(
+        summary["active_missions"][0]["title"],
+        "Walk before breakfast"
+    );
+    assert_eq!(summary["achievement_states"][0]["name"], "Morning walk");
+    assert_eq!(
+        summary["achievement_states"][0]["state"]["status"],
+        "tracked"
+    );
+    assert_eq!(
+        summary["memories"][0]["content"],
+        "Prefers short morning walks"
+    );
+    assert!(summary.get("records").is_none());
+    assert!(summary.get("packs").is_none());
 }
 
 #[test]

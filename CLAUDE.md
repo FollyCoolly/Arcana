@@ -52,6 +52,7 @@ cargo clippy --manifest-path src-tauri/Cargo.toml --lib --bins --tests
 ```text
 arcana-data capabilities
 arcana-data init [--runtime <directory>]
+arcana-data context [--runtime <directory>] summary
 arcana-data record [--runtime <directory>] <action>
 arcana-data pack [--runtime <directory>] <action>
 arcana-data status [--runtime <directory>] <action>
@@ -90,6 +91,7 @@ arcana-data json import|export ...
 - Mission 的 create/suggest 由系统生成 UUIDv7 与时间；complete/archive 是幂等生命周期命令，update 完整替换可编辑字段。
 - AssistantMemory 同步长期语义，不同步 Agent Session。
 - Memory create 由系统生成 UUIDv7 与时间；update 保留 ID/created_at，只在 kind/content 变化时刷新 updated_at；delete 是 hard delete。
+- `context summary` 从单一事务快照返回选中的 Status、active Mission、显式 Achievement 状态与 AssistantMemory；不内嵌完整 Record 或 Pack。
 - 不建立 changelog、operation log、通用 tombstone 或旧 JSON 迁移。
 
 完整 Schema 和事务语义见：

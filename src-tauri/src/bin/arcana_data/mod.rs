@@ -1,4 +1,5 @@
 mod achievement_commands;
+mod context_commands;
 mod contract;
 mod memory_commands;
 mod mission_commands;
@@ -10,6 +11,7 @@ mod status_commands;
 
 use achievement_commands::{execute_achievement, AchievementAction};
 use clap::{error::ErrorKind, Parser, Subcommand};
+use context_commands::{execute_context, ContextAction};
 use contract::{capabilities, render_json, CliError, EXIT_SUCCESS};
 use memory_commands::{execute_memory, MemoryAction};
 use mission_commands::{execute_mission, MissionAction};
@@ -41,6 +43,14 @@ enum Commands {
         /// Runtime directory that will contain arcana.sqlite3
         #[arg(long, value_name = "DIRECTORY")]
         runtime: Option<PathBuf>,
+    },
+    /// Read a compact, consistent Agent context from the SQLite runtime
+    Context {
+        /// Runtime directory containing arcana.sqlite3
+        #[arg(long, value_name = "DIRECTORY", global = true)]
+        runtime: Option<PathBuf>,
+        #[command(subcommand)]
+        action: ContextAction,
     },
     /// Read and update Records in the SQLite runtime
     Record {
@@ -146,6 +156,7 @@ fn execute(command: Commands) -> Result<Value, CliError> {
     match command {
         Commands::Capabilities => Ok(capabilities()),
         Commands::Init { runtime } => execute_init(runtime),
+        Commands::Context { runtime, action } => execute_context(runtime, action),
         Commands::Record { runtime, action } => execute_record(runtime, action),
         Commands::Pack { runtime, action } => execute_pack(runtime, action),
         Commands::Status { runtime, action } => execute_status(runtime, action),
@@ -163,8 +174,11 @@ mod tests {
 
     #[test]
     fn only_new_sqlite_command_families_are_exposed() {
-        for removed in ["context", "read", "mission", "changelog", "memory"] {
+        for removed in ["read", "changelog"] {
             assert!(Cli::try_parse_from(["arcana-data", removed]).is_err());
+        }
+        for incomplete in ["context", "record", "mission", "memory"] {
+            assert!(Cli::try_parse_from(["arcana-data", incomplete]).is_err());
         }
         for retained in ["capabilities", "init"] {
             assert!(Cli::try_parse_from(["arcana-data", retained]).is_ok());
@@ -202,6 +216,16 @@ mod tests {
                 "failed to parse {arguments:?}"
             );
         }
+    }
+
+    #[test]
+    fn parses_context_summary() {
+        assert!(matches!(
+            Cli::try_parse_from(["arcana-data", "context", "summary"])
+                .unwrap()
+                .command,
+            Commands::Context { .. }
+        ));
     }
 
     #[test]

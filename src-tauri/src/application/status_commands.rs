@@ -118,63 +118,7 @@ where
         let transaction = self.repository.begin_transaction()?;
         let snapshot = transaction.load_synced_snapshot()?;
         let selections = transaction.status_dimension_selection()?;
-        let selected_positions: BTreeMap<&str, u8> = selections
-            .iter()
-            .map(|selection| (selection.dimension_id.as_str(), selection.position))
-            .collect();
-        let numeric_records: BTreeMap<&str, f64> = snapshot
-            .records
-            .values()
-            .flat_map(|file| file.records.iter())
-            .filter_map(|record| match record {
-                Record::Scalar(record) => record
-                    .value
-                    .as_f64()
-                    .map(|value| (record.definition_id.as_str(), value)),
-                Record::Collection(_) | Record::Event(_) => None,
-            })
-            .collect();
-
-        let mut matches = enabled_dimensions(&snapshot)
-            .filter(|(_, definition)| {
-                dimension_id.is_none_or(|dimension_id| definition.id == dimension_id)
-            })
-            .map(|(pack_id, definition)| {
-                evaluate_dimension(
-                    pack_id,
-                    definition,
-                    selected_positions.get(definition.id.as_str()).copied(),
-                    &numeric_records,
-                )
-            })
-            .collect::<RepositoryResult<Vec<_>>>()?;
-
-        if let Some(dimension_id) = dimension_id {
-            if matches.is_empty() {
-                let exists_but_disabled = snapshot.packs.values().any(|pack| {
-                    pack.dimensions.as_ref().is_some_and(|file| {
-                        file.dimensions
-                            .iter()
-                            .any(|dimension| dimension.id == dimension_id)
-                    })
-                });
-                let (code, message) = if exists_but_disabled {
-                    (
-                        RepositoryErrorCode::Unresolved,
-                        format!(
-                            "Status Dimension '{dimension_id}' is not supplied by an enabled Pack"
-                        ),
-                    )
-                } else {
-                    (
-                        RepositoryErrorCode::NotFound,
-                        format!("Status Dimension '{dimension_id}' was not found"),
-                    )
-                };
-                return Err(RepositoryError::new(code, message));
-            }
-        }
-        matches.sort_by(|left, right| left.dimension_id.cmp(&right.dimension_id));
+        let matches = evaluate_dimensions_from_snapshot(&snapshot, &selections, dimension_id)?;
         transaction.rollback()?;
         Ok(matches)
     }
@@ -235,6 +179,69 @@ where
             changed: true,
         })
     }
+}
+
+pub(crate) fn evaluate_dimensions_from_snapshot(
+    snapshot: &crate::domain::SyncedRepositorySnapshot,
+    selections: &[StatusDimensionSelection],
+    dimension_id: Option<&str>,
+) -> RepositoryResult<Vec<StatusDimensionEvaluation>> {
+    let selected_positions: BTreeMap<&str, u8> = selections
+        .iter()
+        .map(|selection| (selection.dimension_id.as_str(), selection.position))
+        .collect();
+    let numeric_records: BTreeMap<&str, f64> = snapshot
+        .records
+        .values()
+        .flat_map(|file| file.records.iter())
+        .filter_map(|record| match record {
+            Record::Scalar(record) => record
+                .value
+                .as_f64()
+                .map(|value| (record.definition_id.as_str(), value)),
+            Record::Collection(_) | Record::Event(_) => None,
+        })
+        .collect();
+
+    let mut matches = enabled_dimensions(snapshot)
+        .filter(|(_, definition)| {
+            dimension_id.is_none_or(|dimension_id| definition.id == dimension_id)
+        })
+        .map(|(pack_id, definition)| {
+            evaluate_dimension(
+                pack_id,
+                definition,
+                selected_positions.get(definition.id.as_str()).copied(),
+                &numeric_records,
+            )
+        })
+        .collect::<RepositoryResult<Vec<_>>>()?;
+
+    if let Some(dimension_id) = dimension_id {
+        if matches.is_empty() {
+            let exists_but_disabled = snapshot.packs.values().any(|pack| {
+                pack.dimensions.as_ref().is_some_and(|file| {
+                    file.dimensions
+                        .iter()
+                        .any(|dimension| dimension.id == dimension_id)
+                })
+            });
+            let (code, message) = if exists_but_disabled {
+                (
+                    RepositoryErrorCode::Unresolved,
+                    format!("Status Dimension '{dimension_id}' is not supplied by an enabled Pack"),
+                )
+            } else {
+                (
+                    RepositoryErrorCode::NotFound,
+                    format!("Status Dimension '{dimension_id}' was not found"),
+                )
+            };
+            return Err(RepositoryError::new(code, message));
+        }
+    }
+    matches.sort_by(|left, right| left.dimension_id.cmp(&right.dimension_id));
+    Ok(matches)
 }
 
 fn enabled_dimensions(

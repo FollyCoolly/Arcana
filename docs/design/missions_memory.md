@@ -175,6 +175,8 @@ memory delete <memory_id>
 
 `create` 只接收 kind/content，由系统生成 UUIDv7，并把 created_at/updated_at 设为同一当前时间。`update` 完整替换 kind/content，保留 ID 与 created_at；实际内容没有变化时返回 `changed: false` 且不刷新 updated_at。`delete` 是 hard delete，恢复依赖 JSON/Git 历史。
 
+`arcana-data context summary` 从同一个 SQLite 事务快照拼装 Agent 启动上下文：本机日期、Status selection、active Mission、显式 Achievement 状态和全部 AssistantMemory。Mission deadline 会派生 `days_remaining`；停用 Pack 的 Status selection 保留并标记 `available: false`。摘要不复制到数据库，也不内嵌完整 Record、Pack Definition、已完成/归档 Mission 或 MissionSuggestion；需要时再用对应领域查询读取。
+
 ## 8. Memory 精炼与清理
 
 - 新信息补充或修正同一语义时更新原 entry 并保留 ID，不重复追加近义条目。

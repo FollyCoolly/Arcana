@@ -84,7 +84,7 @@ sync status|import|export|pull|push|run
 
 `json import|export` 是不接触 Git 的底层完整目录转换命令；`sync` 后续在它之上增加 managed path digest、防覆盖、恢复 journal 和显式 Git 操作。
 
-当前实现已经提供新运行时的 `capabilities`、`init`、完整 `record`、`pack`、`status`、`achievement`、`mission`、`memory` 命令族、只读 `skill list` 和 `json import|export`，并实现直接业务 JSON、结构化错误和稳定退出语义。`arcana-data init [--runtime <directory>]` 创建只含启用状态 `basic` Pack 的新 SQLite；领域命令统一使用 `arcana-data <record|pack|status|achievement|skill|mission|memory> [--runtime <directory>] <action>`，省略 runtime 时读取本机 settings 或默认目录。Record `get` 返回当前 Record，`query` 可按 `--definition-id`、`--namespace`、`--pack`、`--kind`、`--has-value` 组合过滤；修改复杂 payload 的命令从 stdin 或 `--file` 读取对应 Application Command JSON。旧 `context/read/mission/status/achievement/pack/changelog/memory` JSON 实现和旧 `.claude/skills` 已删除，全部目标领域命令已按 SQLite 合约重新实现；发布 canonical Agent Skill 前仍需完成 dry-run/batch 与 contract fixture。context summary 也尚未实现。
+当前实现已经提供新运行时的 `capabilities`、`init`、`context summary`、完整 `record`、`pack`、`status`、`achievement`、`mission`、`memory` 命令族、只读 `skill list` 和 `json import|export`，并实现直接业务 JSON、结构化错误和稳定退出语义。`arcana-data init [--runtime <directory>]` 创建只含启用状态 `basic` Pack 的新 SQLite；领域命令统一使用 `arcana-data <record|pack|status|achievement|skill|mission|memory> [--runtime <directory>] <action>`，省略 runtime 时读取本机 settings 或默认目录。Record `get` 返回当前 Record，`query` 可按 `--definition-id`、`--namespace`、`--pack`、`--kind`、`--has-value` 组合过滤；修改复杂 payload 的命令从 stdin 或 `--file` 读取对应 Application Command JSON。旧 JSON 实现和旧 `.claude/skills` 已删除，全部目标领域命令已按 SQLite 合约重新实现；发布 canonical Agent Skill 前仍需完成 dry-run/batch 与 contract fixture。
 
 `pack scaffold <id> --name <name>` 直接输出可交给 `pack validate|write` 的 `PackContent` JSON，不要求 runtime 已初始化。`PackContent` 只包含 `manifest` 以及可选的 `record_definitions`、`dimensions`、`achievements`、`skills`；它不是新的持久化 Schema，也不包含 asset bytes。`pack validate` 使用当前 Pack 已有 asset，把候选内容放入当前仓库快照做全量校验但不写入。`pack write` 在单事务中插入或替换结构化内容，并保留原 enabled 状态和全部 asset。asset bytes 只通过 `asset-put <pack_id> <assets/...> --file <local_file>` 与 `asset-delete` 修改；`show` 只返回 asset path 和 byte size，不把二进制编码进 JSON。启用/停用不级联父子 Pack，重复操作返回 `changed: false`。
 
@@ -97,6 +97,8 @@ sync status|import|export|pull|push|run
 Mission `create`/`suggest` 由系统生成 UUIDv7 和当前时间；`update` 完整替换可编辑字段，省略可选字段表示清除。`complete`、`archive` 和 `reject` 幂等；删除仍有 child 的 Mission 会返回 conflict。Suggestion 仅保存在本机，`accept` 在同一事务中把它转换为同 ID 的 active Mission，随后只有正式 Mission 进入 JSON 同步。
 
 Memory `list` 支持按 ID 和 kind 精确过滤。`create` 由系统生成 UUIDv7 与 created/updated time；`update` 保留 ID/created_at，只在 kind 或 content 实际变化时刷新 updated_at；`delete` 直接移除条目，不创建软删除状态。
+
+`context summary` 从一个 SQLite 事务快照返回本机日期、五个 Status selection（包括不可用选择）、active Mission、显式 tracked/achieved 状态和 AssistantMemory。可用 Status 同时附带即时分数与等级；有 deadline 的 Mission 附带即时 `days_remaining`。它不返回完整 Record、Pack/Definition、已归档/已完成 Mission 或尚未接受的 Suggestion；Agent 需要这些细节时使用对应的精确查询，避免每次启动都把整个仓库塞入上下文。
 
 实际 flag 以 CLI `--help` 为准；机器先查询 `capabilities` 确认合约、Schema、命令版本和 feature。请求体 Schema 随后由 canonical Skill 的 fixture 覆盖，避免文档示例与 Serde 类型漂移。
 
