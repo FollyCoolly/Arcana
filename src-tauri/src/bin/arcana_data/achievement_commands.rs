@@ -1,7 +1,11 @@
+use super::batch_commands::execute_mutation;
 use super::contract::{CliError, RepositoryOperation};
 use super::record_commands::parse_json_input;
 use super::runtime_commands::runtime_from_cli;
-use arcana_lib::application::{AchievementCommands, QueryAchievements, SetAchievementState};
+use arcana_lib::application::{
+    AchievementCommands, AchievementTarget, MutationOperation, QueryAchievements,
+    SetAchievementState,
+};
 use arcana_lib::domain::AchievementStatus;
 use clap::{Subcommand, ValueEnum};
 use serde_json::{json, Value};
@@ -57,8 +61,35 @@ enum PreparedAchievementAction {
 pub fn execute_achievement(
     runtime_dir: Option<PathBuf>,
     action: AchievementAction,
+    dry_run: bool,
 ) -> Result<Value, CliError> {
     let action = prepare_achievement_action(action)?;
+    let action = match action {
+        PreparedAchievementAction::StateSet(command) => {
+            return execute_mutation(
+                runtime_dir,
+                MutationOperation::AchievementStateSet(command),
+                RepositoryOperation::Achievement,
+                dry_run,
+            )
+        }
+        PreparedAchievementAction::StateRevoke(achievement_id) => {
+            return execute_mutation(
+                runtime_dir,
+                MutationOperation::AchievementStateRevoke(AchievementTarget { achievement_id }),
+                RepositoryOperation::Achievement,
+                dry_run,
+            )
+        }
+        action @ PreparedAchievementAction::List(_) => action,
+    };
+    if dry_run {
+        return Err(CliError::invalid_command_input(
+            "list Achievements",
+            "--dry-run cannot be used with read-only commands",
+            json!({}),
+        ));
+    }
     let runtime = runtime_from_cli(runtime_dir)?;
     if !runtime.database_path().exists() {
         return Err(CliError::runtime_not_initialized(&runtime.database_path()));
@@ -70,12 +101,7 @@ pub fn execute_achievement(
                 PreparedAchievementAction::List(query) => {
                     Ok(json!({ "achievements": commands.list(query)? }))
                 }
-                PreparedAchievementAction::StateSet(command) => Ok(json!({
-                    "achievement_state": commands.set_state(command)?
-                })),
-                PreparedAchievementAction::StateRevoke(achievement_id) => Ok(json!({
-                    "achievement_state": commands.revoke_state(&achievement_id)?
-                })),
+                _ => unreachable!("mutations return before read dispatch"),
             }
         })
         .map_err(|error| CliError::from_repository(error, RepositoryOperation::Achievement))

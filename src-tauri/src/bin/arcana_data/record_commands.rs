@@ -1,9 +1,10 @@
+use super::batch_commands::execute_mutation;
 use super::contract::{CliError, RepositoryOperation};
 use super::runtime_commands::runtime_from_cli;
 use arcana_lib::application::{
     AddCollectionItem, AppendEvent, CorrectCollectionItem, CorrectEvent, CreateEmptyRecord,
-    DeleteEvent, IncrementScalarRecord, QueryRecords, RecordCommands, RemoveCollectionItem,
-    SetScalarRecord,
+    DeleteEvent, IncrementScalarRecord, MutationOperation, QueryRecords, RecordCommands,
+    RecordTarget, RemoveCollectionItem, SetScalarRecord,
 };
 use arcana_lib::domain::RecordKind;
 use clap::{Subcommand, ValueEnum};
@@ -127,15 +128,122 @@ enum PreparedRecordAction {
 pub fn execute_record(
     runtime_dir: Option<PathBuf>,
     action: RecordAction,
+    dry_run: bool,
 ) -> Result<Value, CliError> {
     let action = prepare_record_action(action)?;
+    let action = match action {
+        PreparedRecordAction::Set(command) => {
+            return execute_mutation(
+                runtime_dir,
+                MutationOperation::RecordSet(command),
+                RepositoryOperation::Record,
+                dry_run,
+            )
+        }
+        PreparedRecordAction::Increment(command) => {
+            return execute_mutation(
+                runtime_dir,
+                MutationOperation::RecordIncrement(command),
+                RepositoryOperation::Record,
+                dry_run,
+            )
+        }
+        PreparedRecordAction::Correct(command) => {
+            return execute_mutation(
+                runtime_dir,
+                MutationOperation::RecordCorrect(command),
+                RepositoryOperation::Record,
+                dry_run,
+            )
+        }
+        PreparedRecordAction::CreateEmptyCollection(command) => {
+            return execute_mutation(
+                runtime_dir,
+                MutationOperation::RecordCreateEmptyCollection(command),
+                RepositoryOperation::Record,
+                dry_run,
+            )
+        }
+        PreparedRecordAction::CreateEmptyEvent(command) => {
+            return execute_mutation(
+                runtime_dir,
+                MutationOperation::RecordCreateEmptyEvent(command),
+                RepositoryOperation::Record,
+                dry_run,
+            )
+        }
+        PreparedRecordAction::AddItem(command) => {
+            return execute_mutation(
+                runtime_dir,
+                MutationOperation::RecordAddItem(command),
+                RepositoryOperation::Record,
+                dry_run,
+            )
+        }
+        PreparedRecordAction::CorrectItem(command) => {
+            return execute_mutation(
+                runtime_dir,
+                MutationOperation::RecordCorrectItem(command),
+                RepositoryOperation::Record,
+                dry_run,
+            )
+        }
+        PreparedRecordAction::RemoveItem(command) => {
+            return execute_mutation(
+                runtime_dir,
+                MutationOperation::RecordRemoveItem(command),
+                RepositoryOperation::Record,
+                dry_run,
+            )
+        }
+        PreparedRecordAction::AppendEvent(command) => {
+            return execute_mutation(
+                runtime_dir,
+                MutationOperation::RecordAppendEvent(command),
+                RepositoryOperation::Record,
+                dry_run,
+            )
+        }
+        PreparedRecordAction::CorrectEvent(command) => {
+            return execute_mutation(
+                runtime_dir,
+                MutationOperation::RecordCorrectEvent(command),
+                RepositoryOperation::Record,
+                dry_run,
+            )
+        }
+        PreparedRecordAction::DeleteEvent(command) => {
+            return execute_mutation(
+                runtime_dir,
+                MutationOperation::RecordDeleteEvent(command),
+                RepositoryOperation::Record,
+                dry_run,
+            )
+        }
+        PreparedRecordAction::Delete(definition_id) => {
+            return execute_mutation(
+                runtime_dir,
+                MutationOperation::RecordDelete(RecordTarget { definition_id }),
+                RepositoryOperation::Record,
+                dry_run,
+            )
+        }
+        action @ (PreparedRecordAction::Get(_) | PreparedRecordAction::Query(_)) => action,
+    };
+    if dry_run {
+        return Err(CliError::invalid_command_input(
+            "read Record",
+            "--dry-run cannot be used with read-only commands",
+            json!({}),
+        ));
+    }
     let runtime = runtime_from_cli(runtime_dir)?;
     if !runtime.database_path().exists() {
         return Err(CliError::runtime_not_initialized(&runtime.database_path()));
     }
     runtime
         .with_repository(|repository| {
-            let mut commands = RecordCommands::new(repository);
+            let commands = RecordCommands::new(repository);
             match action {
                 PreparedRecordAction::Get(definition_id) => {
                     Ok(json!({ "record": commands.get(&definition_id)? }))
@@ -143,43 +251,7 @@ pub fn execute_record(
                 PreparedRecordAction::Query(query) => {
                     Ok(json!({ "entries": commands.query(query)? }))
                 }
-                PreparedRecordAction::Set(command) => {
-                    Ok(json!({ "record": commands.set_scalar(command)? }))
-                }
-                PreparedRecordAction::Increment(command) => {
-                    Ok(json!({ "record": commands.increment_scalar(command)? }))
-                }
-                PreparedRecordAction::Correct(command) => {
-                    Ok(json!({ "record": commands.correct_scalar(command)? }))
-                }
-                PreparedRecordAction::CreateEmptyCollection(command) => Ok(json!({
-                    "record": commands.create_empty_collection(command)?
-                })),
-                PreparedRecordAction::CreateEmptyEvent(command) => {
-                    Ok(json!({ "record": commands.create_empty_event(command)? }))
-                }
-                PreparedRecordAction::AddItem(command) => {
-                    Ok(json!({ "record": commands.add_collection_item(command)? }))
-                }
-                PreparedRecordAction::CorrectItem(command) => Ok(json!({
-                    "record": commands.correct_collection_item(command)?
-                })),
-                PreparedRecordAction::RemoveItem(command) => Ok(json!({
-                    "record": commands.remove_collection_item(command)?
-                })),
-                PreparedRecordAction::AppendEvent(command) => {
-                    Ok(json!({ "record": commands.append_event(command)? }))
-                }
-                PreparedRecordAction::CorrectEvent(command) => {
-                    Ok(json!({ "record": commands.correct_event(command)? }))
-                }
-                PreparedRecordAction::DeleteEvent(command) => {
-                    Ok(json!({ "record": commands.delete_event(command)? }))
-                }
-                PreparedRecordAction::Delete(definition_id) => {
-                    commands.delete(&definition_id)?;
-                    Ok(json!({ "deleted_definition_id": definition_id }))
-                }
+                _ => unreachable!("mutations return before read dispatch"),
             }
         })
         .map_err(|error| CliError::from_repository(error, RepositoryOperation::Record))
@@ -398,6 +470,7 @@ mod tests {
             RecordAction::Set {
                 file: Some(set_file),
             },
+            false,
         )
         .unwrap();
 
@@ -415,6 +488,7 @@ mod tests {
             RecordAction::Increment {
                 file: Some(increment_file),
             },
+            false,
         )
         .unwrap();
         assert_eq!(incremented["record"]["value"], 5);
@@ -428,6 +502,7 @@ mod tests {
                 kind: Some(RecordKindArg::Scalar),
                 has_value: Some(true),
             },
+            false,
         )
         .unwrap();
         assert_eq!(queried["entries"].as_array().unwrap().len(), 1);
@@ -437,6 +512,7 @@ mod tests {
             RecordAction::CreateEmptyCollection {
                 definition_id: "stats.projects".to_string(),
             },
+            false,
         )
         .unwrap();
         let add_item_file = write_command_file(
@@ -453,6 +529,7 @@ mod tests {
             RecordAction::AddItem {
                 file: Some(add_item_file),
             },
+            false,
         )
         .unwrap();
 
@@ -461,6 +538,7 @@ mod tests {
             RecordAction::CreateEmptyEvent {
                 definition_id: "stats.activities".to_string(),
             },
+            false,
         )
         .unwrap();
         let append_event_file = write_command_file(
@@ -478,6 +556,7 @@ mod tests {
             RecordAction::AppendEvent {
                 file: Some(append_event_file),
             },
+            false,
         )
         .unwrap();
 
@@ -486,6 +565,7 @@ mod tests {
             RecordAction::Delete {
                 definition_id: "stats.count".to_string(),
             },
+            false,
         )
         .unwrap();
         let fetched = execute_record(
@@ -493,6 +573,7 @@ mod tests {
             RecordAction::Get {
                 definition_id: "stats.count".to_string(),
             },
+            false,
         )
         .unwrap();
         assert!(fetched["record"].is_null());

@@ -59,8 +59,9 @@ plugins/arcana/
 - `--help` / `--version` 是面向人的普通文本，不属于机器结果；`--compact` 只改变 JSON 空白，不改变字段。
 - `capabilities` 返回 CLI contract、仓库 Schema、Pack Schema 和支持命令版本；Skill 开始写操作前必须检查兼容性。
 - 读命令支持精确 ID、namespace、Pack 和状态过滤，避免每次把完整用户仓库塞入上下文。
-- 所有普通领域数据修改命令支持 `--dry-run`，返回将修改的实体和验证结果但不提交；新仓库使用独立的 `init` 命令，不提供旧 JSON 数据迁移命令。
-- 多实体更新使用 `batch apply --file <json>`，在一个 SQLite 事务中全部成功或全部回滚。
+- Record、Status selection、Achievement、Mission/Suggestion 和 AssistantMemory 修改命令支持 `--dry-run`，返回将修改的实体并在验证后回滚；新仓库使用独立的 `init` 命令，不提供旧 JSON 数据迁移命令。
+- 多个用户状态更新使用 `batch apply --file <json>`，按数组顺序在一个 SQLite 事务中执行，后续操作可以读取前序结果；全部成功才提交，任一失败则全部回滚。
+- Pack 内容与二进制 asset 使用 `pack validate|write|asset-put|asset-delete` 专用流程，不进入用户状态 batch；`init`、查询和 `json import|export` 也不接受 `--dry-run`。
 - CLI 不暴露任意 SQL、任意文件写入或“跳过验证”参数。
 
 第一版命令族：
@@ -84,7 +85,37 @@ sync status|import|export|pull|push|run
 
 `json import|export` 是不接触 Git 的底层完整目录转换命令；`sync` 后续在它之上增加 managed path digest、防覆盖、恢复 journal 和显式 Git 操作。
 
-当前实现已经提供新运行时的 `capabilities`、`init`、`context summary`、完整 `record`、`pack`、`status`、`achievement`、`mission`、`memory` 命令族、只读 `skill list` 和 `json import|export`，并实现直接业务 JSON、结构化错误和稳定退出语义。`arcana-data init [--runtime <directory>]` 创建只含启用状态 `basic` Pack 的新 SQLite；领域命令统一使用 `arcana-data <record|pack|status|achievement|skill|mission|memory> [--runtime <directory>] <action>`，省略 runtime 时读取本机 settings 或默认目录。Record `get` 返回当前 Record，`query` 可按 `--definition-id`、`--namespace`、`--pack`、`--kind`、`--has-value` 组合过滤；修改复杂 payload 的命令从 stdin 或 `--file` 读取对应 Application Command JSON。旧 JSON 实现和旧 `.claude/skills` 已删除，全部目标领域命令已按 SQLite 合约重新实现；发布 canonical Agent Skill 前仍需完成 dry-run/batch 与 contract fixture。
+当前实现已经提供新运行时的 `capabilities`、`init`、`context summary`、用户状态 mutation 的 `--dry-run` 与 `batch apply`、完整 `record`、`pack`、`status`、`achievement`、`mission`、`memory` 命令族、只读 `skill list` 和 `json import|export`，并实现直接业务 JSON、结构化错误和稳定退出语义。`arcana-data init [--runtime <directory>]` 创建只含启用状态 `basic` Pack 的新 SQLite；领域命令统一使用 `arcana-data <record|pack|status|achievement|skill|mission|memory> [--runtime <directory>] <action>`，省略 runtime 时读取本机 settings 或默认目录。Record `get` 返回当前 Record，`query` 可按 `--definition-id`、`--namespace`、`--pack`、`--kind`、`--has-value` 组合过滤；修改复杂 payload 的命令从 stdin 或 `--file` 读取对应 Application Command JSON。旧 JSON 实现和旧 `.claude/skills` 已删除，全部目标领域命令已按 SQLite 合约重新实现；发布 canonical Agent Skill 前仍需完成 contract fixture 与 eval。
+
+`batch apply` 输入采用稳定的相邻标签格式：
+
+```json
+{
+  "operations": [
+    {
+      "operation": "record.set",
+      "input": {
+        "definition_id": "fitness.running_distance_km",
+        "value": 5
+      }
+    },
+    {
+      "operation": "mission.complete",
+      "input": { "mission_id": "019b..." }
+    },
+    {
+      "operation": "achievement.state-set",
+      "input": {
+        "achievement_id": "fitness::first_run",
+        "status": "achieved",
+        "achieved_at": "2026-08-16"
+      }
+    }
+  ]
+}
+```
+
+支持的 operation 名称以 `capabilities.commands.batch.operations` 为准。成功结果按原顺序返回 `{index,operation,result}`；失败结果在 `details` 中提供 `operation_index` 和 `operation`，不返回部分成功。单条用户状态写命令和 `batch apply` 都接受全局 `--dry-run`；它们执行完全相同的事务内代码，只在结尾选择 rollback 或 commit。dry-run 中由系统生成的 UUIDv7 和时间是预览值，正式执行时会重新生成，调用方不得让后续输入引用这些预览 ID；除这些系统字段外，确认后提交的 operation 数组必须与预览一致，期间数据发生变化则重新 dry-run。
 
 `pack scaffold <id> --name <name>` 直接输出可交给 `pack validate|write` 的 `PackContent` JSON，不要求 runtime 已初始化。`PackContent` 只包含 `manifest` 以及可选的 `record_definitions`、`dimensions`、`achievements`、`skills`；它不是新的持久化 Schema，也不包含 asset bytes。`pack validate` 使用当前 Pack 已有 asset，把候选内容放入当前仓库快照做全量校验但不写入。`pack write` 在单事务中插入或替换结构化内容，并保留原 enabled 状态和全部 asset。asset bytes 只通过 `asset-put <pack_id> <assets/...> --file <local_file>` 与 `asset-delete` 修改；`show` 只返回 asset path 和 byte size，不把二进制编码进 JSON。启用/停用不级联父子 Pack，重复操作返回 `changed: false`。
 
@@ -135,7 +166,7 @@ Memory `list` 支持按 ID 和 kind 精确过滤。`create` 由系统生成 UUID
 - 创建 Achievement 时评估是否需要 related RecordDefinition；不强迫每个 Achievement 都可量化。
 - 生成后执行 Pack 全量校验、Achievement DAG、Definition 兼容、Status 表达式和 Skill 可达性检查。
 - 修改已引用 ID 或破坏性 Definition 时拒绝直接覆盖，改为创建新 ID 并列出受影响引用。
-- 结构化内容只通过 `pack write`/batch transaction 修改，资源只通过 `pack asset-put` / `pack asset-delete` 导入或删除；不直接写 Pack JSON 或 Git 工作区 asset。
+- 结构化内容只通过 `pack validate` 后的 `pack write` 修改，资源只通过 `pack asset-put` / `pack asset-delete` 导入或删除；不直接写 Pack JSON 或 Git 工作区 asset。
 
 ## 7. 安全与数据原则
 
@@ -144,7 +175,7 @@ Memory `list` 支持按 ID 和 kind 精确过滤。`create` 由系统生成 UUID
 - 不把 credentials、绝对本机路径、完整聊天、模型配置或 Session 写入同步实体。
 - 不自动解决 Git 冲突，不调用破坏性 Git 命令。
 - CLI 返回 conflict、unresolved、schema mismatch 或 validation error 时，Skill必须把具体问题暴露给用户。
-- 所有展示给用户的计划与实际 committed batch 必须一致；dry-run 后数据变化则重新验证。
+- 所有展示给用户的计划与实际 committed batch 的 operation 数组必须一致；系统生成的 UUID/时间允许变化，dry-run 后仓库数据变化则重新验证。
 
 ## 8. 质量门
 

@@ -1,9 +1,10 @@
+use super::batch_commands::execute_mutation;
 use super::contract::{CliError, RepositoryOperation};
 use super::record_commands::parse_json_input;
 use super::runtime_commands::runtime_from_cli;
 use arcana_lib::application::{
-    CreateMission, MissionCommands, QueryMissionSuggestions, QueryMissions, SuggestMission,
-    UpdateMission,
+    CreateMission, MissionCommands, MissionSuggestionTarget, MissionTarget, MutationOperation,
+    QueryMissionSuggestions, QueryMissions, SuggestMission, UpdateMission,
 };
 use arcana_lib::domain::{MissionStatus, MissionSuggestionStatus};
 use clap::{Subcommand, ValueEnum};
@@ -106,14 +107,97 @@ enum PreparedMissionAction {
 pub fn execute_mission(
     runtime_dir: Option<PathBuf>,
     action: MissionAction,
+    dry_run: bool,
 ) -> Result<Value, CliError> {
     let action = prepare_mission_action(action)?;
+    let action = match action {
+        PreparedMissionAction::Create(command) => {
+            return execute_mutation(
+                runtime_dir,
+                MutationOperation::MissionCreate(command),
+                RepositoryOperation::Mission,
+                dry_run,
+            )
+        }
+        PreparedMissionAction::Update(command) => {
+            return execute_mutation(
+                runtime_dir,
+                MutationOperation::MissionUpdate(command),
+                RepositoryOperation::Mission,
+                dry_run,
+            )
+        }
+        PreparedMissionAction::Complete(mission_id) => {
+            return execute_mutation(
+                runtime_dir,
+                MutationOperation::MissionComplete(MissionTarget { mission_id }),
+                RepositoryOperation::Mission,
+                dry_run,
+            )
+        }
+        PreparedMissionAction::Archive(mission_id) => {
+            return execute_mutation(
+                runtime_dir,
+                MutationOperation::MissionArchive(MissionTarget { mission_id }),
+                RepositoryOperation::Mission,
+                dry_run,
+            )
+        }
+        PreparedMissionAction::Delete(mission_id) => {
+            return execute_mutation(
+                runtime_dir,
+                MutationOperation::MissionDelete(MissionTarget { mission_id }),
+                RepositoryOperation::Mission,
+                dry_run,
+            )
+        }
+        PreparedMissionAction::Suggest(command) => {
+            return execute_mutation(
+                runtime_dir,
+                MutationOperation::MissionSuggest(command),
+                RepositoryOperation::MissionSuggestion,
+                dry_run,
+            )
+        }
+        PreparedMissionAction::Accept(suggestion_id) => {
+            return execute_mutation(
+                runtime_dir,
+                MutationOperation::MissionAccept(MissionSuggestionTarget { suggestion_id }),
+                RepositoryOperation::MissionSuggestion,
+                dry_run,
+            )
+        }
+        PreparedMissionAction::Reject(suggestion_id) => {
+            return execute_mutation(
+                runtime_dir,
+                MutationOperation::MissionReject(MissionSuggestionTarget { suggestion_id }),
+                RepositoryOperation::MissionSuggestion,
+                dry_run,
+            )
+        }
+        PreparedMissionAction::SuggestionDelete(suggestion_id) => {
+            return execute_mutation(
+                runtime_dir,
+                MutationOperation::MissionSuggestionDelete(MissionSuggestionTarget {
+                    suggestion_id,
+                }),
+                RepositoryOperation::MissionSuggestion,
+                dry_run,
+            )
+        }
+        action @ (PreparedMissionAction::List(_) | PreparedMissionAction::SuggestionList(_)) => {
+            action
+        }
+    };
+    if dry_run {
+        return Err(CliError::invalid_command_input(
+            "read Missions",
+            "--dry-run cannot be used with read-only commands",
+            json!({}),
+        ));
+    }
     let operation = match &action {
-        PreparedMissionAction::SuggestionList(_)
-        | PreparedMissionAction::Suggest(_)
-        | PreparedMissionAction::Accept(_)
-        | PreparedMissionAction::Reject(_)
-        | PreparedMissionAction::SuggestionDelete(_) => RepositoryOperation::MissionSuggestion,
+        PreparedMissionAction::SuggestionList(_) => RepositoryOperation::MissionSuggestion,
         _ => RepositoryOperation::Mission,
     };
     let runtime = runtime_from_cli(runtime_dir)?;
@@ -127,30 +211,10 @@ pub fn execute_mission(
                 PreparedMissionAction::List(query) => {
                     Ok(json!({ "missions": commands.list(query)? }))
                 }
-                PreparedMissionAction::Create(command) => Ok(json!(commands.create(command)?)),
-                PreparedMissionAction::Update(command) => Ok(json!(commands.update(command)?)),
-                PreparedMissionAction::Complete(mission_id) => {
-                    Ok(json!(commands.complete(&mission_id)?))
-                }
-                PreparedMissionAction::Archive(mission_id) => {
-                    Ok(json!(commands.archive(&mission_id)?))
-                }
-                PreparedMissionAction::Delete(mission_id) => {
-                    Ok(json!(commands.delete(&mission_id)?))
-                }
                 PreparedMissionAction::SuggestionList(query) => {
                     Ok(json!({ "suggestions": commands.list_suggestions(query)? }))
                 }
-                PreparedMissionAction::Suggest(command) => Ok(json!(commands.suggest(command)?)),
-                PreparedMissionAction::Accept(suggestion_id) => {
-                    Ok(json!(commands.accept(&suggestion_id)?))
-                }
-                PreparedMissionAction::Reject(suggestion_id) => {
-                    Ok(json!(commands.reject(&suggestion_id)?))
-                }
-                PreparedMissionAction::SuggestionDelete(suggestion_id) => {
-                    Ok(json!(commands.delete_suggestion(&suggestion_id)?))
-                }
+                _ => unreachable!("mutations return before read dispatch"),
             }
         })
         .map_err(|error| CliError::from_repository(error, operation))

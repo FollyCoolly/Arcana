@@ -53,6 +53,7 @@ cargo clippy --manifest-path src-tauri/Cargo.toml --lib --bins --tests
 arcana-data capabilities
 arcana-data init [--runtime <directory>]
 arcana-data context [--runtime <directory>] summary
+arcana-data batch [--runtime <directory>] apply [--file <json>] [--dry-run]
 arcana-data record [--runtime <directory>] <action>
 arcana-data pack [--runtime <directory>] <action>
 arcana-data status [--runtime <directory>] <action>
@@ -92,6 +93,8 @@ arcana-data json import|export ...
 - AssistantMemory 同步长期语义，不同步 Agent Session。
 - Memory create 由系统生成 UUIDv7 与时间；update 保留 ID/created_at，只在 kind/content 变化时刷新 updated_at；delete 是 hard delete。
 - `context summary` 从单一事务快照返回选中的 Status、active Mission、显式 Achievement 状态与 AssistantMemory；不内嵌完整 Record 或 Pack。
+- Record、Status selection、Achievement、Mission/Suggestion 和 AssistantMemory 写命令支持全局 `--dry-run`；`batch apply` 按输入顺序在一个事务中全部提交或全部回滚。
+- Pack 内容/asset、`init` 和 `json import|export` 不进入用户状态 batch；Pack 候选内容使用 `pack validate`。
 - 不建立 changelog、operation log、通用 tombstone 或旧 JSON 迁移。
 
 完整 Schema 和事务语义见：

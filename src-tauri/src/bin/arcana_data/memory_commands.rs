@@ -1,8 +1,10 @@
+use super::batch_commands::execute_mutation;
 use super::contract::{CliError, RepositoryOperation};
 use super::record_commands::parse_json_input;
 use super::runtime_commands::runtime_from_cli;
 use arcana_lib::application::{
-    CreateAssistantMemory, MemoryCommands, QueryAssistantMemory, UpdateAssistantMemory,
+    AssistantMemoryTarget, CreateAssistantMemory, MemoryCommands, MutationOperation,
+    QueryAssistantMemory, UpdateAssistantMemory,
 };
 use arcana_lib::domain::AssistantMemoryKind;
 use clap::{Subcommand, ValueEnum};
@@ -67,8 +69,43 @@ enum PreparedMemoryAction {
 pub fn execute_memory(
     runtime_dir: Option<PathBuf>,
     action: MemoryAction,
+    dry_run: bool,
 ) -> Result<Value, CliError> {
     let action = prepare_memory_action(action)?;
+    let action = match action {
+        PreparedMemoryAction::Create(command) => {
+            return execute_mutation(
+                runtime_dir,
+                MutationOperation::MemoryCreate(command),
+                RepositoryOperation::Memory,
+                dry_run,
+            )
+        }
+        PreparedMemoryAction::Update(command) => {
+            return execute_mutation(
+                runtime_dir,
+                MutationOperation::MemoryUpdate(command),
+                RepositoryOperation::Memory,
+                dry_run,
+            )
+        }
+        PreparedMemoryAction::Delete(memory_id) => {
+            return execute_mutation(
+                runtime_dir,
+                MutationOperation::MemoryDelete(AssistantMemoryTarget { memory_id }),
+                RepositoryOperation::Memory,
+                dry_run,
+            )
+        }
+        action @ PreparedMemoryAction::List(_) => action,
+    };
+    if dry_run {
+        return Err(CliError::invalid_command_input(
+            "list AssistantMemory",
+            "--dry-run cannot be used with read-only commands",
+            json!({}),
+        ));
+    }
     let runtime = runtime_from_cli(runtime_dir)?;
     if !runtime.database_path().exists() {
         return Err(CliError::runtime_not_initialized(&runtime.database_path()));
@@ -80,9 +117,7 @@ pub fn execute_memory(
                 PreparedMemoryAction::List(query) => {
                     Ok(json!({ "memories": commands.list(query)? }))
                 }
-                PreparedMemoryAction::Create(command) => Ok(json!(commands.create(command)?)),
-                PreparedMemoryAction::Update(command) => Ok(json!(commands.update(command)?)),
-                PreparedMemoryAction::Delete(memory_id) => Ok(json!(commands.delete(&memory_id)?)),
+                _ => unreachable!("mutations return before read dispatch"),
             }
         })
         .map_err(|error| CliError::from_repository(error, RepositoryOperation::Memory))

@@ -103,6 +103,49 @@ pub struct MissionSuggestionDeleteResult {
     pub deleted: bool,
 }
 
+pub(crate) enum MissionMutation {
+    Create {
+        command: CreateMission,
+        mission_id: String,
+        created_at: String,
+    },
+    Update(UpdateMission),
+    Complete {
+        mission_id: String,
+        completed_at: String,
+    },
+    Archive(String),
+    Delete(String),
+    Suggest {
+        command: SuggestMission,
+        suggestion_id: String,
+        generated_at: String,
+    },
+    Accept {
+        suggestion_id: String,
+        created_at: String,
+    },
+    Reject(String),
+    SuggestionDelete(String),
+}
+
+pub(crate) enum MissionMutationResult {
+    Mission(MissionResult),
+    Deleted(MissionDeleteResult),
+    Suggestion(MissionSuggestionResult),
+    SuggestionDeleted(MissionSuggestionDeleteResult),
+}
+
+impl MissionMutationResult {
+    fn changed(&self) -> bool {
+        match self {
+            Self::Mission(result) => result.changed,
+            Self::Suggestion(result) => result.changed,
+            Self::Deleted(_) | Self::SuggestionDeleted(_) => true,
+        }
+    }
+}
+
 pub struct MissionCommands<'repository, R> {
     repository: &'repository mut R,
 }
@@ -133,34 +176,8 @@ where
     }
 
     pub fn update(&mut self, command: UpdateMission) -> RepositoryResult<MissionResult> {
-        let mut transaction = self.repository.begin_transaction()?;
-        let snapshot = transaction.load_synced_snapshot()?;
-        let current = mission_from_snapshot(&snapshot, &command.mission_id)?;
-        let mission = Mission {
-            id: current.id.clone(),
-            title: command.title,
-            description: command.description,
-            status: current.status,
-            progress: command.progress,
-            difficulty: command.difficulty,
-            deadline: command.deadline,
-            parent_id: command.parent_id,
-            created_at: current.created_at.clone(),
-            completed_at: current.completed_at.clone(),
-        };
-        if mission == current {
-            transaction.rollback()?;
-            return Ok(MissionResult {
-                mission,
-                changed: false,
-            });
-        }
-        transaction.put_mission(mission.clone())?;
-        transaction.commit()?;
-        Ok(MissionResult {
-            mission,
-            changed: true,
-        })
+        self.execute_mission_mutation(MissionMutation::Update(command))?
+            .into_mission()
     }
 
     pub fn complete(&mut self, mission_id: &str) -> RepositoryResult<MissionResult> {
@@ -168,49 +185,13 @@ where
     }
 
     pub fn archive(&mut self, mission_id: &str) -> RepositoryResult<MissionResult> {
-        let mut transaction = self.repository.begin_transaction()?;
-        let snapshot = transaction.load_synced_snapshot()?;
-        let mut mission = mission_from_snapshot(&snapshot, mission_id)?;
-        if mission.status == MissionStatus::Archived {
-            transaction.rollback()?;
-            return Ok(MissionResult {
-                mission,
-                changed: false,
-            });
-        }
-        mission.status = MissionStatus::Archived;
-        transaction.put_mission(mission.clone())?;
-        transaction.commit()?;
-        Ok(MissionResult {
-            mission,
-            changed: true,
-        })
+        self.execute_mission_mutation(MissionMutation::Archive(mission_id.to_string()))?
+            .into_mission()
     }
 
     pub fn delete(&mut self, mission_id: &str) -> RepositoryResult<MissionDeleteResult> {
-        let mut transaction = self.repository.begin_transaction()?;
-        let snapshot = transaction.load_synced_snapshot()?;
-        mission_from_snapshot(&snapshot, mission_id)?;
-        if let Some(child) = snapshot
-            .missions
-            .iter()
-            .flat_map(|file| file.missions.iter())
-            .find(|mission| mission.parent_id.as_deref() == Some(mission_id))
-        {
-            return Err(RepositoryError::new(
-                RepositoryErrorCode::Conflict,
-                format!(
-                    "Mission '{mission_id}' is still the parent of Mission '{}'",
-                    child.id
-                ),
-            ));
-        }
-        transaction.delete_mission(mission_id)?;
-        transaction.commit()?;
-        Ok(MissionDeleteResult {
-            mission_id: mission_id.to_string(),
-            deleted: true,
-        })
+        self.execute_mission_mutation(MissionMutation::Delete(mission_id.to_string()))?
+            .into_deleted()
     }
 
     pub fn list_suggestions(
@@ -235,72 +216,24 @@ where
     }
 
     pub fn accept(&mut self, suggestion_id: &str) -> RepositoryResult<MissionResult> {
-        let created_at = now_rfc3339();
-        let mut transaction = self.repository.begin_transaction()?;
-        let suggestion = suggestion_from_transaction(&transaction, suggestion_id)?;
-        let snapshot = transaction.load_synced_snapshot()?;
-        if snapshot.missions.as_ref().is_some_and(|file| {
-            file.missions
-                .iter()
-                .any(|mission| mission.id == suggestion.id)
-        }) {
-            return Err(RepositoryError::new(
-                RepositoryErrorCode::Conflict,
-                format!("Mission '{}' already exists", suggestion.id),
-            ));
-        }
-        let mission = Mission {
-            id: suggestion.id.clone(),
-            title: suggestion.title,
-            description: suggestion.description,
-            status: MissionStatus::Active,
-            progress: None,
-            difficulty: suggestion.difficulty,
-            deadline: suggestion.deadline,
-            parent_id: suggestion.parent_mission_id,
-            created_at,
-            completed_at: None,
-        };
-        transaction.put_mission(mission.clone())?;
-        transaction.delete_mission_suggestion(suggestion_id)?;
-        transaction.commit()?;
-        Ok(MissionResult {
-            mission,
-            changed: true,
-        })
+        self.execute_mission_mutation(MissionMutation::Accept {
+            suggestion_id: suggestion_id.to_string(),
+            created_at: now_rfc3339(),
+        })?
+        .into_mission()
     }
 
     pub fn reject(&mut self, suggestion_id: &str) -> RepositoryResult<MissionSuggestionResult> {
-        let mut transaction = self.repository.begin_transaction()?;
-        let mut suggestion = suggestion_from_transaction(&transaction, suggestion_id)?;
-        if suggestion.status == MissionSuggestionStatus::Rejected {
-            transaction.rollback()?;
-            return Ok(MissionSuggestionResult {
-                suggestion,
-                changed: false,
-            });
-        }
-        suggestion.status = MissionSuggestionStatus::Rejected;
-        transaction.put_mission_suggestion(suggestion.clone())?;
-        transaction.commit()?;
-        Ok(MissionSuggestionResult {
-            suggestion,
-            changed: true,
-        })
+        self.execute_mission_mutation(MissionMutation::Reject(suggestion_id.to_string()))?
+            .into_suggestion()
     }
 
     pub fn delete_suggestion(
         &mut self,
         suggestion_id: &str,
     ) -> RepositoryResult<MissionSuggestionDeleteResult> {
-        let mut transaction = self.repository.begin_transaction()?;
-        suggestion_from_transaction(&transaction, suggestion_id)?;
-        transaction.delete_mission_suggestion(suggestion_id)?;
-        transaction.commit()?;
-        Ok(MissionSuggestionDeleteResult {
-            suggestion_id: suggestion_id.to_string(),
-            deleted: true,
-        })
+        self.execute_mission_mutation(MissionMutation::SuggestionDelete(suggestion_id.to_string()))?
+            .into_suggestion_deleted()
     }
 
     pub(crate) fn create_at(
@@ -309,36 +242,12 @@ where
         mission_id: String,
         created_at: String,
     ) -> RepositoryResult<MissionResult> {
-        let mission = Mission {
-            id: mission_id,
-            title: command.title,
-            description: command.description,
-            status: MissionStatus::Active,
-            progress: command.progress,
-            difficulty: command.difficulty,
-            deadline: command.deadline,
-            parent_id: command.parent_id,
+        self.execute_mission_mutation(MissionMutation::Create {
+            command,
+            mission_id,
             created_at,
-            completed_at: None,
-        };
-        let mut transaction = self.repository.begin_transaction()?;
-        let snapshot = transaction.load_synced_snapshot()?;
-        if snapshot
-            .missions
-            .as_ref()
-            .is_some_and(|file| file.missions.iter().any(|item| item.id == mission.id))
-        {
-            return Err(RepositoryError::new(
-                RepositoryErrorCode::Conflict,
-                format!("Mission '{}' already exists", mission.id),
-            ));
-        }
-        transaction.put_mission(mission.clone())?;
-        transaction.commit()?;
-        Ok(MissionResult {
-            mission,
-            changed: true,
-        })
+        })?
+        .into_mission()
     }
 
     pub(crate) fn complete_at(
@@ -346,36 +255,11 @@ where
         mission_id: &str,
         completed_at: String,
     ) -> RepositoryResult<MissionResult> {
-        let mut transaction = self.repository.begin_transaction()?;
-        let snapshot = transaction.load_synced_snapshot()?;
-        let mut mission = mission_from_snapshot(&snapshot, mission_id)?;
-        match mission.status {
-            MissionStatus::Completed => {
-                transaction.rollback()?;
-                return Ok(MissionResult {
-                    mission,
-                    changed: false,
-                });
-            }
-            MissionStatus::Archived => {
-                return Err(RepositoryError::new(
-                    RepositoryErrorCode::Conflict,
-                    format!("archived Mission '{mission_id}' cannot be completed"),
-                ));
-            }
-            MissionStatus::Active => {}
-        }
-        mission.status = MissionStatus::Completed;
-        if mission.progress.is_some() {
-            mission.progress = Some(100);
-        }
-        mission.completed_at = Some(completed_at);
-        transaction.put_mission(mission.clone())?;
-        transaction.commit()?;
-        Ok(MissionResult {
-            mission,
-            changed: true,
-        })
+        self.execute_mission_mutation(MissionMutation::Complete {
+            mission_id: mission_id.to_string(),
+            completed_at,
+        })?
+        .into_mission()
     }
 
     pub(crate) fn suggest_at(
@@ -384,35 +268,299 @@ where
         suggestion_id: String,
         generated_at: String,
     ) -> RepositoryResult<MissionSuggestionResult> {
-        let suggestion = MissionSuggestion {
-            id: suggestion_id,
-            title: command.title,
-            description: command.description,
-            difficulty: command.difficulty,
-            deadline: command.deadline,
-            parent_mission_id: command.parent_mission_id,
-            reason: command.reason,
+        self.execute_mission_mutation(MissionMutation::Suggest {
+            command,
+            suggestion_id,
             generated_at,
-            status: MissionSuggestionStatus::Pending,
-        };
-        let mut transaction = self.repository.begin_transaction()?;
-        if transaction
-            .list_mission_suggestions()?
-            .iter()
-            .any(|item| item.id == suggestion.id)
-        {
-            return Err(RepositoryError::new(
-                RepositoryErrorCode::Conflict,
-                format!("MissionSuggestion '{}' already exists", suggestion.id),
-            ));
-        }
-        transaction.put_mission_suggestion(suggestion.clone())?;
-        transaction.commit()?;
-        Ok(MissionSuggestionResult {
-            suggestion,
-            changed: true,
-        })
+        })?
+        .into_suggestion()
     }
+
+    fn execute_mission_mutation(
+        &mut self,
+        mutation: MissionMutation,
+    ) -> RepositoryResult<MissionMutationResult> {
+        let mut transaction = self.repository.begin_transaction()?;
+        let result = apply_mission_mutation(&mut transaction, mutation)?;
+        if result.changed() {
+            transaction.commit()?;
+        } else {
+            transaction.rollback()?;
+        }
+        Ok(result)
+    }
+}
+
+impl MissionMutationResult {
+    fn into_mission(self) -> RepositoryResult<MissionResult> {
+        match self {
+            Self::Mission(result) => Ok(result),
+            _ => Err(internal_result_error()),
+        }
+    }
+
+    fn into_deleted(self) -> RepositoryResult<MissionDeleteResult> {
+        match self {
+            Self::Deleted(result) => Ok(result),
+            _ => Err(internal_result_error()),
+        }
+    }
+
+    fn into_suggestion(self) -> RepositoryResult<MissionSuggestionResult> {
+        match self {
+            Self::Suggestion(result) => Ok(result),
+            _ => Err(internal_result_error()),
+        }
+    }
+
+    fn into_suggestion_deleted(self) -> RepositoryResult<MissionSuggestionDeleteResult> {
+        match self {
+            Self::SuggestionDeleted(result) => Ok(result),
+            _ => Err(internal_result_error()),
+        }
+    }
+}
+
+pub(crate) fn apply_mission_mutation<T>(
+    transaction: &mut T,
+    mutation: MissionMutation,
+) -> RepositoryResult<MissionMutationResult>
+where
+    T: ArcanaRepositoryTransaction,
+{
+    match mutation {
+        MissionMutation::Create {
+            command,
+            mission_id,
+            created_at,
+        } => {
+            let mission = Mission {
+                id: mission_id,
+                title: command.title,
+                description: command.description,
+                status: MissionStatus::Active,
+                progress: command.progress,
+                difficulty: command.difficulty,
+                deadline: command.deadline,
+                parent_id: command.parent_id,
+                created_at,
+                completed_at: None,
+            };
+            let snapshot = transaction.load_synced_snapshot()?;
+            if snapshot
+                .missions
+                .as_ref()
+                .is_some_and(|file| file.missions.iter().any(|item| item.id == mission.id))
+            {
+                return Err(RepositoryError::new(
+                    RepositoryErrorCode::Conflict,
+                    format!("Mission '{}' already exists", mission.id),
+                ));
+            }
+            transaction.put_mission(mission.clone())?;
+            Ok(MissionMutationResult::Mission(MissionResult {
+                mission,
+                changed: true,
+            }))
+        }
+        MissionMutation::Update(command) => {
+            let snapshot = transaction.load_synced_snapshot()?;
+            let current = mission_from_snapshot(&snapshot, &command.mission_id)?;
+            let mission = Mission {
+                id: current.id.clone(),
+                title: command.title,
+                description: command.description,
+                status: current.status,
+                progress: command.progress,
+                difficulty: command.difficulty,
+                deadline: command.deadline,
+                parent_id: command.parent_id,
+                created_at: current.created_at.clone(),
+                completed_at: current.completed_at.clone(),
+            };
+            if mission == current {
+                return Ok(MissionMutationResult::Mission(MissionResult {
+                    mission,
+                    changed: false,
+                }));
+            }
+            transaction.put_mission(mission.clone())?;
+            Ok(MissionMutationResult::Mission(MissionResult {
+                mission,
+                changed: true,
+            }))
+        }
+        MissionMutation::Complete {
+            mission_id,
+            completed_at,
+        } => {
+            let snapshot = transaction.load_synced_snapshot()?;
+            let mut mission = mission_from_snapshot(&snapshot, &mission_id)?;
+            match mission.status {
+                MissionStatus::Completed => {
+                    return Ok(MissionMutationResult::Mission(MissionResult {
+                        mission,
+                        changed: false,
+                    }));
+                }
+                MissionStatus::Archived => {
+                    return Err(RepositoryError::new(
+                        RepositoryErrorCode::Conflict,
+                        format!("archived Mission '{mission_id}' cannot be completed"),
+                    ));
+                }
+                MissionStatus::Active => {}
+            }
+            mission.status = MissionStatus::Completed;
+            if mission.progress.is_some() {
+                mission.progress = Some(100);
+            }
+            mission.completed_at = Some(completed_at);
+            transaction.put_mission(mission.clone())?;
+            Ok(MissionMutationResult::Mission(MissionResult {
+                mission,
+                changed: true,
+            }))
+        }
+        MissionMutation::Archive(mission_id) => {
+            let snapshot = transaction.load_synced_snapshot()?;
+            let mut mission = mission_from_snapshot(&snapshot, &mission_id)?;
+            if mission.status == MissionStatus::Archived {
+                return Ok(MissionMutationResult::Mission(MissionResult {
+                    mission,
+                    changed: false,
+                }));
+            }
+            mission.status = MissionStatus::Archived;
+            transaction.put_mission(mission.clone())?;
+            Ok(MissionMutationResult::Mission(MissionResult {
+                mission,
+                changed: true,
+            }))
+        }
+        MissionMutation::Delete(mission_id) => {
+            let snapshot = transaction.load_synced_snapshot()?;
+            mission_from_snapshot(&snapshot, &mission_id)?;
+            if let Some(child) = snapshot
+                .missions
+                .iter()
+                .flat_map(|file| file.missions.iter())
+                .find(|mission| mission.parent_id.as_deref() == Some(mission_id.as_str()))
+            {
+                return Err(RepositoryError::new(
+                    RepositoryErrorCode::Conflict,
+                    format!(
+                        "Mission '{mission_id}' is still the parent of Mission '{}'",
+                        child.id
+                    ),
+                ));
+            }
+            transaction.delete_mission(&mission_id)?;
+            Ok(MissionMutationResult::Deleted(MissionDeleteResult {
+                mission_id,
+                deleted: true,
+            }))
+        }
+        MissionMutation::Suggest {
+            command,
+            suggestion_id,
+            generated_at,
+        } => {
+            let suggestion = MissionSuggestion {
+                id: suggestion_id,
+                title: command.title,
+                description: command.description,
+                difficulty: command.difficulty,
+                deadline: command.deadline,
+                parent_mission_id: command.parent_mission_id,
+                reason: command.reason,
+                generated_at,
+                status: MissionSuggestionStatus::Pending,
+            };
+            if transaction
+                .list_mission_suggestions()?
+                .iter()
+                .any(|item| item.id == suggestion.id)
+            {
+                return Err(RepositoryError::new(
+                    RepositoryErrorCode::Conflict,
+                    format!("MissionSuggestion '{}' already exists", suggestion.id),
+                ));
+            }
+            transaction.put_mission_suggestion(suggestion.clone())?;
+            Ok(MissionMutationResult::Suggestion(MissionSuggestionResult {
+                suggestion,
+                changed: true,
+            }))
+        }
+        MissionMutation::Accept {
+            suggestion_id,
+            created_at,
+        } => {
+            let suggestion = suggestion_from_transaction(transaction, &suggestion_id)?;
+            let snapshot = transaction.load_synced_snapshot()?;
+            if snapshot.missions.as_ref().is_some_and(|file| {
+                file.missions
+                    .iter()
+                    .any(|mission| mission.id == suggestion.id)
+            }) {
+                return Err(RepositoryError::new(
+                    RepositoryErrorCode::Conflict,
+                    format!("Mission '{}' already exists", suggestion.id),
+                ));
+            }
+            let mission = Mission {
+                id: suggestion.id.clone(),
+                title: suggestion.title,
+                description: suggestion.description,
+                status: MissionStatus::Active,
+                progress: None,
+                difficulty: suggestion.difficulty,
+                deadline: suggestion.deadline,
+                parent_id: suggestion.parent_mission_id,
+                created_at,
+                completed_at: None,
+            };
+            transaction.put_mission(mission.clone())?;
+            transaction.delete_mission_suggestion(&suggestion_id)?;
+            Ok(MissionMutationResult::Mission(MissionResult {
+                mission,
+                changed: true,
+            }))
+        }
+        MissionMutation::Reject(suggestion_id) => {
+            let mut suggestion = suggestion_from_transaction(transaction, &suggestion_id)?;
+            if suggestion.status == MissionSuggestionStatus::Rejected {
+                return Ok(MissionMutationResult::Suggestion(MissionSuggestionResult {
+                    suggestion,
+                    changed: false,
+                }));
+            }
+            suggestion.status = MissionSuggestionStatus::Rejected;
+            transaction.put_mission_suggestion(suggestion.clone())?;
+            Ok(MissionMutationResult::Suggestion(MissionSuggestionResult {
+                suggestion,
+                changed: true,
+            }))
+        }
+        MissionMutation::SuggestionDelete(suggestion_id) => {
+            suggestion_from_transaction(transaction, &suggestion_id)?;
+            transaction.delete_mission_suggestion(&suggestion_id)?;
+            Ok(MissionMutationResult::SuggestionDeleted(
+                MissionSuggestionDeleteResult {
+                    suggestion_id,
+                    deleted: true,
+                },
+            ))
+        }
+    }
+}
+
+fn internal_result_error() -> RepositoryError {
+    RepositoryError::new(
+        RepositoryErrorCode::Conflict,
+        "internal Mission mutation result mismatch",
+    )
 }
 
 fn mission_from_snapshot(

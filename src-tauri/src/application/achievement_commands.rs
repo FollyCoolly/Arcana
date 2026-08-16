@@ -60,6 +60,11 @@ pub struct AchievementStateResult {
     pub changed: bool,
 }
 
+pub(crate) enum AchievementMutation {
+    Set(SetAchievementState),
+    Revoke(String),
+}
+
 pub struct AchievementCommands<'repository, R> {
     repository: &'repository mut R,
 }
@@ -171,50 +176,15 @@ where
         &mut self,
         command: SetAchievementState,
     ) -> RepositoryResult<AchievementStateResult> {
-        validate_achievement_id(&command.achievement_id)?;
-        let state = AchievementState {
-            status: command.status,
-            achieved_at: command.achieved_at,
-        };
-        state.validate()?;
         let mut transaction = self.repository.begin_transaction()?;
-        let snapshot = transaction.load_synced_snapshot()?;
-        let available = snapshot
-            .manifest
-            .enabled_pack_ids
-            .iter()
-            .filter_map(|pack_id| snapshot.packs.get(pack_id))
-            .flat_map(|pack| pack.achievements.iter())
-            .flat_map(|file| file.achievements.iter())
-            .any(|definition| definition.id == command.achievement_id);
-        if !available {
-            return Err(RepositoryError::new(
-                RepositoryErrorCode::Unresolved,
-                format!(
-                    "AchievementDefinition '{}' is not supplied by an enabled Pack",
-                    command.achievement_id
-                ),
-            ));
-        }
-        let current = snapshot
-            .achievement_states
-            .as_ref()
-            .and_then(|file| file.states.get(&command.achievement_id));
-        if current == Some(&state) {
+        let result =
+            apply_achievement_mutation(&mut transaction, AchievementMutation::Set(command))?;
+        if !result.changed {
             transaction.rollback()?;
-            return Ok(AchievementStateResult {
-                achievement_id: command.achievement_id,
-                state: Some(state),
-                changed: false,
-            });
+            return Ok(result);
         }
-        transaction.set_achievement_state(&command.achievement_id, state.clone())?;
         transaction.commit()?;
-        Ok(AchievementStateResult {
-            achievement_id: command.achievement_id,
-            state: Some(state),
-            changed: true,
-        })
+        Ok(result)
     }
 
     /// Explicit revocation is always allowed, including for states whose Pack
@@ -223,28 +193,92 @@ where
         &mut self,
         achievement_id: &str,
     ) -> RepositoryResult<AchievementStateResult> {
-        validate_achievement_id(achievement_id)?;
         let mut transaction = self.repository.begin_transaction()?;
-        let snapshot = transaction.load_synced_snapshot()?;
-        let exists = snapshot
-            .achievement_states
-            .as_ref()
-            .is_some_and(|file| file.states.contains_key(achievement_id));
-        if !exists {
+        let result = apply_achievement_mutation(
+            &mut transaction,
+            AchievementMutation::Revoke(achievement_id.to_string()),
+        )?;
+        if !result.changed {
             transaction.rollback()?;
-            return Ok(AchievementStateResult {
-                achievement_id: achievement_id.to_string(),
-                state: None,
-                changed: false,
-            });
+            return Ok(result);
         }
-        transaction.revoke_achievement_state(achievement_id)?;
         transaction.commit()?;
-        Ok(AchievementStateResult {
-            achievement_id: achievement_id.to_string(),
-            state: None,
-            changed: true,
-        })
+        Ok(result)
+    }
+}
+
+pub(crate) fn apply_achievement_mutation<T>(
+    transaction: &mut T,
+    mutation: AchievementMutation,
+) -> RepositoryResult<AchievementStateResult>
+where
+    T: ArcanaRepositoryTransaction,
+{
+    match mutation {
+        AchievementMutation::Set(command) => {
+            validate_achievement_id(&command.achievement_id)?;
+            let state = AchievementState {
+                status: command.status,
+                achieved_at: command.achieved_at,
+            };
+            state.validate()?;
+            let snapshot = transaction.load_synced_snapshot()?;
+            let available = snapshot
+                .manifest
+                .enabled_pack_ids
+                .iter()
+                .filter_map(|pack_id| snapshot.packs.get(pack_id))
+                .flat_map(|pack| pack.achievements.iter())
+                .flat_map(|file| file.achievements.iter())
+                .any(|definition| definition.id == command.achievement_id);
+            if !available {
+                return Err(RepositoryError::new(
+                    RepositoryErrorCode::Unresolved,
+                    format!(
+                        "AchievementDefinition '{}' is not supplied by an enabled Pack",
+                        command.achievement_id
+                    ),
+                ));
+            }
+            let current = snapshot
+                .achievement_states
+                .as_ref()
+                .and_then(|file| file.states.get(&command.achievement_id));
+            if current == Some(&state) {
+                return Ok(AchievementStateResult {
+                    achievement_id: command.achievement_id,
+                    state: Some(state),
+                    changed: false,
+                });
+            }
+            transaction.set_achievement_state(&command.achievement_id, state.clone())?;
+            Ok(AchievementStateResult {
+                achievement_id: command.achievement_id,
+                state: Some(state),
+                changed: true,
+            })
+        }
+        AchievementMutation::Revoke(achievement_id) => {
+            validate_achievement_id(&achievement_id)?;
+            let snapshot = transaction.load_synced_snapshot()?;
+            let exists = snapshot
+                .achievement_states
+                .as_ref()
+                .is_some_and(|file| file.states.contains_key(&achievement_id));
+            if !exists {
+                return Ok(AchievementStateResult {
+                    achievement_id,
+                    state: None,
+                    changed: false,
+                });
+            }
+            transaction.revoke_achievement_state(&achievement_id)?;
+            Ok(AchievementStateResult {
+                achievement_id,
+                state: None,
+                changed: true,
+            })
+        }
     }
 }
 

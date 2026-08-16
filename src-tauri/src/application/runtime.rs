@@ -117,23 +117,38 @@ impl ArcanaRuntime {
         &self,
         action: impl FnOnce(&mut SqliteRepository) -> RepositoryResult<T>,
     ) -> RepositoryResult<T> {
+        self.with_repository_result(action)
+    }
+
+    /// Execute a command under the normal runtime locks while allowing an
+    /// application-specific error to retain structured context around an
+    /// underlying RepositoryError.
+    pub fn with_repository_result<T, E>(
+        &self,
+        action: impl FnOnce(&mut SqliteRepository) -> Result<T, E>,
+    ) -> Result<T, E>
+    where
+        E: From<RepositoryError>,
+    {
         if !self.database_path().exists() {
-            return Err(RepositoryError::new(
+            return Err(E::from(RepositoryError::new(
                 RepositoryErrorCode::NotFound,
                 format!(
                     "Arcana runtime database does not exist: {}",
                     self.database_path().display()
                 ),
-            ));
+            )));
         }
 
         {
-            let _migration_lock = self.acquire_lock(LockMode::Exclusive)?;
-            SqliteRepository::open(self.database_path())?.checkpoint_and_close()?;
+            let _migration_lock = self.acquire_lock(LockMode::Exclusive).map_err(E::from)?;
+            SqliteRepository::open(self.database_path())
+                .and_then(SqliteRepository::checkpoint_and_close)
+                .map_err(E::from)?;
         }
 
-        let _command_lock = self.acquire_lock(LockMode::Shared)?;
-        let mut repository = SqliteRepository::open(self.database_path())?;
+        let _command_lock = self.acquire_lock(LockMode::Shared).map_err(E::from)?;
+        let mut repository = SqliteRepository::open(self.database_path()).map_err(E::from)?;
         action(&mut repository)
     }
 

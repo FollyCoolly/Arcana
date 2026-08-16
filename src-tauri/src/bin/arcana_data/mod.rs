@@ -1,4 +1,5 @@
 mod achievement_commands;
+mod batch_commands;
 mod context_commands;
 mod contract;
 mod memory_commands;
@@ -10,6 +11,7 @@ mod skill_commands;
 mod status_commands;
 
 use achievement_commands::{execute_achievement, AchievementAction};
+use batch_commands::{execute_batch, BatchAction};
 use clap::{error::ErrorKind, Parser, Subcommand};
 use context_commands::{execute_context, ContextAction};
 use contract::{capabilities, render_json, CliError, EXIT_SUCCESS};
@@ -29,6 +31,10 @@ struct Cli {
     /// Output compact JSON instead of pretty JSON
     #[arg(long, global = true)]
     compact: bool,
+
+    /// Validate mutations against current data and roll the transaction back
+    #[arg(long, global = true)]
+    dry_run: bool,
 
     #[command(subcommand)]
     command: Commands,
@@ -51,6 +57,14 @@ enum Commands {
         runtime: Option<PathBuf>,
         #[command(subcommand)]
         action: ContextAction,
+    },
+    /// Apply multiple user-state mutations in one atomic transaction
+    Batch {
+        /// Runtime directory containing arcana.sqlite3
+        #[arg(long, value_name = "DIRECTORY", global = true)]
+        runtime: Option<PathBuf>,
+        #[command(subcommand)]
+        action: BatchAction,
     },
     /// Read and update Records in the SQLite runtime
     Record {
@@ -137,7 +151,7 @@ pub fn run() -> i32 {
         }
     };
 
-    match execute(cli.command) {
+    match execute(cli.command, cli.dry_run) {
         Ok(value) => {
             println!("{}", render_json(&value, cli.compact));
             EXIT_SUCCESS
@@ -152,20 +166,42 @@ pub fn run() -> i32 {
     }
 }
 
-fn execute(command: Commands) -> Result<Value, CliError> {
+fn execute(command: Commands, dry_run: bool) -> Result<Value, CliError> {
     match command {
-        Commands::Capabilities => Ok(capabilities()),
-        Commands::Init { runtime } => execute_init(runtime),
-        Commands::Context { runtime, action } => execute_context(runtime, action),
-        Commands::Record { runtime, action } => execute_record(runtime, action),
-        Commands::Pack { runtime, action } => execute_pack(runtime, action),
-        Commands::Status { runtime, action } => execute_status(runtime, action),
-        Commands::Achievement { runtime, action } => execute_achievement(runtime, action),
-        Commands::Skill { runtime, action } => execute_skill(runtime, action),
-        Commands::Mission { runtime, action } => execute_mission(runtime, action),
-        Commands::Memory { runtime, action } => execute_memory(runtime, action),
-        Commands::Json { action } => execute_json(action),
+        Commands::Capabilities => without_dry_run(dry_run, "capabilities", || Ok(capabilities())),
+        Commands::Init { runtime } => without_dry_run(dry_run, "init", || execute_init(runtime)),
+        Commands::Context { runtime, action } => {
+            without_dry_run(dry_run, "context", || execute_context(runtime, action))
+        }
+        Commands::Batch { runtime, action } => execute_batch(runtime, action, dry_run),
+        Commands::Record { runtime, action } => execute_record(runtime, action, dry_run),
+        Commands::Pack { runtime, action } => {
+            without_dry_run(dry_run, "pack", || execute_pack(runtime, action))
+        }
+        Commands::Status { runtime, action } => execute_status(runtime, action, dry_run),
+        Commands::Achievement { runtime, action } => execute_achievement(runtime, action, dry_run),
+        Commands::Skill { runtime, action } => {
+            without_dry_run(dry_run, "skill", || execute_skill(runtime, action))
+        }
+        Commands::Mission { runtime, action } => execute_mission(runtime, action, dry_run),
+        Commands::Memory { runtime, action } => execute_memory(runtime, action, dry_run),
+        Commands::Json { action } => without_dry_run(dry_run, "json", || execute_json(action)),
     }
+}
+
+fn without_dry_run(
+    dry_run: bool,
+    command: &str,
+    execute: impl FnOnce() -> Result<Value, CliError>,
+) -> Result<Value, CliError> {
+    if dry_run {
+        return Err(CliError::invalid_command_input(
+            command,
+            "--dry-run is only supported by user-state mutations and batch apply",
+            serde_json::json!({ "command": command }),
+        ));
+    }
+    execute()
 }
 
 #[cfg(test)]
@@ -226,6 +262,21 @@ mod tests {
                 .command,
             Commands::Context { .. }
         ));
+    }
+
+    #[test]
+    fn parses_batch_apply_and_global_dry_run() {
+        let cli = Cli::try_parse_from([
+            "arcana-data",
+            "batch",
+            "apply",
+            "--file",
+            "batch.json",
+            "--dry-run",
+        ])
+        .unwrap();
+        assert!(cli.dry_run);
+        assert!(matches!(cli.command, Commands::Batch { .. }));
     }
 
     #[test]

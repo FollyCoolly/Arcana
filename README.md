@@ -206,7 +206,7 @@ cargo build --manifest-path src-tauri/Cargo.toml --bin arcana-data
 ./src-tauri/target/debug/arcana-data memory list
 ```
 
-`arcana-data init` creates the SQLite runtime and the `basic` Pack; it does not populate the legacy UI or onboarding missions. The Record, Pack, Status, Achievement, Arcana Skill query, Mission, AssistantMemory, and compact Agent context commands have migrated. Dry-run, batch, Tauri UI migration, and canonical Agent Skills remain.
+`arcana-data init` creates the SQLite runtime and the `basic` Pack; it does not populate the legacy UI or onboarding missions. The Record, Pack, Status, Achievement, Arcana Skill query, Mission, AssistantMemory, compact Agent context, dry-run, and atomic user-state batch commands have migrated. Tauri UI migration and canonical Agent Skills remain.
 
 > [!NOTE]
 > If you want to use the agent binaries — primarily `agent-telegram`, which starts a listener service for controlling your local assistant remotely via Telegram — you will need to configure an LLM provider. Set your API key via environment variable (`ANTHROPIC_API_KEY`) or config file (`~/.arcana/agent_config.json`). See [AI Agent](#ai-agent) for details.
@@ -316,7 +316,7 @@ python scripts/fetch_douban.py --status all
 
 - **Split migration state**: The Tauri UI and built-in agent still use legacy JSON; `arcana-data` already uses SQLite and deterministic JSON import/export.
 - **Content Pack system**: Achievements and skills are loaded via user-extensible packs.
-- **Agent migration pending**: The built-in CLI/Telegram agent remains on the legacy JSON layer. The required SQLite domain commands now exist, but canonical external Skills remain removed until dry-run/batch support and contract fixtures are complete.
+- **Agent migration pending**: The built-in CLI/Telegram agent remains on the legacy JSON layer. The required SQLite commands, dry-run, and atomic batch support now exist; canonical external Skills remain removed until their contract fixtures and evals are complete.
 - **Prerequisite validation**: The current Achievement model validates prerequisites as a DAG; Skills present the result as a compact honeycomb-style node map.
 - **Explicit migration boundary**: `services/` is legacy UI/agent logic; the SQLite CLI uses `application/`, `domain/`, and `storage/sqlite/`.
 

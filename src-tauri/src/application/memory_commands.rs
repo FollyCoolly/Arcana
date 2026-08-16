@@ -43,6 +43,24 @@ pub struct AssistantMemoryDeleteResult {
     pub deleted: bool,
 }
 
+pub(crate) enum MemoryMutation {
+    Create {
+        command: CreateAssistantMemory,
+        memory_id: String,
+        created_at: String,
+    },
+    Update {
+        command: UpdateAssistantMemory,
+        updated_at: String,
+    },
+    Delete(String),
+}
+
+pub(crate) enum MemoryMutationResult {
+    Memory(AssistantMemoryResult),
+    Deleted(AssistantMemoryDeleteResult),
+}
+
 pub struct MemoryCommands<'repository, R> {
     repository: &'repository mut R,
 }
@@ -84,14 +102,15 @@ where
 
     pub fn delete(&mut self, memory_id: &str) -> RepositoryResult<AssistantMemoryDeleteResult> {
         let mut transaction = self.repository.begin_transaction()?;
-        let snapshot = transaction.load_synced_snapshot()?;
-        memory_from_snapshot(&snapshot, memory_id)?;
-        transaction.delete_assistant_memory(memory_id)?;
+        let MemoryMutationResult::Deleted(result) = apply_memory_mutation(
+            &mut transaction,
+            MemoryMutation::Delete(memory_id.to_string()),
+        )?
+        else {
+            return Err(internal_result_error());
+        };
         transaction.commit()?;
-        Ok(AssistantMemoryDeleteResult {
-            memory_id: memory_id.to_string(),
-            deleted: true,
-        })
+        Ok(result)
     }
 
     pub(crate) fn create_at(
@@ -100,31 +119,20 @@ where
         memory_id: String,
         created_at: String,
     ) -> RepositoryResult<AssistantMemoryResult> {
-        let memory = AssistantMemory {
-            id: memory_id,
-            kind: command.kind,
-            content: command.content,
-            created_at: created_at.clone(),
-            updated_at: created_at,
-        };
         let mut transaction = self.repository.begin_transaction()?;
-        let snapshot = transaction.load_synced_snapshot()?;
-        if snapshot.assistant_memory.as_ref().is_some_and(|file| {
-            file.memories
-                .iter()
-                .any(|existing| existing.id == memory.id)
-        }) {
-            return Err(RepositoryError::new(
-                RepositoryErrorCode::Conflict,
-                format!("AssistantMemory '{}' already exists", memory.id),
-            ));
-        }
-        transaction.put_assistant_memory(memory.clone())?;
+        let MemoryMutationResult::Memory(result) = apply_memory_mutation(
+            &mut transaction,
+            MemoryMutation::Create {
+                command,
+                memory_id,
+                created_at,
+            },
+        )?
+        else {
+            return Err(internal_result_error());
+        };
         transaction.commit()?;
-        Ok(AssistantMemoryResult {
-            memory,
-            changed: true,
-        })
+        Ok(result)
     }
 
     pub(crate) fn update_at(
@@ -133,29 +141,104 @@ where
         updated_at: String,
     ) -> RepositoryResult<AssistantMemoryResult> {
         let mut transaction = self.repository.begin_transaction()?;
-        let snapshot = transaction.load_synced_snapshot()?;
-        let current = memory_from_snapshot(&snapshot, &command.memory_id)?;
-        if current.kind == command.kind && current.content == command.content {
-            transaction.rollback()?;
-            return Ok(AssistantMemoryResult {
-                memory: current,
-                changed: false,
-            });
-        }
-        let memory = AssistantMemory {
-            id: current.id,
-            kind: command.kind,
-            content: command.content,
-            created_at: current.created_at,
-            updated_at,
+        let MemoryMutationResult::Memory(result) = apply_memory_mutation(
+            &mut transaction,
+            MemoryMutation::Update {
+                command,
+                updated_at,
+            },
+        )?
+        else {
+            return Err(internal_result_error());
         };
-        transaction.put_assistant_memory(memory.clone())?;
+        if !result.changed {
+            transaction.rollback()?;
+            return Ok(result);
+        }
         transaction.commit()?;
-        Ok(AssistantMemoryResult {
-            memory,
-            changed: true,
-        })
+        Ok(result)
     }
+}
+
+pub(crate) fn apply_memory_mutation<T>(
+    transaction: &mut T,
+    mutation: MemoryMutation,
+) -> RepositoryResult<MemoryMutationResult>
+where
+    T: ArcanaRepositoryTransaction,
+{
+    match mutation {
+        MemoryMutation::Create {
+            command,
+            memory_id,
+            created_at,
+        } => {
+            let memory = AssistantMemory {
+                id: memory_id,
+                kind: command.kind,
+                content: command.content,
+                created_at: created_at.clone(),
+                updated_at: created_at,
+            };
+            let snapshot = transaction.load_synced_snapshot()?;
+            if snapshot.assistant_memory.as_ref().is_some_and(|file| {
+                file.memories
+                    .iter()
+                    .any(|existing| existing.id == memory.id)
+            }) {
+                return Err(RepositoryError::new(
+                    RepositoryErrorCode::Conflict,
+                    format!("AssistantMemory '{}' already exists", memory.id),
+                ));
+            }
+            transaction.put_assistant_memory(memory.clone())?;
+            Ok(MemoryMutationResult::Memory(AssistantMemoryResult {
+                memory,
+                changed: true,
+            }))
+        }
+        MemoryMutation::Update {
+            command,
+            updated_at,
+        } => {
+            let snapshot = transaction.load_synced_snapshot()?;
+            let current = memory_from_snapshot(&snapshot, &command.memory_id)?;
+            if current.kind == command.kind && current.content == command.content {
+                return Ok(MemoryMutationResult::Memory(AssistantMemoryResult {
+                    memory: current,
+                    changed: false,
+                }));
+            }
+            let memory = AssistantMemory {
+                id: current.id,
+                kind: command.kind,
+                content: command.content,
+                created_at: current.created_at,
+                updated_at,
+            };
+            transaction.put_assistant_memory(memory.clone())?;
+            Ok(MemoryMutationResult::Memory(AssistantMemoryResult {
+                memory,
+                changed: true,
+            }))
+        }
+        MemoryMutation::Delete(memory_id) => {
+            let snapshot = transaction.load_synced_snapshot()?;
+            memory_from_snapshot(&snapshot, &memory_id)?;
+            transaction.delete_assistant_memory(&memory_id)?;
+            Ok(MemoryMutationResult::Deleted(AssistantMemoryDeleteResult {
+                memory_id,
+                deleted: true,
+            }))
+        }
+    }
+}
+
+fn internal_result_error() -> RepositoryError {
+    RepositoryError::new(
+        RepositoryErrorCode::Conflict,
+        "internal AssistantMemory mutation result mismatch",
+    )
 }
 
 fn memory_from_snapshot(

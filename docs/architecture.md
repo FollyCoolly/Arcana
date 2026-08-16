@@ -192,7 +192,7 @@ Data dir resolution 优先级：
 | --- | --- |
 | `agent-cli` | 终端运行的对话 agent |
 | `agent-telegram` | Telegram bot 适配器 |
-| `arcana-data` | 新 SQLite 数据平台的机器可读 CLI；当前支持 capabilities、init、context summary、Record、Pack、Status、Achievement、Arcana Skill、Mission、AssistantMemory 和 JSON 转换 |
+| `arcana-data` | 新 SQLite 数据平台的机器可读 CLI；当前支持 capabilities、init、context summary、用户状态 dry-run/atomic batch、Record、Pack、Status、Achievement、Arcana Skill、Mission、AssistantMemory 和 JSON 转换 |
 
 Agent 子系统：
 
@@ -216,7 +216,7 @@ Agent 当前工具集：
 - `update_achievement`
 - `write_changelog`
 
-`arcana-data` 不再代理上述旧 Agent tools，也不读写 `<data_dir>` JSON。当前提供 `capabilities`、SQLite `init`、单事务 `context summary`、完整 Record/Pack/Status/Achievement/Mission/AssistantMemory Commands、只读 Arcana Skill 派生查询和不接触 Git 的 `json import|export`；旧 JSON 实现已删除，所有同名命令均按 SQLite 合约重新实现。
+`arcana-data` 不再代理上述旧 Agent tools，也不读写 `<data_dir>` JSON。当前提供 `capabilities`、SQLite `init`、单事务 `context summary`、用户状态 mutation 的 `--dry-run` 与 `batch apply`、完整 Record/Pack/Status/Achievement/Mission/AssistantMemory Commands、只读 Arcana Skill 派生查询和不接触 Git 的 `json import|export`；旧 JSON 实现已删除，所有同名命令均按 SQLite 合约重新实现。
 
 ---
 

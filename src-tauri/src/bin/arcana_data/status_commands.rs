@@ -1,6 +1,9 @@
+use super::batch_commands::execute_mutation;
 use super::contract::{CliError, RepositoryOperation};
 use super::runtime_commands::runtime_from_cli;
-use arcana_lib::application::StatusCommands;
+use arcana_lib::application::{
+    MutationOperation, StatusCommands, StatusPositionInput, StatusSelectionInput,
+};
 use clap::Subcommand;
 use serde_json::{json, Value};
 use std::path::PathBuf;
@@ -37,8 +40,43 @@ enum PreparedStatusAction {
 pub fn execute_status(
     runtime_dir: Option<PathBuf>,
     action: StatusAction,
+    dry_run: bool,
 ) -> Result<Value, CliError> {
     let action = prepare_status_action(action)?;
+    let action = match action {
+        PreparedStatusAction::Select {
+            position,
+            dimension_id,
+        } => {
+            return execute_mutation(
+                runtime_dir,
+                MutationOperation::StatusSelect(StatusSelectionInput {
+                    position,
+                    dimension_id,
+                }),
+                RepositoryOperation::Status,
+                dry_run,
+            )
+        }
+        PreparedStatusAction::Clear { position } => {
+            return execute_mutation(
+                runtime_dir,
+                MutationOperation::StatusClear(StatusPositionInput { position }),
+                RepositoryOperation::Status,
+                dry_run,
+            )
+        }
+        action @ (PreparedStatusAction::ListDimensions | PreparedStatusAction::Evaluate(_)) => {
+            action
+        }
+    };
+    if dry_run {
+        return Err(CliError::invalid_command_input(
+            "read Status",
+            "--dry-run cannot be used with read-only commands",
+            json!({}),
+        ));
+    }
     let runtime = runtime_from_cli(runtime_dir)?;
     if !runtime.database_path().exists() {
         return Err(CliError::runtime_not_initialized(&runtime.database_path()));
@@ -51,15 +89,7 @@ pub fn execute_status(
                 PreparedStatusAction::Evaluate(dimension_id) => Ok(json!({
                     "evaluations": commands.evaluate(dimension_id.as_deref())?
                 })),
-                PreparedStatusAction::Select {
-                    position,
-                    dimension_id,
-                } => Ok(json!({
-                    "selection": commands.select(position, dimension_id)?
-                })),
-                PreparedStatusAction::Clear { position } => Ok(json!({
-                    "selection": commands.clear_selection(position)?
-                })),
+                _ => unreachable!("mutations return before read dispatch"),
             }
         })
         .map_err(|error| CliError::from_repository(error, RepositoryOperation::Status))
@@ -107,13 +137,18 @@ mod tests {
             .initialize()
             .unwrap();
 
-        let listed =
-            execute_status(Some(runtime_dir.clone()), StatusAction::ListDimensions).unwrap();
+        let listed = execute_status(
+            Some(runtime_dir.clone()),
+            StatusAction::ListDimensions,
+            false,
+        )
+        .unwrap();
         assert_eq!(listed["dimensions"], json!([]));
         assert_eq!(listed["selections"], json!([]));
         let evaluated = execute_status(
             Some(runtime_dir),
             StatusAction::Evaluate { dimension_id: None },
+            false,
         )
         .unwrap();
         assert_eq!(evaluated["evaluations"], json!([]));

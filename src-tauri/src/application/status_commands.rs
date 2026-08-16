@@ -61,6 +61,11 @@ pub struct StatusSelectionResult {
     pub changed: bool,
 }
 
+pub(crate) enum StatusMutation {
+    Select { position: u8, dimension_id: String },
+    Clear { position: u8 },
+}
+
 pub struct StatusCommands<'repository, R> {
     repository: &'repository mut R,
 }
@@ -129,55 +134,89 @@ where
         dimension_id: String,
     ) -> RepositoryResult<StatusSelectionResult> {
         let mut transaction = self.repository.begin_transaction()?;
-        let selections = transaction.status_dimension_selection()?;
-        if selections.iter().any(|selection| {
-            selection.position == position && selection.dimension_id == dimension_id
-        }) {
-            transaction.rollback()?;
-            return Ok(StatusSelectionResult {
+        let result = apply_status_mutation(
+            &mut transaction,
+            StatusMutation::Select {
                 position,
-                dimension_id: Some(dimension_id),
-                changed: false,
-            });
+                dimension_id,
+            },
+        )?;
+        if !result.changed {
+            transaction.rollback()?;
+            return Ok(result);
         }
-        transaction.set_status_dimension_selection(StatusDimensionSelection {
-            position,
-            dimension_id: dimension_id.clone(),
-        })?;
         transaction.commit()?;
-        Ok(StatusSelectionResult {
-            position,
-            dimension_id: Some(dimension_id),
-            changed: true,
-        })
+        Ok(result)
     }
 
     pub fn clear_selection(&mut self, position: u8) -> RepositoryResult<StatusSelectionResult> {
         let mut transaction = self.repository.begin_transaction()?;
-        let selections = transaction.status_dimension_selection()?;
-        if !selections
-            .iter()
-            .any(|selection| selection.position == position)
-        {
-            // Let the repository validate an out-of-range position even when
-            // there is no existing row at that position.
-            if position >= 5 {
-                transaction.clear_status_dimension_selection(position)?;
-            }
+        let result = apply_status_mutation(&mut transaction, StatusMutation::Clear { position })?;
+        if !result.changed {
             transaction.rollback()?;
-            return Ok(StatusSelectionResult {
+            return Ok(result);
+        }
+        transaction.commit()?;
+        Ok(result)
+    }
+}
+
+pub(crate) fn apply_status_mutation<T>(
+    transaction: &mut T,
+    mutation: StatusMutation,
+) -> RepositoryResult<StatusSelectionResult>
+where
+    T: ArcanaRepositoryTransaction,
+{
+    match mutation {
+        StatusMutation::Select {
+            position,
+            dimension_id,
+        } => {
+            let selections = transaction.status_dimension_selection()?;
+            if selections.iter().any(|selection| {
+                selection.position == position && selection.dimension_id == dimension_id
+            }) {
+                return Ok(StatusSelectionResult {
+                    position,
+                    dimension_id: Some(dimension_id),
+                    changed: false,
+                });
+            }
+            transaction.set_status_dimension_selection(StatusDimensionSelection {
+                position,
+                dimension_id: dimension_id.clone(),
+            })?;
+            Ok(StatusSelectionResult {
+                position,
+                dimension_id: Some(dimension_id),
+                changed: true,
+            })
+        }
+        StatusMutation::Clear { position } => {
+            let selections = transaction.status_dimension_selection()?;
+            if !selections
+                .iter()
+                .any(|selection| selection.position == position)
+            {
+                // Let the repository validate an out-of-range position even
+                // when there is no existing row at that position.
+                if position >= 5 {
+                    transaction.clear_status_dimension_selection(position)?;
+                }
+                return Ok(StatusSelectionResult {
+                    position,
+                    dimension_id: None,
+                    changed: false,
+                });
+            }
+            transaction.clear_status_dimension_selection(position)?;
+            Ok(StatusSelectionResult {
                 position,
                 dimension_id: None,
-                changed: false,
-            });
+                changed: true,
+            })
         }
-        transaction.clear_status_dimension_selection(position)?;
-        transaction.commit()?;
-        Ok(StatusSelectionResult {
-            position,
-            dimension_id: None,
-            changed: true,
-        })
     }
 }
 

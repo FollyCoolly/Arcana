@@ -2,6 +2,7 @@ mod achievement_commands;
 mod context_commands;
 mod memory_commands;
 mod mission_commands;
+mod mutation_commands;
 mod pack_commands;
 mod record_commands;
 mod runtime;
@@ -25,6 +26,11 @@ pub use mission_commands::{
     CreateMission, MissionCommands, MissionDeleteResult, MissionResult,
     MissionSuggestionDeleteResult, MissionSuggestionResult, QueryMissionSuggestions, QueryMissions,
     SuggestMission, UpdateMission,
+};
+pub use mutation_commands::{
+    AchievementTarget, ApplyMutationBatch, AssistantMemoryTarget, MissionSuggestionTarget,
+    MissionTarget, MutationBatchError, MutationBatchResult, MutationCommands, MutationOperation,
+    MutationOperationResult, RecordTarget, StatusPositionInput, StatusSelectionInput,
 };
 pub use pack_commands::{
     PackAssetSummary, PackCommands, PackContent, PackDetails, PackEnabledState, PackSummary,

@@ -371,6 +371,8 @@ Registry 保存在进程内，可随 Pack 或 Definition 变化重建，不进�
 
 ## 7. 命令事务
 
+Record、Status selection、Achievement、Mission/Suggestion 和 AssistantMemory mutation 都提供可在已有 Repository transaction 上执行的共享内核。单条命令、`--dry-run` 和 `batch apply` 必须调用同一内核：单条命令成功后 commit，dry-run 成功后 rollback，batch 按顺序执行并仅在全部成功后 commit。任何 operation 失败都显式 rollback，错误携带失败的数组位置和 operation 名称，不允许逐条提交后再补偿。
+
 ### scalar
 
 - `set`：创建或锁定 header，校验 kind 后 upsert `scalar_records`。

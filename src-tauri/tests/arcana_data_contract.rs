@@ -28,6 +28,17 @@ fn write_json_argument(directory: &Path, name: &str, value: &Value) -> String {
     path_string(&path)
 }
 
+fn data_revision(runtime: &Path) -> i64 {
+    rusqlite::Connection::open(runtime.join("arcana.sqlite3"))
+        .unwrap()
+        .query_row(
+            "SELECT data_revision FROM sync_state WHERE singleton = 1",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap()
+}
+
 #[test]
 fn capabilities_succeeds_without_runtime_and_compact_only_changes_layout() {
     let pretty = arcana_data(&["capabilities"]);
@@ -43,12 +54,194 @@ fn capabilities_succeeds_without_runtime_and_compact_only_changes_layout() {
     assert_eq!(value["commands"]["mission"]["version"], 1);
     assert_eq!(value["commands"]["memory"]["version"], 1);
     assert_eq!(value["commands"]["context"]["version"], 1);
+    assert_eq!(value["commands"]["batch"]["version"], 1);
+    assert_eq!(value["features"]["dry_run"], true);
+    assert_eq!(value["features"]["batch"], true);
     assert!(utf8(&pretty.stdout).lines().count() > 1);
 
     let compact = arcana_data(&["--compact", "capabilities"]);
     assert!(compact.status.success(), "{}", utf8(&compact.stderr));
     assert_eq!(parse_json(&compact.stdout), value);
     assert_eq!(utf8(&compact.stdout).lines().count(), 1);
+}
+
+#[test]
+fn dry_run_and_batch_share_validation_without_persisting_partial_state() {
+    let directory = tempfile::tempdir().unwrap();
+    let runtime = directory.path().join("runtime");
+    let runtime_arg = path_string(&runtime);
+    assert!(arcana_data(&["init", "--runtime", &runtime_arg])
+        .status
+        .success());
+    let initial_revision = data_revision(&runtime);
+
+    let nickname = serde_json::json!({
+        "definition_id": "identity.nickname",
+        "value": "Preview"
+    });
+    let nickname_arg = write_json_argument(directory.path(), "nickname.json", &nickname);
+    let preview = arcana_data(&[
+        "record",
+        "--runtime",
+        &runtime_arg,
+        "set",
+        "--file",
+        &nickname_arg,
+        "--dry-run",
+    ]);
+    assert!(preview.status.success(), "{}", utf8(&preview.stderr));
+    let preview = parse_json(&preview.stdout);
+    assert_eq!(preview["record"]["value"], "Preview");
+    assert_eq!(preview["dry_run"], true);
+    let after_preview = arcana_data(&[
+        "record",
+        "--runtime",
+        &runtime_arg,
+        "get",
+        "identity.nickname",
+    ]);
+    assert!(after_preview.status.success());
+    assert!(parse_json(&after_preview.stdout)["record"].is_null());
+    assert_eq!(data_revision(&runtime), initial_revision);
+
+    let batch = serde_json::json!({
+        "operations": [
+            {
+                "operation": "record.set",
+                "input": {
+                    "definition_id": "identity.nickname",
+                    "value": "Batch"
+                }
+            },
+            {
+                "operation": "mission.create",
+                "input": {
+                    "title": "Created atomically"
+                }
+            },
+            {
+                "operation": "memory.create",
+                "input": {
+                    "kind": "observation",
+                    "content": "Created in the same batch"
+                }
+            }
+        ]
+    });
+    let batch_arg = write_json_argument(directory.path(), "batch.json", &batch);
+    let batch_preview = arcana_data(&[
+        "batch",
+        "--runtime",
+        &runtime_arg,
+        "apply",
+        "--file",
+        &batch_arg,
+        "--dry-run",
+    ]);
+    assert!(
+        batch_preview.status.success(),
+        "{}",
+        utf8(&batch_preview.stderr)
+    );
+    let batch_preview = parse_json(&batch_preview.stdout);
+    assert_eq!(batch_preview["dry_run"], true);
+    assert_eq!(batch_preview["operations"].as_array().unwrap().len(), 3);
+    assert!(parse_json(
+        &arcana_data(&[
+            "record",
+            "--runtime",
+            &runtime_arg,
+            "get",
+            "identity.nickname",
+        ])
+        .stdout
+    )["record"]
+        .is_null());
+    assert_eq!(
+        parse_json(&arcana_data(&["mission", "--runtime", &runtime_arg, "list"]).stdout)
+            ["missions"],
+        serde_json::json!([])
+    );
+    assert_eq!(
+        parse_json(&arcana_data(&["memory", "--runtime", &runtime_arg, "list"]).stdout)["memories"],
+        serde_json::json!([])
+    );
+    assert_eq!(data_revision(&runtime), initial_revision);
+
+    let applied = arcana_data(&[
+        "batch",
+        "--runtime",
+        &runtime_arg,
+        "apply",
+        "--file",
+        &batch_arg,
+    ]);
+    assert!(applied.status.success(), "{}", utf8(&applied.stderr));
+    let applied = parse_json(&applied.stdout);
+    assert_eq!(applied["dry_run"], false);
+    assert_eq!(applied["operations"][0]["operation"], "record.set");
+    assert_eq!(
+        parse_json(
+            &arcana_data(&[
+                "record",
+                "--runtime",
+                &runtime_arg,
+                "get",
+                "identity.nickname",
+            ])
+            .stdout
+        )["record"]["value"],
+        "Batch"
+    );
+    assert_eq!(data_revision(&runtime), initial_revision + 1);
+
+    let failing = serde_json::json!({
+        "operations": [
+            {
+                "operation": "record.set",
+                "input": {
+                    "definition_id": "identity.nickname",
+                    "value": "Must roll back"
+                }
+            },
+            {
+                "operation": "record.increment",
+                "input": {
+                    "definition_id": "identity.nickname",
+                    "delta": 1
+                }
+            }
+        ]
+    });
+    let failing_arg = write_json_argument(directory.path(), "failing-batch.json", &failing);
+    let failed = arcana_data(&[
+        "batch",
+        "--runtime",
+        &runtime_arg,
+        "apply",
+        "--file",
+        &failing_arg,
+    ]);
+    assert!(!failed.status.success());
+    assert!(failed.stdout.is_empty());
+    let error = parse_json(&failed.stderr);
+    assert_eq!(error["code"], "validation_failed");
+    assert_eq!(error["details"]["operation_index"], 1);
+    assert_eq!(error["details"]["operation"], "record.increment");
+    assert_eq!(
+        parse_json(
+            &arcana_data(&[
+                "record",
+                "--runtime",
+                &runtime_arg,
+                "get",
+                "identity.nickname",
+            ])
+            .stdout
+        )["record"]["value"],
+        "Batch"
+    );
+    assert_eq!(data_revision(&runtime), initial_revision + 1);
 }
 
 #[test]

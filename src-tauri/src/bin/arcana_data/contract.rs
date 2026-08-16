@@ -1,3 +1,4 @@
+use arcana_lib::application::MutationBatchError;
 use arcana_lib::domain::{RepositoryError, RepositoryErrorCode, SCHEMA_VERSION};
 use arcana_lib::storage::sqlite::DATABASE_SCHEMA_VERSION;
 use serde::Serialize;
@@ -13,6 +14,7 @@ const EXIT_RUNTIME_ERROR: i32 = 3;
 pub enum RepositoryOperation {
     Initialize,
     Context,
+    Batch,
     Record,
     Pack,
     PackAsset,
@@ -92,6 +94,15 @@ impl CliError {
         }
     }
 
+    pub fn from_batch(error: MutationBatchError) -> Self {
+        let mut result = Self::from_repository(error.source, RepositoryOperation::Batch);
+        let mut details = result.details.as_object().cloned().unwrap_or_default();
+        details.insert("operation_index".to_string(), json!(error.operation_index));
+        details.insert("operation".to_string(), json!(error.operation));
+        result.details = Value::Object(details);
+        result
+    }
+
     pub fn exit_code(&self) -> i32 {
         self.exit_code
     }
@@ -110,6 +121,7 @@ fn repository_error_code(
                 "runtime_not_initialized"
             }
             RepositoryOperation::Context => "context_not_found",
+            RepositoryOperation::Batch => "batch_operation_not_found",
             RepositoryOperation::Record => "record_not_found",
             RepositoryOperation::Pack => "pack_not_found",
             RepositoryOperation::PackAsset => "pack_asset_not_found",
@@ -124,6 +136,7 @@ fn repository_error_code(
         RepositoryErrorCode::Conflict => match operation {
             RepositoryOperation::Initialize => "runtime_already_initialized",
             RepositoryOperation::Context => "context_conflict",
+            RepositoryOperation::Batch => "batch_operation_conflict",
             RepositoryOperation::Record => "record_conflict",
             RepositoryOperation::Pack => "pack_conflict",
             RepositoryOperation::PackAsset => "pack_asset_conflict",
@@ -138,6 +151,7 @@ fn repository_error_code(
         },
         RepositoryErrorCode::Unresolved => match operation {
             RepositoryOperation::Context => "context_unresolved",
+            RepositoryOperation::Batch => "batch_operation_unresolved",
             RepositoryOperation::Record => "record_unresolved",
             RepositoryOperation::Pack => "pack_unresolved",
             RepositoryOperation::PackAsset => "pack_asset_unresolved",
@@ -165,6 +179,40 @@ pub fn capabilities() -> Value {
             "context": {
                 "version": 1,
                 "actions": ["summary"]
+            },
+            "batch": {
+                "version": 1,
+                "actions": ["apply"],
+                "operations": [
+                    "record.set",
+                    "record.increment",
+                    "record.correct",
+                    "record.create-empty-collection",
+                    "record.create-empty-event",
+                    "record.add-item",
+                    "record.correct-item",
+                    "record.remove-item",
+                    "record.append-event",
+                    "record.correct-event",
+                    "record.delete-event",
+                    "record.delete",
+                    "status.select",
+                    "status.clear",
+                    "achievement.state-set",
+                    "achievement.state-revoke",
+                    "mission.create",
+                    "mission.update",
+                    "mission.complete",
+                    "mission.archive",
+                    "mission.delete",
+                    "mission.suggest",
+                    "mission.accept",
+                    "mission.reject",
+                    "mission.suggestion-delete",
+                    "memory.create",
+                    "memory.update",
+                    "memory.delete"
+                ]
             },
             "record": {
                 "version": 1,
@@ -238,8 +286,8 @@ pub fn capabilities() -> Value {
         },
         "features": {
             "structured_errors": true,
-            "dry_run": false,
-            "batch": false,
+            "dry_run": true,
+            "batch": true,
             "git_sync": false
         }
     })
@@ -264,7 +312,9 @@ mod tests {
         let value = capabilities();
         assert_eq!(value["contract_version"], CONTRACT_VERSION);
         assert_eq!(value["commands"]["record"]["version"], 1);
-        assert_eq!(value["features"]["dry_run"], false);
+        assert_eq!(value["features"]["dry_run"], true);
+        assert_eq!(value["features"]["batch"], true);
+        assert_eq!(value["commands"]["batch"]["version"], 1);
     }
 
     #[test]

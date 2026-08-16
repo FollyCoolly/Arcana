@@ -1,7 +1,7 @@
 use crate::domain::{
-    ArcanaRepository, ArcanaRepositoryReader, ArcanaRepositoryTransaction, CollectionItem,
-    CollectionRecord, EventEntry, EventRecord, Record, RecordDefinition, RepositoryError,
-    RepositoryErrorCode, RepositoryResult, ScalarRecord, ValueType,
+    ArcanaRepository, ArcanaRepositoryTransaction, CollectionItem, CollectionRecord, EventEntry,
+    EventRecord, Record, RecordDefinition, RepositoryError, RepositoryErrorCode, RepositoryResult,
+    ScalarRecord, ValueType,
 };
 use chrono::{DateTime, SecondsFormat, Utc};
 use serde::{Deserialize, Serialize};
@@ -107,6 +107,25 @@ pub struct RecordQueryEntry {
     pub record: Option<Record>,
 }
 
+pub(crate) enum RecordMutation {
+    SetScalar(SetScalarRecord),
+    IncrementScalar(IncrementScalarRecord),
+    CreateEmptyCollection(CreateEmptyRecord),
+    AddCollectionItem(AddCollectionItem),
+    CorrectCollectionItem(CorrectCollectionItem),
+    RemoveCollectionItem(RemoveCollectionItem),
+    CreateEmptyEvent(CreateEmptyRecord),
+    AppendEvent(AppendEvent),
+    CorrectEvent(CorrectEvent),
+    DeleteEvent(DeleteEvent),
+    Delete(String),
+}
+
+pub(crate) enum RecordMutationResult {
+    Record(Record),
+    Deleted { definition_id: String },
+}
+
 pub struct RecordCommands<'repository, R> {
     repository: &'repository mut R,
 }
@@ -201,11 +220,11 @@ where
         &mut self,
         command: CreateEmptyRecord,
     ) -> RepositoryResult<Record> {
-        let record = Record::Collection(CollectionRecord {
-            definition_id: command.definition_id,
-            items: Vec::new(),
-        });
-        self.create_record(record)
+        self.execute_record_mutation(
+            RecordMutation::CreateEmptyCollection(command),
+            now_rfc3339(),
+        )?
+        .into_record()
     }
 
     pub fn add_collection_item(&mut self, command: AddCollectionItem) -> RepositoryResult<Record> {
@@ -223,35 +242,13 @@ where
         &mut self,
         command: RemoveCollectionItem,
     ) -> RepositoryResult<Record> {
-        let mut transaction = self.repository.begin_transaction()?;
-        let existing = required_record(
-            transaction.get_record(&command.definition_id)?,
-            &command.definition_id,
-        )?;
-        let Record::Collection(mut collection) = existing else {
-            return Err(kind_conflict(&command.definition_id, "collection"));
-        };
-        let original_len = collection.items.len();
-        collection.items.retain(|item| item.id != command.item_id);
-        if collection.items.len() == original_len {
-            return Err(child_not_found(
-                "collection item",
-                &command.item_id,
-                &command.definition_id,
-            ));
-        }
-        let record = Record::Collection(collection);
-        transaction.put_record(record.clone())?;
-        transaction.commit()?;
-        Ok(record)
+        self.execute_record_mutation(RecordMutation::RemoveCollectionItem(command), now_rfc3339())?
+            .into_record()
     }
 
     pub fn create_empty_event(&mut self, command: CreateEmptyRecord) -> RepositoryResult<Record> {
-        let record = Record::Event(EventRecord {
-            definition_id: command.definition_id,
-            events: Vec::new(),
-        });
-        self.create_record(record)
+        self.execute_record_mutation(RecordMutation::CreateEmptyEvent(command), now_rfc3339())?
+            .into_record()
     }
 
     pub fn append_event(&mut self, command: AppendEvent) -> RepositoryResult<Record> {
@@ -263,35 +260,16 @@ where
     }
 
     pub fn delete_event(&mut self, command: DeleteEvent) -> RepositoryResult<Record> {
-        let mut transaction = self.repository.begin_transaction()?;
-        let existing = required_record(
-            transaction.get_record(&command.definition_id)?,
-            &command.definition_id,
-        )?;
-        let Record::Event(mut event_record) = existing else {
-            return Err(kind_conflict(&command.definition_id, "event"));
-        };
-        let original_len = event_record.events.len();
-        event_record
-            .events
-            .retain(|event| event.id != command.event_id);
-        if event_record.events.len() == original_len {
-            return Err(child_not_found(
-                "event",
-                &command.event_id,
-                &command.definition_id,
-            ));
-        }
-        let record = Record::Event(event_record);
-        transaction.put_record(record.clone())?;
-        transaction.commit()?;
-        Ok(record)
+        self.execute_record_mutation(RecordMutation::DeleteEvent(command), now_rfc3339())?
+            .into_record()
     }
 
     pub fn delete(&mut self, definition_id: &str) -> RepositoryResult<()> {
-        let mut transaction = self.repository.begin_transaction()?;
-        transaction.delete_record(definition_id)?;
-        transaction.commit()
+        self.execute_record_mutation(
+            RecordMutation::Delete(definition_id.to_string()),
+            now_rfc3339(),
+        )?;
+        Ok(())
     }
 
     pub(crate) fn set_scalar_at(
@@ -299,16 +277,8 @@ where
         command: SetScalarRecord,
         recorded_at: String,
     ) -> RepositoryResult<Record> {
-        let record = Record::Scalar(ScalarRecord {
-            definition_id: command.definition_id,
-            value: command.value,
-            effective_at: command.effective_at,
-            recorded_at,
-        });
-        let mut transaction = self.repository.begin_transaction()?;
-        transaction.put_record(record.clone())?;
-        transaction.commit()?;
-        Ok(record)
+        self.execute_record_mutation(RecordMutation::SetScalar(command), recorded_at)?
+            .into_record()
     }
 
     pub(crate) fn increment_scalar_at(
@@ -316,58 +286,8 @@ where
         command: IncrementScalarRecord,
         recorded_at: String,
     ) -> RepositoryResult<Record> {
-        let mut transaction = self.repository.begin_transaction()?;
-        let snapshot = transaction.load_synced_snapshot()?;
-        let registry = snapshot.definition_registry()?;
-        let value_type = match registry.get(&command.definition_id) {
-            Some(RecordDefinition::Scalar(definition)) => definition.value_type,
-            Some(_) => {
-                return Err(command_error(format!(
-                    "Record '{}' is not scalar and cannot be incremented",
-                    command.definition_id
-                )))
-            }
-            None => {
-                return Err(RepositoryError::new(
-                    RepositoryErrorCode::Unresolved,
-                    format!(
-                        "RecordDefinition '{}' is not supplied by an enabled Pack",
-                        command.definition_id
-                    ),
-                ))
-            }
-        };
-        if !matches!(value_type, ValueType::Number | ValueType::Integer) {
-            return Err(command_error(format!(
-                "Record '{}' has non-numeric type {:?}",
-                command.definition_id, value_type
-            )));
-        }
-
-        let existing = transaction
-            .get_record(&command.definition_id)?
-            .ok_or_else(|| {
-                RepositoryError::new(
-                    RepositoryErrorCode::NotFound,
-                    format!("Record '{}' has no current value", command.definition_id),
-                )
-            })?;
-        let Record::Scalar(existing) = existing else {
-            return Err(RepositoryError::new(
-                RepositoryErrorCode::Conflict,
-                format!("Record '{}' is not stored as scalar", command.definition_id),
-            ));
-        };
-        let value = increment_value(value_type, &existing.value, &command.delta)?;
-        let record = Record::Scalar(ScalarRecord {
-            definition_id: command.definition_id,
-            value,
-            effective_at: command.effective_at.or(existing.effective_at),
-            recorded_at,
-        });
-        transaction.put_record(record.clone())?;
-        transaction.commit()?;
-        Ok(record)
+        self.execute_record_mutation(RecordMutation::IncrementScalar(command), recorded_at)?
+            .into_record()
     }
 
     pub(crate) fn add_collection_item_at(
@@ -375,38 +295,8 @@ where
         command: AddCollectionItem,
         recorded_at: String,
     ) -> RepositoryResult<Record> {
-        let mut transaction = self.repository.begin_transaction()?;
-        let mut collection = match transaction.get_record(&command.definition_id)? {
-            Some(Record::Collection(collection)) => collection,
-            Some(_) => return Err(kind_conflict(&command.definition_id, "collection")),
-            None => CollectionRecord {
-                definition_id: command.definition_id.clone(),
-                items: Vec::new(),
-            },
-        };
-        if collection
-            .items
-            .iter()
-            .any(|item| item.id == command.item_id)
-        {
-            return Err(child_conflict(
-                "collection item",
-                &command.item_id,
-                &command.definition_id,
-            ));
-        }
-        collection.items.push(CollectionItem {
-            id: command.item_id,
-            fields: command.fields,
-            recorded_at,
-        });
-        collection
-            .items
-            .sort_by(|left, right| left.id.cmp(&right.id));
-        let record = Record::Collection(collection);
-        transaction.put_record(record.clone())?;
-        transaction.commit()?;
-        Ok(record)
+        self.execute_record_mutation(RecordMutation::AddCollectionItem(command), recorded_at)?
+            .into_record()
     }
 
     pub(crate) fn correct_collection_item_at(
@@ -414,27 +304,8 @@ where
         command: CorrectCollectionItem,
         recorded_at: String,
     ) -> RepositoryResult<Record> {
-        let mut transaction = self.repository.begin_transaction()?;
-        let existing = required_record(
-            transaction.get_record(&command.definition_id)?,
-            &command.definition_id,
-        )?;
-        let Record::Collection(mut collection) = existing else {
-            return Err(kind_conflict(&command.definition_id, "collection"));
-        };
-        let item = collection
-            .items
-            .iter_mut()
-            .find(|item| item.id == command.item_id)
-            .ok_or_else(|| {
-                child_not_found("collection item", &command.item_id, &command.definition_id)
-            })?;
-        item.fields = command.fields;
-        item.recorded_at = recorded_at;
-        let record = Record::Collection(collection);
-        transaction.put_record(record.clone())?;
-        transaction.commit()?;
-        Ok(record)
+        self.execute_record_mutation(RecordMutation::CorrectCollectionItem(command), recorded_at)?
+            .into_record()
     }
 
     pub(crate) fn append_event_at(
@@ -442,37 +313,8 @@ where
         command: AppendEvent,
         recorded_at: String,
     ) -> RepositoryResult<Record> {
-        let mut transaction = self.repository.begin_transaction()?;
-        let mut event_record = match transaction.get_record(&command.definition_id)? {
-            Some(Record::Event(event_record)) => event_record,
-            Some(_) => return Err(kind_conflict(&command.definition_id, "event")),
-            None => EventRecord {
-                definition_id: command.definition_id.clone(),
-                events: Vec::new(),
-            },
-        };
-        if event_record
-            .events
-            .iter()
-            .any(|event| event.id == command.event_id)
-        {
-            return Err(child_conflict(
-                "event",
-                &command.event_id,
-                &command.definition_id,
-            ));
-        }
-        event_record.events.push(EventEntry {
-            id: command.event_id,
-            occurred_at: command.occurred_at,
-            fields: command.fields,
-            recorded_at,
-        });
-        sort_events(&mut event_record.events);
-        let record = Record::Event(event_record);
-        transaction.put_record(record.clone())?;
-        transaction.commit()?;
-        Ok(record)
+        self.execute_record_mutation(RecordMutation::AppendEvent(command), recorded_at)?
+            .into_record()
     }
 
     pub(crate) fn correct_event_at(
@@ -480,41 +322,271 @@ where
         command: CorrectEvent,
         recorded_at: String,
     ) -> RepositoryResult<Record> {
-        let mut transaction = self.repository.begin_transaction()?;
-        let existing = required_record(
-            transaction.get_record(&command.definition_id)?,
-            &command.definition_id,
-        )?;
-        let Record::Event(mut event_record) = existing else {
-            return Err(kind_conflict(&command.definition_id, "event"));
-        };
-        let event = event_record
-            .events
-            .iter_mut()
-            .find(|event| event.id == command.event_id)
-            .ok_or_else(|| child_not_found("event", &command.event_id, &command.definition_id))?;
-        event.occurred_at = command.occurred_at;
-        event.fields = command.fields;
-        event.recorded_at = recorded_at;
-        sort_events(&mut event_record.events);
-        let record = Record::Event(event_record);
-        transaction.put_record(record.clone())?;
-        transaction.commit()?;
-        Ok(record)
+        self.execute_record_mutation(RecordMutation::CorrectEvent(command), recorded_at)?
+            .into_record()
     }
 
-    fn create_record(&mut self, record: Record) -> RepositoryResult<Record> {
+    fn execute_record_mutation(
+        &mut self,
+        mutation: RecordMutation,
+        recorded_at: String,
+    ) -> RepositoryResult<RecordMutationResult> {
         let mut transaction = self.repository.begin_transaction()?;
-        if transaction.get_record(record.definition_id())?.is_some() {
-            return Err(RepositoryError::new(
-                RepositoryErrorCode::Conflict,
-                format!("Record '{}' already exists", record.definition_id()),
-            ));
-        }
-        transaction.put_record(record.clone())?;
+        let result = apply_record_mutation(&mut transaction, mutation, &recorded_at)?;
         transaction.commit()?;
-        Ok(record)
+        Ok(result)
     }
+}
+
+impl RecordMutationResult {
+    fn into_record(self) -> RepositoryResult<Record> {
+        match self {
+            Self::Record(record) => Ok(record),
+            Self::Deleted { .. } => Err(command_error(
+                "internal Record mutation result mismatch".to_string(),
+            )),
+        }
+    }
+}
+
+pub(crate) fn apply_record_mutation<T>(
+    transaction: &mut T,
+    mutation: RecordMutation,
+    recorded_at: &str,
+) -> RepositoryResult<RecordMutationResult>
+where
+    T: ArcanaRepositoryTransaction,
+{
+    let result = match mutation {
+        RecordMutation::SetScalar(command) => Record::Scalar(ScalarRecord {
+            definition_id: command.definition_id,
+            value: command.value,
+            effective_at: command.effective_at,
+            recorded_at: recorded_at.to_string(),
+        }),
+        RecordMutation::IncrementScalar(command) => {
+            let snapshot = transaction.load_synced_snapshot()?;
+            let registry = snapshot.definition_registry()?;
+            let value_type = match registry.get(&command.definition_id) {
+                Some(RecordDefinition::Scalar(definition)) => definition.value_type,
+                Some(_) => {
+                    return Err(command_error(format!(
+                        "Record '{}' is not scalar and cannot be incremented",
+                        command.definition_id
+                    )))
+                }
+                None => {
+                    return Err(RepositoryError::new(
+                        RepositoryErrorCode::Unresolved,
+                        format!(
+                            "RecordDefinition '{}' is not supplied by an enabled Pack",
+                            command.definition_id
+                        ),
+                    ))
+                }
+            };
+            if !matches!(value_type, ValueType::Number | ValueType::Integer) {
+                return Err(command_error(format!(
+                    "Record '{}' has non-numeric type {:?}",
+                    command.definition_id, value_type
+                )));
+            }
+            let existing = transaction
+                .get_record(&command.definition_id)?
+                .ok_or_else(|| {
+                    RepositoryError::new(
+                        RepositoryErrorCode::NotFound,
+                        format!("Record '{}' has no current value", command.definition_id),
+                    )
+                })?;
+            let Record::Scalar(existing) = existing else {
+                return Err(RepositoryError::new(
+                    RepositoryErrorCode::Conflict,
+                    format!("Record '{}' is not stored as scalar", command.definition_id),
+                ));
+            };
+            Record::Scalar(ScalarRecord {
+                definition_id: command.definition_id,
+                value: increment_value(value_type, &existing.value, &command.delta)?,
+                effective_at: command.effective_at.or(existing.effective_at),
+                recorded_at: recorded_at.to_string(),
+            })
+        }
+        RecordMutation::CreateEmptyCollection(command) => {
+            let record = Record::Collection(CollectionRecord {
+                definition_id: command.definition_id,
+                items: Vec::new(),
+            });
+            ensure_record_absent(transaction, record.definition_id())?;
+            record
+        }
+        RecordMutation::AddCollectionItem(command) => {
+            let mut collection = match transaction.get_record(&command.definition_id)? {
+                Some(Record::Collection(collection)) => collection,
+                Some(_) => return Err(kind_conflict(&command.definition_id, "collection")),
+                None => CollectionRecord {
+                    definition_id: command.definition_id.clone(),
+                    items: Vec::new(),
+                },
+            };
+            if collection
+                .items
+                .iter()
+                .any(|item| item.id == command.item_id)
+            {
+                return Err(child_conflict(
+                    "collection item",
+                    &command.item_id,
+                    &command.definition_id,
+                ));
+            }
+            collection.items.push(CollectionItem {
+                id: command.item_id,
+                fields: command.fields,
+                recorded_at: recorded_at.to_string(),
+            });
+            collection
+                .items
+                .sort_by(|left, right| left.id.cmp(&right.id));
+            Record::Collection(collection)
+        }
+        RecordMutation::CorrectCollectionItem(command) => {
+            let existing = required_record(
+                transaction.get_record(&command.definition_id)?,
+                &command.definition_id,
+            )?;
+            let Record::Collection(mut collection) = existing else {
+                return Err(kind_conflict(&command.definition_id, "collection"));
+            };
+            let item = collection
+                .items
+                .iter_mut()
+                .find(|item| item.id == command.item_id)
+                .ok_or_else(|| {
+                    child_not_found("collection item", &command.item_id, &command.definition_id)
+                })?;
+            item.fields = command.fields;
+            item.recorded_at = recorded_at.to_string();
+            Record::Collection(collection)
+        }
+        RecordMutation::RemoveCollectionItem(command) => {
+            let existing = required_record(
+                transaction.get_record(&command.definition_id)?,
+                &command.definition_id,
+            )?;
+            let Record::Collection(mut collection) = existing else {
+                return Err(kind_conflict(&command.definition_id, "collection"));
+            };
+            let original_len = collection.items.len();
+            collection.items.retain(|item| item.id != command.item_id);
+            if collection.items.len() == original_len {
+                return Err(child_not_found(
+                    "collection item",
+                    &command.item_id,
+                    &command.definition_id,
+                ));
+            }
+            Record::Collection(collection)
+        }
+        RecordMutation::CreateEmptyEvent(command) => {
+            let record = Record::Event(EventRecord {
+                definition_id: command.definition_id,
+                events: Vec::new(),
+            });
+            ensure_record_absent(transaction, record.definition_id())?;
+            record
+        }
+        RecordMutation::AppendEvent(command) => {
+            let mut event_record = match transaction.get_record(&command.definition_id)? {
+                Some(Record::Event(event_record)) => event_record,
+                Some(_) => return Err(kind_conflict(&command.definition_id, "event")),
+                None => EventRecord {
+                    definition_id: command.definition_id.clone(),
+                    events: Vec::new(),
+                },
+            };
+            if event_record
+                .events
+                .iter()
+                .any(|event| event.id == command.event_id)
+            {
+                return Err(child_conflict(
+                    "event",
+                    &command.event_id,
+                    &command.definition_id,
+                ));
+            }
+            event_record.events.push(EventEntry {
+                id: command.event_id,
+                occurred_at: command.occurred_at,
+                fields: command.fields,
+                recorded_at: recorded_at.to_string(),
+            });
+            sort_events(&mut event_record.events);
+            Record::Event(event_record)
+        }
+        RecordMutation::CorrectEvent(command) => {
+            let existing = required_record(
+                transaction.get_record(&command.definition_id)?,
+                &command.definition_id,
+            )?;
+            let Record::Event(mut event_record) = existing else {
+                return Err(kind_conflict(&command.definition_id, "event"));
+            };
+            let event = event_record
+                .events
+                .iter_mut()
+                .find(|event| event.id == command.event_id)
+                .ok_or_else(|| {
+                    child_not_found("event", &command.event_id, &command.definition_id)
+                })?;
+            event.occurred_at = command.occurred_at;
+            event.fields = command.fields;
+            event.recorded_at = recorded_at.to_string();
+            sort_events(&mut event_record.events);
+            Record::Event(event_record)
+        }
+        RecordMutation::DeleteEvent(command) => {
+            let existing = required_record(
+                transaction.get_record(&command.definition_id)?,
+                &command.definition_id,
+            )?;
+            let Record::Event(mut event_record) = existing else {
+                return Err(kind_conflict(&command.definition_id, "event"));
+            };
+            let original_len = event_record.events.len();
+            event_record
+                .events
+                .retain(|event| event.id != command.event_id);
+            if event_record.events.len() == original_len {
+                return Err(child_not_found(
+                    "event",
+                    &command.event_id,
+                    &command.definition_id,
+                ));
+            }
+            Record::Event(event_record)
+        }
+        RecordMutation::Delete(definition_id) => {
+            transaction.delete_record(&definition_id)?;
+            return Ok(RecordMutationResult::Deleted { definition_id });
+        }
+    };
+    transaction.put_record(result.clone())?;
+    Ok(RecordMutationResult::Record(result))
+}
+
+fn ensure_record_absent<T>(transaction: &T, definition_id: &str) -> RepositoryResult<()>
+where
+    T: ArcanaRepositoryTransaction,
+{
+    if transaction.get_record(definition_id)?.is_some() {
+        return Err(RepositoryError::new(
+            RepositoryErrorCode::Conflict,
+            format!("Record '{definition_id}' already exists"),
+        ));
+    }
+    Ok(())
 }
 
 fn record_query_matches(entry: &RecordQueryEntry, query: &QueryRecords) -> bool {
