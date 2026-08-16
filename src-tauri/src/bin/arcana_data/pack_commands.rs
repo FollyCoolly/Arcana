@@ -1,7 +1,8 @@
+use super::batch_commands::execute_mutation;
 use super::contract::{CliError, RepositoryOperation};
 use super::record_commands::parse_json_input;
 use super::runtime_commands::runtime_from_cli;
-use arcana_lib::application::{PackCommands, PackContent};
+use arcana_lib::application::{MutationOperation, PackCommands, PackContent, PackTarget};
 use clap::Subcommand;
 use serde_json::{json, Value};
 use std::path::PathBuf;
@@ -46,6 +47,8 @@ pub enum PackAction {
     Enable { pack_id: String },
     /// Disable a Pack without disabling its children
     Disable { pack_id: String },
+    /// Delete a Pack while preserving now-unresolved user Records and Achievement states
+    Delete { pack_id: String },
 }
 
 enum PreparedPackAction {
@@ -65,11 +68,17 @@ enum PreparedPackAction {
     },
     Enable(String),
     Disable(String),
+    Delete(String),
 }
 
-pub fn execute_pack(runtime_dir: Option<PathBuf>, action: PackAction) -> Result<Value, CliError> {
+pub fn execute_pack(
+    runtime_dir: Option<PathBuf>,
+    action: PackAction,
+    dry_run: bool,
+) -> Result<Value, CliError> {
     let action = prepare_pack_action(action)?;
     if let PreparedPackAction::Scaffold(content) = action {
+        reject_dry_run(dry_run, "pack scaffold")?;
         return serde_json::to_value(content).map_err(|error| {
             CliError::invalid_command_input(
                 "scaffold Pack",
@@ -77,6 +86,46 @@ pub fn execute_pack(runtime_dir: Option<PathBuf>, action: PackAction) -> Result<
                 json!({}),
             )
         });
+    }
+
+    match action {
+        PreparedPackAction::Write(content) => {
+            return execute_mutation(
+                runtime_dir,
+                MutationOperation::PackWrite(content),
+                RepositoryOperation::Pack,
+                dry_run,
+            )
+            .map(|pack| json!({ "pack": pack }));
+        }
+        PreparedPackAction::Enable(pack_id) => {
+            return execute_mutation(
+                runtime_dir,
+                MutationOperation::PackEnable(PackTarget { pack_id }),
+                RepositoryOperation::Pack,
+                dry_run,
+            )
+            .map(|pack| json!({ "pack": pack }));
+        }
+        PreparedPackAction::Disable(pack_id) => {
+            return execute_mutation(
+                runtime_dir,
+                MutationOperation::PackDisable(PackTarget { pack_id }),
+                RepositoryOperation::Pack,
+                dry_run,
+            )
+            .map(|pack| json!({ "pack": pack }));
+        }
+        PreparedPackAction::Delete(pack_id) => {
+            return execute_mutation(
+                runtime_dir,
+                MutationOperation::PackDelete(PackTarget { pack_id }),
+                RepositoryOperation::Pack,
+                dry_run,
+            )
+            .map(|pack| json!({ "deleted_pack": pack }));
+        }
+        _ => {}
     }
 
     let runtime = runtime_from_cli(runtime_dir)?;
@@ -87,7 +136,13 @@ pub fn execute_pack(runtime_dir: Option<PathBuf>, action: PackAction) -> Result<
         PreparedPackAction::AssetPut { .. } | PreparedPackAction::AssetDelete { .. } => {
             RepositoryOperation::PackAsset
         }
-        _ => RepositoryOperation::Pack,
+        PreparedPackAction::List
+        | PreparedPackAction::Show(_)
+        | PreparedPackAction::Validate(_) => {
+            reject_dry_run(dry_run, "read-only pack command")?;
+            RepositoryOperation::Pack
+        }
+        _ => unreachable!("Pack mutations were handled before runtime access"),
     };
     runtime
         .with_repository(|repository| {
@@ -100,34 +155,38 @@ pub fn execute_pack(runtime_dir: Option<PathBuf>, action: PackAction) -> Result<
                 PreparedPackAction::Validate(content) => {
                     Ok(json!({ "validation": commands.validate(content)? }))
                 }
-                PreparedPackAction::Write(content) => {
-                    Ok(json!({ "pack": commands.write(content)? }))
-                }
                 PreparedPackAction::AssetPut {
                     pack_id,
                     asset_path,
                     content,
                 } => Ok(json!({
                     "pack_id": pack_id,
-                    "asset": commands.put_asset(&pack_id, asset_path, content)?
+                    "asset": commands.put_asset_with_dry_run(
+                        &pack_id,
+                        asset_path,
+                        content,
+                        dry_run,
+                    )?,
+                    "dry_run": dry_run
                 })),
                 PreparedPackAction::AssetDelete {
                     pack_id,
                     asset_path,
                 } => {
-                    commands.delete_asset(&pack_id, &asset_path)?;
+                    commands.delete_asset_with_dry_run(&pack_id, &asset_path, dry_run)?;
                     Ok(json!({
                         "pack_id": pack_id,
-                        "deleted_asset_path": asset_path
+                        "deleted_asset_path": asset_path,
+                        "dry_run": dry_run
                     }))
                 }
-                PreparedPackAction::Enable(pack_id) => {
-                    Ok(json!({ "pack": commands.set_enabled(&pack_id, true)? }))
-                }
-                PreparedPackAction::Disable(pack_id) => {
-                    Ok(json!({ "pack": commands.set_enabled(&pack_id, false)? }))
-                }
                 PreparedPackAction::Scaffold(_) => unreachable!("handled before runtime access"),
+                PreparedPackAction::Write(_)
+                | PreparedPackAction::Enable(_)
+                | PreparedPackAction::Disable(_)
+                | PreparedPackAction::Delete(_) => {
+                    unreachable!("Pack mutations were handled before runtime access")
+                }
             }
         })
         .map_err(|error| CliError::from_repository(error, operation))
@@ -175,6 +234,19 @@ fn prepare_pack_action(action: PackAction) -> Result<PreparedPackAction, CliErro
         }),
         PackAction::Enable { pack_id } => Ok(PreparedPackAction::Enable(pack_id)),
         PackAction::Disable { pack_id } => Ok(PreparedPackAction::Disable(pack_id)),
+        PackAction::Delete { pack_id } => Ok(PreparedPackAction::Delete(pack_id)),
+    }
+}
+
+fn reject_dry_run(dry_run: bool, command: &str) -> Result<(), CliError> {
+    if dry_run {
+        Err(CliError::invalid_command_input(
+            command,
+            "--dry-run is only meaningful for Pack mutations",
+            json!({ "command": command }),
+        ))
+    } else {
+        Ok(())
     }
 }
 
@@ -191,6 +263,7 @@ mod tests {
                 pack_id: "cooking".to_string(),
                 name: "Cooking".to_string(),
             },
+            false,
         )
         .unwrap();
         assert_eq!(output["manifest"]["schema_version"], 1);
@@ -214,6 +287,7 @@ mod tests {
             PackAction::Validate {
                 file: Some(content_file.clone()),
             },
+            false,
         )
         .unwrap();
         assert_eq!(validated["validation"]["valid"], true);
@@ -223,6 +297,7 @@ mod tests {
             PackAction::Write {
                 file: Some(content_file),
             },
+            false,
         )
         .unwrap();
         let asset_file = directory.path().join("note.txt");
@@ -234,6 +309,7 @@ mod tests {
                 asset_path: "assets/note.txt".to_string(),
                 file: asset_file,
             },
+            false,
         )
         .unwrap();
         assert_eq!(
@@ -242,6 +318,7 @@ mod tests {
                 PackAction::Enable {
                     pack_id: "cooking".to_string(),
                 },
+                false,
             )
             .unwrap()["pack"]["enabled"],
             true
@@ -252,6 +329,7 @@ mod tests {
                 pack_id: "cooking".to_string(),
                 asset_path: "assets/note.txt".to_string(),
             },
+            false,
         )
         .unwrap();
         let shown = execute_pack(
@@ -259,8 +337,83 @@ mod tests {
             PackAction::Show {
                 pack_id: "cooking".to_string(),
             },
+            false,
         )
         .unwrap();
         assert!(shown["pack"]["assets"].as_array().unwrap().is_empty());
+    }
+
+    #[test]
+    fn write_and_delete_support_dry_run() {
+        let directory = tempfile::tempdir().unwrap();
+        let runtime_dir = directory.path().join("runtime");
+        ArcanaRuntime::new(&runtime_dir)
+            .unwrap()
+            .initialize()
+            .unwrap();
+        let content = PackContent::scaffold("cooking".to_string(), "Cooking".to_string()).unwrap();
+        let content_file = directory.path().join("pack.json");
+        std::fs::write(&content_file, serde_json::to_vec(&content).unwrap()).unwrap();
+
+        let preview = execute_pack(
+            Some(runtime_dir.clone()),
+            PackAction::Write {
+                file: Some(content_file.clone()),
+            },
+            true,
+        )
+        .unwrap();
+        assert_eq!(preview["pack"]["dry_run"], true);
+        assert!(execute_pack(
+            Some(runtime_dir.clone()),
+            PackAction::Show {
+                pack_id: "cooking".to_string(),
+            },
+            false,
+        )
+        .is_err());
+
+        execute_pack(
+            Some(runtime_dir.clone()),
+            PackAction::Write {
+                file: Some(content_file),
+            },
+            false,
+        )
+        .unwrap();
+        let deletion = execute_pack(
+            Some(runtime_dir.clone()),
+            PackAction::Delete {
+                pack_id: "cooking".to_string(),
+            },
+            true,
+        )
+        .unwrap();
+        assert_eq!(deletion["deleted_pack"]["dry_run"], true);
+        assert!(execute_pack(
+            Some(runtime_dir.clone()),
+            PackAction::Show {
+                pack_id: "cooking".to_string(),
+            },
+            false,
+        )
+        .is_ok());
+
+        execute_pack(
+            Some(runtime_dir.clone()),
+            PackAction::Delete {
+                pack_id: "cooking".to_string(),
+            },
+            false,
+        )
+        .unwrap();
+        assert!(execute_pack(
+            Some(runtime_dir),
+            PackAction::Show {
+                pack_id: "cooking".to_string(),
+            },
+            false,
+        )
+        .is_err());
     }
 }

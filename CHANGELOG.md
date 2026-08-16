@@ -6,6 +6,7 @@
 
 - Unified Status, Achievement, Skill, and Mission UI with the SQLite Application/Repository runtime.
 - Added deterministic SQLite-to-JSON import/export and canonical external Arcana Skills.
+- Added desktop Pack management and transactional Pack write, enable, disable, delete, dry-run, and batch operations. Pack deletion reports affected user data without deleting it.
 
 ### Removed
 

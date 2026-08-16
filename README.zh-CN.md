@@ -31,7 +31,7 @@ Arcana 把现实中的事实与目标组织为 Status、Achievement、Skill 和 
 - **Achievement**：带前置关系的里程碑，只保存最小的 `tracked` / `achieved` 状态；只有 achieved 才计分。
 - **Skill**：由 Pack 定义、从 achieved Achievement 派生的技能图；等级与节点状态不重复持久化。
 - **Mission**：AI 推荐先作为本机 MissionSuggestion；用户接受后才成为可同步 Mission。Mission 支持 active、completed、archived 生命周期。
-- **Pack**：可分层组织 RecordDefinition、Dimension、Achievement、Skill 与资源。父子关系只负责组织，不构成启用依赖。
+- **Pack**：可分层组织 RecordDefinition、Dimension、Achievement、Skill 与资源。桌面 Pack 页面可管理已安装内容、启用状态与安全删除影响；父子关系只负责组织，不构成启用依赖。
 - **AssistantMemory**：可与用户仓库一起同步的长期语义上下文。
 - **Items 与 Gallery**：读取用户指定的外部文件，外部来源保持权威，不复制进核心数据平台。
 

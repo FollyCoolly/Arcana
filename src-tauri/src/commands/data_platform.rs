@@ -1,8 +1,8 @@
 use crate::application::{
     AchievementAvailability, AchievementCommands, AchievementEntry, AchievementStateResult,
-    ArcanaRuntime, PackAssetContent, PackCommands, QueryAchievements, QuerySkills,
-    SetAchievementState, SkillCommands, SkillEvaluation, StatusCommands, StatusDimensionEvaluation,
-    StatusScoreEvaluation, StatusSelectionResult,
+    ArcanaRuntime, PackAssetContent, PackCommands, PackDeleteResult, PackEnabledState, PackSummary,
+    QueryAchievements, QuerySkills, SetAchievementState, SkillCommands, SkillEvaluation,
+    StatusCommands, StatusDimensionEvaluation, StatusScoreEvaluation, StatusSelectionResult,
 };
 use crate::domain::{
     AchievementDefinition, AchievementDifficulty, AchievementState, AchievementStatus,
@@ -99,6 +99,11 @@ pub struct SkillDashboardData {
     pub skills: Vec<SkillDashboardEntry>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct PackDashboardData {
+    pub packs: Vec<PackSummary>,
+}
+
 #[tauri::command]
 pub fn load_status_dashboard(
     runtime: State<'_, ArcanaRuntime>,
@@ -187,6 +192,50 @@ pub fn load_pack_asset(
         .with_repository(|repository| {
             PackCommands::new(repository).read_asset(&pack_id, &asset_path)
         })
+        .map_err(Into::into)
+}
+
+#[tauri::command]
+pub fn load_pack_dashboard(
+    runtime: State<'_, ArcanaRuntime>,
+) -> Result<PackDashboardData, DataCommandError> {
+    runtime
+        .with_repository(|repository| {
+            Ok(PackDashboardData {
+                packs: PackCommands::new(repository).list()?,
+            })
+        })
+        .map_err(Into::into)
+}
+
+#[tauri::command]
+pub fn set_pack_enabled(
+    runtime: State<'_, ArcanaRuntime>,
+    pack_id: String,
+    enabled: bool,
+) -> Result<PackEnabledState, DataCommandError> {
+    runtime
+        .with_repository(|repository| PackCommands::new(repository).set_enabled(&pack_id, enabled))
+        .map_err(Into::into)
+}
+
+#[tauri::command]
+pub fn delete_pack(
+    runtime: State<'_, ArcanaRuntime>,
+    pack_id: String,
+) -> Result<PackDeleteResult, DataCommandError> {
+    runtime
+        .with_repository(|repository| PackCommands::new(repository).delete(&pack_id))
+        .map_err(Into::into)
+}
+
+#[tauri::command]
+pub fn preview_pack_deletion(
+    runtime: State<'_, ArcanaRuntime>,
+    pack_id: String,
+) -> Result<PackDeleteResult, DataCommandError> {
+    runtime
+        .with_repository(|repository| PackCommands::new(repository).preview_delete(&pack_id))
         .map_err(Into::into)
 }
 

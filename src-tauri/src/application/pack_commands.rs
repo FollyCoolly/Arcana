@@ -121,6 +121,28 @@ pub struct PackEnabledState {
     pub changed: bool,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct PackDeleteResult {
+    pub pack_id: String,
+    pub was_enabled: bool,
+    pub child_pack_ids: Vec<String>,
+    pub unresolved_record_ids: Vec<String>,
+    pub unresolved_achievement_state_ids: Vec<String>,
+    pub orphaned_status_dimension_ids: Vec<String>,
+}
+
+pub(crate) enum PackMutation {
+    Write(Box<PackContent>),
+    SetEnabled { pack_id: String, enabled: bool },
+    Delete(String),
+}
+
+pub(crate) enum PackMutationResult {
+    Pack(PackDetails),
+    Enabled(PackEnabledState),
+    Deleted(PackDeleteResult),
+}
+
 pub struct PackCommands<'repository, R> {
     repository: &'repository mut R,
 }
@@ -244,21 +266,11 @@ where
     /// and all existing asset bytes.
     pub fn write(&mut self, content: PackContent) -> RepositoryResult<PackDetails> {
         let mut transaction = self.repository.begin_transaction()?;
-        let snapshot = transaction.load_synced_snapshot()?;
-        let pack_id = content.manifest.id.clone();
-        let enabled = snapshot
-            .manifest
-            .enabled_pack_ids
-            .binary_search(&pack_id)
-            .is_ok();
-        let assets = snapshot
-            .packs
-            .get(&pack_id)
-            .map(|pack| pack.assets.clone())
-            .unwrap_or_default();
-        let pack = content.to_pack(assets);
-        let details = PackDetails::from_pack(&pack, enabled, &snapshot.packs);
-        transaction.put_pack(pack)?;
+        let PackMutationResult::Pack(details) =
+            apply_pack_mutation(&mut transaction, PackMutation::Write(Box::new(content)))?
+        else {
+            unreachable!("Pack write returned the wrong result")
+        };
         transaction.commit()?;
         Ok(details)
     }
@@ -269,8 +281,18 @@ where
         asset_path: String,
         content: Vec<u8>,
     ) -> RepositoryResult<PackAssetSummary> {
+        self.put_asset_with_dry_run(pack_id, asset_path, content, false)
+    }
+
+    pub fn put_asset_with_dry_run(
+        &mut self,
+        pack_id: &str,
+        asset_path: String,
+        content: Vec<u8>,
+        dry_run: bool,
+    ) -> RepositoryResult<PackAssetSummary> {
         let mut transaction = self.repository.begin_transaction()?;
-        let snapshot = transaction.load_synced_snapshot()?;
+        let mut snapshot = transaction.load_synced_snapshot()?;
         let mut pack = snapshot
             .packs
             .get(pack_id)
@@ -285,14 +307,29 @@ where
                 size_bytes: content.len(),
             })
             .expect("asset was inserted");
+        snapshot.packs.insert(pack_id.to_string(), pack.clone());
+        snapshot.validate()?;
         transaction.put_pack(pack)?;
-        transaction.commit()?;
+        if dry_run {
+            transaction.rollback()?;
+        } else {
+            transaction.commit()?;
+        }
         Ok(summary)
     }
 
     pub fn delete_asset(&mut self, pack_id: &str, asset_path: &str) -> RepositoryResult<()> {
+        self.delete_asset_with_dry_run(pack_id, asset_path, false)
+    }
+
+    pub fn delete_asset_with_dry_run(
+        &mut self,
+        pack_id: &str,
+        asset_path: &str,
+        dry_run: bool,
+    ) -> RepositoryResult<()> {
         let mut transaction = self.repository.begin_transaction()?;
-        let snapshot = transaction.load_synced_snapshot()?;
+        let mut snapshot = transaction.load_synced_snapshot()?;
         let mut pack = snapshot
             .packs
             .get(pack_id)
@@ -304,8 +341,14 @@ where
                 format!("Pack asset '{pack_id}/{asset_path}' was not found"),
             ));
         }
+        snapshot.packs.insert(pack_id.to_string(), pack.clone());
+        snapshot.validate()?;
         transaction.put_pack(pack)?;
-        transaction.commit()
+        if dry_run {
+            transaction.rollback()
+        } else {
+            transaction.commit()
+        }
     }
 
     pub fn set_enabled(
@@ -314,30 +357,163 @@ where
         enabled: bool,
     ) -> RepositoryResult<PackEnabledState> {
         let mut transaction = self.repository.begin_transaction()?;
-        let snapshot = transaction.load_synced_snapshot()?;
-        if !snapshot.packs.contains_key(pack_id) {
-            return Err(pack_not_found(pack_id));
-        }
-        let currently_enabled = snapshot
-            .manifest
-            .enabled_pack_ids
-            .binary_search_by(|id| id.as_str().cmp(pack_id))
-            .is_ok();
-        if currently_enabled == enabled {
-            transaction.rollback()?;
-            return Ok(PackEnabledState {
+        let PackMutationResult::Enabled(state) = apply_pack_mutation(
+            &mut transaction,
+            PackMutation::SetEnabled {
                 pack_id: pack_id.to_string(),
                 enabled,
-                changed: false,
-            });
-        }
-        transaction.set_pack_enabled(pack_id, enabled)?;
+            },
+        )?
+        else {
+            unreachable!("Pack enabled mutation returned the wrong result")
+        };
         transaction.commit()?;
-        Ok(PackEnabledState {
-            pack_id: pack_id.to_string(),
-            enabled,
-            changed: true,
-        })
+        Ok(state)
+    }
+
+    pub fn delete(&mut self, pack_id: &str) -> RepositoryResult<PackDeleteResult> {
+        let mut transaction = self.repository.begin_transaction()?;
+        let PackMutationResult::Deleted(result) =
+            apply_pack_mutation(&mut transaction, PackMutation::Delete(pack_id.to_string()))?
+        else {
+            unreachable!("Pack delete mutation returned the wrong result")
+        };
+        transaction.commit()?;
+        Ok(result)
+    }
+
+    pub fn preview_delete(&mut self, pack_id: &str) -> RepositoryResult<PackDeleteResult> {
+        let mut transaction = self.repository.begin_transaction()?;
+        let PackMutationResult::Deleted(result) =
+            apply_pack_mutation(&mut transaction, PackMutation::Delete(pack_id.to_string()))?
+        else {
+            unreachable!("Pack delete preview returned the wrong result")
+        };
+        transaction.rollback()?;
+        Ok(result)
+    }
+}
+
+pub(crate) fn apply_pack_mutation<T>(
+    transaction: &mut T,
+    mutation: PackMutation,
+) -> RepositoryResult<PackMutationResult>
+where
+    T: ArcanaRepositoryTransaction,
+{
+    match mutation {
+        PackMutation::Write(content) => {
+            let mut snapshot = transaction.load_synced_snapshot()?;
+            let pack_id = content.manifest.id.clone();
+            let enabled = snapshot
+                .manifest
+                .enabled_pack_ids
+                .binary_search(&pack_id)
+                .is_ok();
+            let assets = snapshot
+                .packs
+                .get(&pack_id)
+                .map(|pack| pack.assets.clone())
+                .unwrap_or_default();
+            let pack = content.to_pack(assets);
+            snapshot.packs.insert(pack_id, pack.clone());
+            snapshot.validate()?;
+            let details = PackDetails::from_pack(&pack, enabled, &snapshot.packs);
+            transaction.put_pack(pack)?;
+            Ok(PackMutationResult::Pack(details))
+        }
+        PackMutation::SetEnabled { pack_id, enabled } => {
+            let mut snapshot = transaction.load_synced_snapshot()?;
+            if !snapshot.packs.contains_key(&pack_id) {
+                return Err(pack_not_found(&pack_id));
+            }
+            let position = snapshot
+                .manifest
+                .enabled_pack_ids
+                .binary_search_by(|id| id.as_str().cmp(&pack_id));
+            let currently_enabled = position.is_ok();
+            if currently_enabled == enabled {
+                return Ok(PackMutationResult::Enabled(PackEnabledState {
+                    pack_id,
+                    enabled,
+                    changed: false,
+                }));
+            }
+            if enabled {
+                snapshot
+                    .manifest
+                    .enabled_pack_ids
+                    .insert(position.unwrap_err(), pack_id.clone());
+            } else {
+                snapshot
+                    .manifest
+                    .enabled_pack_ids
+                    .remove(position.expect("enabled Pack must have an index"));
+            }
+            snapshot.validate()?;
+            transaction.set_pack_enabled(&pack_id, enabled)?;
+            Ok(PackMutationResult::Enabled(PackEnabledState {
+                pack_id,
+                enabled,
+                changed: true,
+            }))
+        }
+        PackMutation::Delete(pack_id) => {
+            let mut snapshot = transaction.load_synced_snapshot()?;
+            let pack = snapshot
+                .packs
+                .remove(&pack_id)
+                .ok_or_else(|| pack_not_found(&pack_id))?;
+            let was_enabled = snapshot
+                .manifest
+                .enabled_pack_ids
+                .binary_search(&pack_id)
+                .map(|index| {
+                    snapshot.manifest.enabled_pack_ids.remove(index);
+                    true
+                })
+                .unwrap_or(false);
+            let child_pack_ids = snapshot
+                .packs
+                .values()
+                .filter(|candidate| {
+                    candidate.manifest.parent_pack_id.as_deref() == Some(pack_id.as_str())
+                })
+                .map(|candidate| candidate.manifest.id.clone())
+                .collect();
+            let owned_dimension_ids: std::collections::BTreeSet<&str> = pack
+                .dimensions
+                .iter()
+                .flat_map(|file| file.dimensions.iter())
+                .map(|dimension| dimension.id.as_str())
+                .collect();
+            let orphaned_status_dimension_ids = transaction
+                .status_dimension_selection()?
+                .into_iter()
+                .filter(|selection| owned_dimension_ids.contains(selection.dimension_id.as_str()))
+                .map(|selection| selection.dimension_id)
+                .collect();
+            snapshot.validate()?;
+            let unresolved_record_ids = snapshot
+                .unresolved_record_ids()
+                .into_iter()
+                .map(str::to_string)
+                .collect();
+            let unresolved_achievement_state_ids = snapshot
+                .unresolved_achievement_state_ids()
+                .into_iter()
+                .map(str::to_string)
+                .collect();
+            transaction.delete_pack(&pack_id)?;
+            Ok(PackMutationResult::Deleted(PackDeleteResult {
+                pack_id,
+                was_enabled,
+                child_pack_ids,
+                unresolved_record_ids,
+                unresolved_achievement_state_ids,
+                orphaned_status_dimension_ids,
+            }))
+        }
     }
 }
 
@@ -406,13 +582,14 @@ fn pack_not_found(pack_id: &str) -> RepositoryError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::application::basic_pack;
+    use crate::application::{basic_pack, RecordCommands, SetScalarRecord};
     use crate::domain::{
-        AchievementDefinition, AchievementDifficulty, AchievementFile, ArcanaRepositoryTransaction,
-        RecordDefinition, RecordDefinitionFile, ScalarRecordDefinition, SkillDefinition, SkillFile,
-        SkillNode, ValueType,
+        AchievementDefinition, AchievementDifficulty, AchievementFile, ArcanaRepositoryReader,
+        ArcanaRepositoryTransaction, RecordDefinition, RecordDefinitionFile,
+        ScalarRecordDefinition, SkillDefinition, SkillFile, SkillNode, ValueType,
     };
     use crate::storage::sqlite::SqliteRepository;
+    use serde_json::json;
 
     fn repository() -> SqliteRepository {
         let mut repository = SqliteRepository::open_in_memory().unwrap();
@@ -578,5 +755,39 @@ mod tests {
         let error = commands.set_enabled("conflicting", true).unwrap_err();
         assert_eq!(error.code, RepositoryErrorCode::ValidationFailed);
         assert!(!commands.show("conflicting").unwrap().enabled);
+    }
+
+    #[test]
+    fn deleting_pack_reports_impact_and_preserves_user_records() {
+        let mut repository = repository();
+        {
+            let mut commands = PackCommands::new(&mut repository);
+            commands.write(content("stats")).unwrap();
+            commands.set_enabled("stats", true).unwrap();
+            let mut child = content("stats_child");
+            child.manifest.parent_pack_id = Some("stats".to_string());
+            commands.write(child).unwrap();
+        }
+        RecordCommands::new(&mut repository)
+            .set_scalar(SetScalarRecord {
+                definition_id: "stats.count".to_string(),
+                value: json!(4),
+                effective_at: None,
+            })
+            .unwrap();
+
+        let preview = PackCommands::new(&mut repository)
+            .preview_delete("stats")
+            .unwrap();
+        assert_eq!(preview.unresolved_record_ids, ["stats.count"]);
+        assert!(PackCommands::new(&mut repository).show("stats").is_ok());
+
+        let result = PackCommands::new(&mut repository).delete("stats").unwrap();
+
+        assert!(result.was_enabled);
+        assert_eq!(result.child_pack_ids, ["stats_child"]);
+        assert_eq!(result.unresolved_record_ids, ["stats.count"]);
+        assert!(repository.get_record("stats.count").unwrap().is_some());
+        assert!(PackCommands::new(&mut repository).show("stats").is_err());
     }
 }

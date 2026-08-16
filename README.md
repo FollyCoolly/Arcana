@@ -31,7 +31,7 @@ Arcana turns real-life facts and goals into Status dimensions, Achievements, Ski
 - **Achievements**: milestones with prerequisites and minimal `tracked` / `achieved` state. Only achieved milestones contribute points.
 - **Skills**: Pack-defined skill maps derived from achieved Achievements; levels and node state are computed rather than stored separately.
 - **Missions**: local AI suggestions become synchronized Missions only after acceptance. Missions support active, completed, and archived lifecycles.
-- **Packs**: hierarchical domain content containing Record definitions, Dimensions, Achievements, Skills, and assets. Parentage organizes Packs but does not enable dependencies.
+- **Packs**: hierarchical domain content containing Record definitions, Dimensions, Achievements, Skills, and assets. The desktop Pack screen manages installed content, enabled state, and safe deletion impact.
 - **Assistant Memory**: durable semantic context that can be synchronized with the rest of the user repository.
 - **Items and Gallery**: adapters over user-selected external files; these sources remain authoritative and are not copied into the core data platform.
 

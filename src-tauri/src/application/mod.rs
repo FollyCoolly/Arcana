@@ -32,11 +32,11 @@ pub use mission_dashboard_commands::{DashboardMissionSelectionResult, MissionDas
 pub use mutation_commands::{
     AchievementTarget, ApplyMutationBatch, AssistantMemoryTarget, MissionSuggestionTarget,
     MissionTarget, MutationBatchError, MutationBatchResult, MutationCommands, MutationOperation,
-    MutationOperationResult, RecordTarget, StatusPositionInput, StatusSelectionInput,
+    MutationOperationResult, PackTarget, RecordTarget, StatusPositionInput, StatusSelectionInput,
 };
 pub use pack_commands::{
-    PackAssetContent, PackAssetSummary, PackCommands, PackContent, PackDetails, PackEnabledState,
-    PackSummary, PackValidation,
+    PackAssetContent, PackAssetSummary, PackCommands, PackContent, PackDeleteResult, PackDetails,
+    PackEnabledState, PackSummary, PackValidation,
 };
 pub use record_commands::{
     AddCollectionItem, AppendEvent, CorrectCollectionItem, CorrectEvent, CreateEmptyRecord,

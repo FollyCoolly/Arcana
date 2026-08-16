@@ -1,12 +1,14 @@
 use super::achievement_commands::{apply_achievement_mutation, AchievementMutation};
 use super::memory_commands::{apply_memory_mutation, MemoryMutation, MemoryMutationResult};
 use super::mission_commands::{apply_mission_mutation, MissionMutation, MissionMutationResult};
+use super::pack_commands::{apply_pack_mutation, PackMutation, PackMutationResult};
 use super::record_commands::{apply_record_mutation, RecordMutation, RecordMutationResult};
 use super::status_commands::{apply_status_mutation, StatusMutation};
 use super::{
     AddCollectionItem, AppendEvent, CorrectCollectionItem, CorrectEvent, CreateAssistantMemory,
-    CreateEmptyRecord, CreateMission, DeleteEvent, IncrementScalarRecord, RemoveCollectionItem,
-    SetAchievementState, SetScalarRecord, SuggestMission, UpdateAssistantMemory, UpdateMission,
+    CreateEmptyRecord, CreateMission, DeleteEvent, IncrementScalarRecord, PackContent,
+    RemoveCollectionItem, SetAchievementState, SetScalarRecord, SuggestMission,
+    UpdateAssistantMemory, UpdateMission,
 };
 use crate::domain::{
     ArcanaRepository, ArcanaRepositoryTransaction, RepositoryError, RepositoryErrorCode,
@@ -21,6 +23,12 @@ use uuid::Uuid;
 #[serde(deny_unknown_fields)]
 pub struct RecordTarget {
     pub definition_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PackTarget {
+    pub pack_id: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -87,6 +95,14 @@ pub enum MutationOperation {
     RecordDeleteEvent(DeleteEvent),
     #[serde(rename = "record.delete")]
     RecordDelete(RecordTarget),
+    #[serde(rename = "pack.write")]
+    PackWrite(PackContent),
+    #[serde(rename = "pack.enable")]
+    PackEnable(PackTarget),
+    #[serde(rename = "pack.disable")]
+    PackDisable(PackTarget),
+    #[serde(rename = "pack.delete")]
+    PackDelete(PackTarget),
     #[serde(rename = "status.select")]
     StatusSelect(StatusSelectionInput),
     #[serde(rename = "status.clear")]
@@ -136,6 +152,10 @@ impl MutationOperation {
             Self::RecordCorrectEvent(_) => "record.correct-event",
             Self::RecordDeleteEvent(_) => "record.delete-event",
             Self::RecordDelete(_) => "record.delete",
+            Self::PackWrite(_) => "pack.write",
+            Self::PackEnable(_) => "pack.enable",
+            Self::PackDisable(_) => "pack.disable",
+            Self::PackDelete(_) => "pack.delete",
             Self::StatusSelect(_) => "status.select",
             Self::StatusClear(_) => "status.clear",
             Self::AchievementStateSet(_) => "achievement.state-set",
@@ -335,6 +355,28 @@ where
             RecordMutation::Delete(target.definition_id),
             executed_at,
         )?),
+        MutationOperation::PackWrite(content) => pack_result(apply_pack_mutation(
+            transaction,
+            PackMutation::Write(Box::new(content)),
+        )?),
+        MutationOperation::PackEnable(target) => pack_result(apply_pack_mutation(
+            transaction,
+            PackMutation::SetEnabled {
+                pack_id: target.pack_id,
+                enabled: true,
+            },
+        )?),
+        MutationOperation::PackDisable(target) => pack_result(apply_pack_mutation(
+            transaction,
+            PackMutation::SetEnabled {
+                pack_id: target.pack_id,
+                enabled: false,
+            },
+        )?),
+        MutationOperation::PackDelete(target) => pack_result(apply_pack_mutation(
+            transaction,
+            PackMutation::Delete(target.pack_id),
+        )?),
         MutationOperation::StatusSelect(input) => Ok(json!({
             "selection": apply_status_mutation(
                 transaction,
@@ -447,6 +489,14 @@ fn record_result(result: RecordMutationResult) -> Result<Value, RepositoryError>
     })
 }
 
+fn pack_result(result: PackMutationResult) -> Result<Value, RepositoryError> {
+    Ok(match result {
+        PackMutationResult::Pack(result) => json!(result),
+        PackMutationResult::Enabled(result) => json!(result),
+        PackMutationResult::Deleted(result) => json!(result),
+    })
+}
+
 fn mission_result(result: MissionMutationResult) -> Result<Value, RepositoryError> {
     Ok(match result {
         MissionMutationResult::Mission(result) => json!(result),
@@ -536,6 +586,55 @@ mod tests {
                 assert_eq!(error.operation_index, Some(1));
                 assert_eq!(error.operation.as_deref(), Some("record.increment"));
                 assert!(repository.get_record("identity.nickname")?.is_none());
+                Ok(())
+            })
+            .unwrap();
+    }
+
+    #[test]
+    fn pack_write_enable_and_delete_share_the_batch_transaction() {
+        let directory = tempfile::tempdir().unwrap();
+        let runtime = ArcanaRuntime::new(directory.path()).unwrap();
+        runtime.initialize().unwrap();
+        runtime
+            .with_repository(|repository| {
+                let content = PackContent::scaffold("cooking".to_string(), "Cooking".to_string())?;
+                let created = MutationCommands::new(repository)
+                    .apply_batch(
+                        ApplyMutationBatch {
+                            operations: vec![
+                                MutationOperation::PackWrite(content),
+                                MutationOperation::PackEnable(PackTarget {
+                                    pack_id: "cooking".to_string(),
+                                }),
+                            ],
+                        },
+                        false,
+                    )
+                    .map_err(|error| error.source)?;
+                assert_eq!(created.operations[1].result["enabled"], true);
+                assert!(repository
+                    .load_synced_snapshot()?
+                    .manifest
+                    .enabled_pack_ids
+                    .contains(&"cooking".to_string()));
+
+                let preview = MutationCommands::new(repository)
+                    .apply_batch(
+                        ApplyMutationBatch {
+                            operations: vec![MutationOperation::PackDelete(PackTarget {
+                                pack_id: "cooking".to_string(),
+                            })],
+                        },
+                        true,
+                    )
+                    .map_err(|error| error.source)?;
+                assert!(preview.dry_run);
+                assert_eq!(preview.operations[0].result["was_enabled"], true);
+                assert!(repository
+                    .load_synced_snapshot()?
+                    .packs
+                    .contains_key("cooking"));
                 Ok(())
             })
             .unwrap();

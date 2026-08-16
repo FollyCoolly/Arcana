@@ -102,6 +102,34 @@
       }
     },
     {
+      "operation": "pack.write",
+      "input": {
+        "manifest": {
+          "schema_version": 1,
+          "id": "cooking",
+          "name": "Cooking"
+        }
+      }
+    },
+    {
+      "operation": "pack.enable",
+      "input": {
+        "pack_id": "cooking"
+      }
+    },
+    {
+      "operation": "pack.disable",
+      "input": {
+        "pack_id": "cooking"
+      }
+    },
+    {
+      "operation": "pack.delete",
+      "input": {
+        "pack_id": "cooking"
+      }
+    },
+    {
       "operation": "status.select",
       "input": {
         "position": 0,

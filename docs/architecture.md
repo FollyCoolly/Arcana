@@ -47,7 +47,7 @@ flowchart TB
 
 ### Frontend
 
-`src/routes/+page.svelte` 是主菜单与屏幕路由；`src/lib/screens/` 提供 Status、Skills、Achievements、Missions、Items 和 Gallery；`src/lib/components/` 存放雷达图、技能图等可复用组件。
+`src/routes/+page.svelte` 是主菜单与屏幕路由；`src/lib/screens/` 提供 Status、Skills、Achievements、Missions、Packs、Items 和 Gallery；`src/lib/components/` 存放雷达图、技能图等可复用组件。
 
 前端通过 Tauri `invoke` 调用后端，不持久化领域状态。Mission Dashboard 槽位与 Status 五项选择属于本机配置，由后端单独保存。
 
@@ -57,7 +57,7 @@ flowchart TB
 
 | 模块 | 职责 |
 | --- | --- |
-| `data_platform.rs` | Status、Achievement、Skill dashboard 与 mutation；Pack asset 安全读取 |
+| `data_platform.rs` | Status、Achievement、Skill、Pack dashboard 与 mutation；Pack asset 安全读取 |
 | `missions.rs` | Mission/Suggestion 查询、接受、拒绝、完成、归档和 Dashboard 配置 |
 | `items.rs` | 读取 Markdown/Obsidian 物品来源并计算统计 |
 | `gallery.rs` | 汇总外部媒体文件 |
@@ -65,9 +65,24 @@ flowchart TB
 
 ### Application
 
-`src-tauri/src/application/` 实现 UI 与 CLI 共用的用例：运行时初始化和锁、Record、Pack、Status、Achievement、Skill、Mission、AssistantMemory、上下文摘要、批量事务与本机选择配置。
+`src-tauri/src/application/` 实现 UI 与 CLI 共用的用例：运行时初始化和锁、Record、Pack、Status、Achievement、Skill、Mission、AssistantMemory、上下文摘要、批量事务与本机选择配置。Pack write/enable/disable/delete 与其他核心 mutation 共用同一 batch 事务；二进制 asset 使用独立命令。
 
 Application 返回类型化结果，不返回 Tauri 类型，也不处理界面状态。
+
+当前用户可修改数据的入口如下。这里的“Skill”指外部 Agent Skill，不是持久化的技能节点：
+
+| 数据 | `arcana-data` / Agent Skill | 桌面 UI |
+| --- | --- | --- |
+| Record | 完整读写、删除、dry-run、batch | 暂无专用编辑器，由 Agent 记录 |
+| Pack 与启用状态 | 完整读写、启停、删除、dry-run、batch | 列表、启停、删除预演与确认 |
+| Pack asset | 独立 CLI / Pack Manager 操作 | 只读展示 |
+| Status 展示选择 | 完整读写、dry-run、batch | 选择要展示的 Dimension |
+| Achievement 状态 | 完整读写、撤销、dry-run、batch | 跟踪、完成与撤销 |
+| Mission / Suggestion | 完整生命周期、dry-run、batch | 审阅和生命周期操作 |
+| AssistantMemory | 完整读写、删除、dry-run、batch | 暂无专用编辑器，由 Agent 管理 |
+| 本机 Dashboard 配置 | 不参与同步 | Mission 等对应界面 |
+
+Items、Gallery、Weather 仍是外部来源适配器，不属于本次统一的核心用户数据层。
 
 ### Domain
 

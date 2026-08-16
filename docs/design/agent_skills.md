@@ -64,7 +64,7 @@ scripts/sync_agent_skills.py    # generate / --check
 - 读命令支持精确 ID、namespace、Pack 和状态过滤，避免每次把完整用户仓库塞入上下文。
 - Record、Status selection、Achievement、Mission/Suggestion 和 AssistantMemory 修改命令支持 `--dry-run`，返回将修改的实体并在验证后回滚；新仓库使用独立的 `init` 命令，不提供旧 JSON 数据迁移命令。
 - 多个用户状态更新使用 `batch apply --file <json>`，按数组顺序在一个 SQLite 事务中执行，后续操作可以读取前序结果；全部成功才提交，任一失败则全部回滚。
-- Pack 内容与二进制 asset 使用 `pack validate|write|asset-put|asset-delete` 专用流程，不进入用户状态 batch；`init`、查询和 `json import|export` 也不接受 `--dry-run`。
+- Pack 结构化内容与启用状态可通过 `pack.write|enable|disable|delete` 进入 batch；二进制 asset 仍使用 `asset-put|asset-delete` 专用流程。Pack mutation 支持 `--dry-run`，`init`、查询、`pack validate` 和 `json import|export` 不接受 `--dry-run`。
 - CLI 不暴露任意 SQL、任意文件写入或“跳过验证”参数。
 
 第一版命令族：
@@ -120,7 +120,7 @@ sync status|import|export|pull|push|run
 
 支持的 operation 名称以 `capabilities.commands.batch.operations` 为准。成功结果按原顺序返回 `{index,operation,result}`；失败结果在 `details` 中提供 `operation_index` 和 `operation`，不返回部分成功。单条用户状态写命令和 `batch apply` 都接受全局 `--dry-run`；它们执行完全相同的事务内代码，只在结尾选择 rollback 或 commit。dry-run 中由系统生成的 UUIDv7 和时间是预览值，正式执行时会重新生成，调用方不得让后续输入引用这些预览 ID；除这些系统字段外，确认后提交的 operation 数组必须与预览一致，期间数据发生变化则重新 dry-run。
 
-`pack scaffold <id> --name <name>` 直接输出可交给 `pack validate|write` 的 `PackContent` JSON，不要求 runtime 已初始化。`PackContent` 只包含 `manifest` 以及可选的 `record_definitions`、`dimensions`、`achievements`、`skills`；它不是新的持久化 Schema，也不包含 asset bytes。`pack validate` 使用当前 Pack 已有 asset，把候选内容放入当前仓库快照做全量校验但不写入。`pack write` 在单事务中插入或替换结构化内容，并保留原 enabled 状态和全部 asset。asset bytes 只通过 `asset-put <pack_id> <assets/...> --file <local_file>` 与 `asset-delete` 修改；`show` 只返回 asset path 和 byte size，不把二进制编码进 JSON。启用/停用不级联父子 Pack，重复操作返回 `changed: false`。
+`pack scaffold <id> --name <name>` 直接输出可交给 `pack validate|write` 的 `PackContent` JSON，不要求 runtime 已初始化。`PackContent` 只包含 `manifest` 以及可选的 `record_definitions`、`dimensions`、`achievements`、`skills`；它不是新的持久化 Schema，也不包含 asset bytes。`pack validate` 使用当前 Pack 已有 asset，把候选内容放入当前仓库快照做全量校验但不写入。`pack write` 在单事务中插入或替换结构化内容，并保留原 enabled 状态和全部 asset。`pack.write` 可与 `pack.enable` 在 batch 中原子执行。asset bytes 只通过 `asset-put <pack_id> <assets/...> --file <local_file>` 与 `asset-delete` 修改；`show` 只返回 asset path 和 byte size，不把二进制编码进 JSON。启用/停用不级联父子 Pack，重复操作返回 `changed: false`。`pack delete --dry-run` 返回子 Pack、将变为 unresolved 的用户 Record/Achievement 状态和失效的本机 Status selection；实际删除 Definition 与 asset，但保留用户状态。
 
 `status list-dimensions` 返回已启用 Pack 的完整 DimensionDefinition，以及本机五个 selection 是否仍然 available。`status evaluate [dimension_id]` 从同一 SQLite 事务快照读取 Pack、Record 与 selection；省略 ID 时计算全部有效 Dimension。每个结果包含子 Score 原始值、clamp 后分数、缺失 Record ID、Dimension 加权平均、Lv.0～Lv.5 和标题，但不持久化任何派生值。`status select <position> <dimension_id>` 只接受当前有效 Dimension；`status select <position> --clear` 显式清空位置。Pack 停用后 selection 保留并标记 unavailable，不静默补位。
 

@@ -196,6 +196,10 @@ pub fn capabilities() -> Value {
                     "record.correct-event",
                     "record.delete-event",
                     "record.delete",
+                    "pack.write",
+                    "pack.enable",
+                    "pack.disable",
+                    "pack.delete",
                     "status.select",
                     "status.clear",
                     "achievement.state-set",
@@ -244,7 +248,8 @@ pub fn capabilities() -> Value {
                     "asset-put",
                     "asset-delete",
                     "enable",
-                    "disable"
+                    "disable",
+                    "delete"
                 ]
             },
             "status": {

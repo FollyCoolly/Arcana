@@ -796,6 +796,35 @@ fn pack_commands_round_trip_content_assets_and_enabled_state() {
     assert_eq!(shown["pack"]["enabled"], true);
     assert_eq!(shown["pack"]["assets"][0]["path"], "assets/note.txt");
     assert!(shown["pack"].get("asset_bytes").is_none());
+
+    let preview_delete = arcana_data(&[
+        "pack",
+        "--runtime",
+        &runtime_arg,
+        "delete",
+        "cooking",
+        "--dry-run",
+    ]);
+    assert!(
+        preview_delete.status.success(),
+        "{}",
+        utf8(&preview_delete.stderr)
+    );
+    let preview = parse_json(&preview_delete.stdout);
+    assert_eq!(preview["deleted_pack"]["pack_id"], "cooking");
+    assert_eq!(preview["deleted_pack"]["was_enabled"], true);
+    assert_eq!(preview["deleted_pack"]["dry_run"], true);
+    assert!(
+        arcana_data(&["pack", "--runtime", &runtime_arg, "show", "cooking"])
+            .status
+            .success()
+    );
+
+    let delete = arcana_data(&["pack", "--runtime", &runtime_arg, "delete", "cooking"]);
+    assert!(delete.status.success(), "{}", utf8(&delete.stderr));
+    let missing = arcana_data(&["pack", "--runtime", &runtime_arg, "show", "cooking"]);
+    assert!(!missing.status.success());
+    assert_eq!(parse_json(&missing.stderr)["code"], "pack_not_found");
 }
 
 #[test]

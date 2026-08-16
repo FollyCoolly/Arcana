@@ -12,11 +12,37 @@ arcana-data pack validate --file <pack-content.json>
 arcana-data pack write --file <pack-content.json>
 arcana-data pack enable <pack_id>
 arcana-data pack disable <pack_id>
+arcana-data pack delete <pack_id>
 arcana-data pack asset-put <pack_id> <assets/path.webp> --file <local-file>
 arcana-data pack asset-delete <pack_id> <assets/path.webp>
 ```
 
-`scaffold` does not require an initialized runtime. `validate` uses current repository context and existing assets but does not write. `write` replaces structured Pack content in one transaction while preserving assets and enabled state.
+`scaffold` does not require an initialized runtime. `validate` uses current repository context and existing assets but does not write. `write` replaces structured Pack content in one transaction while preserving assets and enabled state. Mutating commands support `--dry-run`.
+
+Structured Pack mutations can be part of `batch apply`:
+
+```json
+{
+  "operations": [
+    {
+      "operation": "pack.write",
+      "input": {
+        "manifest": {
+          "schema_version": 1,
+          "id": "cooking",
+          "name": "Cooking"
+        }
+      }
+    },
+    {
+      "operation": "pack.enable",
+      "input": { "pack_id": "cooking" }
+    }
+  ]
+}
+```
+
+Available batch operations are `pack.write`, `pack.enable`, `pack.disable`, and `pack.delete`. Asset bytes remain outside batch JSON.
 
 ## PackContent
 
@@ -147,6 +173,17 @@ Skill IDs and node Achievement IDs must belong to this Pack. Nodes are unique an
 Keep bytes out of PackContent. Add/delete them only through `asset-put` and `asset-delete`. Content validation fails when a referenced card image is missing or its bytes do not match the extension.
 
 Parent/child relations organize PackForest only. Each Pack carries all definitions it needs, enabling/disabling never cascades, and no Pack may use a parent as an implicit runtime dependency.
+
+## Deletion
+
+Preview deletion with `arcana-data pack delete --dry-run <pack_id>`. The result reports:
+
+- whether the Pack was enabled;
+- child Packs that will retain a missing organizational parent;
+- Records and Achievement states that will become unresolved;
+- local Status selections whose Dimension disappears.
+
+Deleting a Pack removes its definitions and assets but deliberately preserves user-owned Records and Achievement states. Require explicit user confirmation after showing this impact.
 
 ## Errors
 

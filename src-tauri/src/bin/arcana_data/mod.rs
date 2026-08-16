@@ -175,9 +175,7 @@ fn execute(command: Commands, dry_run: bool) -> Result<Value, CliError> {
         }
         Commands::Batch { runtime, action } => execute_batch(runtime, action, dry_run),
         Commands::Record { runtime, action } => execute_record(runtime, action, dry_run),
-        Commands::Pack { runtime, action } => {
-            without_dry_run(dry_run, "pack", || execute_pack(runtime, action))
-        }
+        Commands::Pack { runtime, action } => execute_pack(runtime, action, dry_run),
         Commands::Status { runtime, action } => execute_status(runtime, action, dry_run),
         Commands::Achievement { runtime, action } => execute_achievement(runtime, action, dry_run),
         Commands::Skill { runtime, action } => {
@@ -240,6 +238,7 @@ mod tests {
             &["pack", "asset-delete", "cooking", "assets/card.webp"],
             &["pack", "enable", "cooking"],
             &["pack", "disable", "cooking"],
+            &["pack", "delete", "cooking"],
         ];
         for arguments in commands {
             let mut argv = vec!["arcana-data"];

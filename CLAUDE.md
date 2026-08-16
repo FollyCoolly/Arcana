@@ -48,7 +48,7 @@ git diff --check
 - 失败：非零退出码，stdout 为空，stderr 为结构化错误 JSON。
 - `capabilities` 不打开数据库；Skill 应先依据其确认 contract/schema 版本。
 - `--dry-run` 必须执行完整读取、校验和事务逻辑后回滚。
-- `batch apply` 必须在一个事务中全成或全败。
+- `batch apply` 必须在一个事务中全成或全败；结构化 Pack write/enable/disable/delete 也属于 batch mutation，asset bytes 除外。
 - `json import|export` 持有运行时锁，但不执行 Git 操作。
 
 ## 数据模型约束
