@@ -20,10 +20,14 @@
 
     let loading = $state(false);
     let errorMessage = $state<string | null>(null);
-    let statusData = $state<StatusData | null>(initialStatusData);
+    let statusData = $state<StatusData | null>(null);
     let view = $state<"radar" | "detail" | "configure">("radar");
     let selectedDimensionId = $state<string | null>(null);
     let updatingPosition = $state<number | null>(null);
+
+    $effect(() => {
+        statusData = initialStatusData;
+    });
 
     let selectedDimensions = $derived.by<DimensionData[]>(() =>
         (statusData?.dimensions ?? [])
@@ -99,7 +103,7 @@
     }
 
     onMount(() => {
-        if (!statusData && !loading) {
+        if (!initialStatusData && !loading) {
             void loadStatusData();
         }
 

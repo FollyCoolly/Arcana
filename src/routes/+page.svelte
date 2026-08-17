@@ -781,25 +781,6 @@
         pointer-events: none;
     }
 
-    .rm-player-info {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-end;
-        gap: 0.1rem;
-    }
-
-    .rm-player-name,
-    .rm-player-days {
-        color: var(--rm-white);
-        font-family: "p5hatty", "Orbitron", Arial, sans-serif;
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-        -webkit-text-stroke: 0.04em var(--rm-black);
-        paint-order: stroke fill;
-        font-size: clamp(1.5rem, 2.1vw, 3rem);
-    }
-
     .rm-countdown {
         width: 52rem;
         height: 16.9rem;

@@ -19,9 +19,11 @@
         onBack: () => void;
     } = $props();
 
-    let activeDimensionId = $state<string | "all">(
-        selectedDimensionId ?? "all",
-    );
+    let activeDimensionId = $state<string | "all">("all");
+
+    $effect(() => {
+        activeDimensionId = selectedDimensionId ?? "all";
+    });
 
     let selectedDimensions = $derived.by<DimensionData[]>(() =>
         statusData.dimensions

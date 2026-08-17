@@ -30,9 +30,13 @@
 
     let achievementLoading = $state(false);
     let achievementError = $state<string | null>(null);
-    let achievementData = $state<AchievementData | null>(externalData);
+    let achievementData = $state<AchievementData | null>(null);
     let selectedPackIndex = $state(0);
     let changingAchievementId = $state<string | null>(null);
+
+    $effect(() => {
+        achievementData = externalData;
+    });
 
     // Sidebar refs for selection quad
     let sidebarRef = $state<HTMLElement | undefined>(undefined);
@@ -285,7 +289,7 @@
     }
 
     onMount(() => {
-        if (!achievementData && !achievementLoading) {
+        if (!externalData && !achievementLoading) {
             void loadAchievementData();
         }
 
