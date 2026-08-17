@@ -1,4 +1,4 @@
-# Arcana Pack contract v1
+# Arcana Pack command contract v1 / Pack schema v2
 
 Use the canonical [complete PackContent fixture](../../../fixtures/contract-v1/pack-content.json). The Rust process tests exercise the same file; prefer it over reconstructing field names from memory.
 
@@ -29,6 +29,7 @@ Top-level fields:
 {
   "manifest": {},
   "record_definitions": { "definitions": [] },
+  "derived_values": { "values": [] },
   "dimensions": { "dimensions": [] },
   "achievements": { "achievements": [] },
   "skills": { "skills": [] }
@@ -41,7 +42,7 @@ Only `manifest` is required. Omit an unused optional section; do not provide an 
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "id": "machine_learning",
   "name": "Machine Learning",
   "description": "Optional nonblank description.",
@@ -85,6 +86,18 @@ Leaf types are `string`, `number`, `integer`, `boolean`, `date`, and `datetime`.
 
 Two Packs may declare the same ID only with compatible definitions. Kind, name, scalar type/unit, and common structured fields must match. A structured definition may add an optional field; required-field changes, type/unit changes, kind changes, and conflicting nonempty descriptions are breaking changes requiring a new ID.
 
+### DerivedValues
+
+```json
+{
+  "id": "health.bmi",
+  "name": "BMI",
+  "expression": "record('health.weight_kg') / (record('health.height_m') * record('health.height_m'))"
+}
+```
+
+DerivedValue IDs use `<namespace>.<name>`. Optional `description` and `unit` describe the computed value. Expressions may reference number/integer/date scalar Records with `record('<id>')` and other DerivedValues with `derived('<id>')`. Use `days_since(record('<date-id>'))` for date-to-day calculations; the caller supplies the evaluation date. Dependencies must form a DAG. Every referenced definition must be fully declared by the same Pack. Values are evaluated lazily and are not persisted.
+
 ### Status Dimensions
 
 ```json
@@ -98,7 +111,7 @@ Two Packs may declare the same ID only with compatible definitions. Kind, name, 
       "id": "endurance",
       "name": "Endurance",
       "weight": 1,
-      "expression": "280 / record('cardio.run_5k_pace_sec_per_km') * 100"
+            "expression": "derived('cardio.endurance_index')"
     }
   ]
 }
@@ -106,7 +119,7 @@ Two Packs may declare the same ID only with compatible definitions. Kind, name, 
 
 Dimension ID uses `<pack_id>::<local_id>`. Titles have exactly five entries. Thresholds have exactly four values satisfying `0 < t2 < t3 < t4 < t5 <= 100`. Scores are sorted by local ID and have positive finite weights.
 
-Expressions may use finite decimals, `+ - * /`, unary signs, parentheses, `record('<static-id>')`, `min`, `max`, `abs`, and `clamp`. Referenced Records must be numeric scalars fully declared by this Pack. Missing values propagate as missing; final valid child values clamp to `[0,100]`.
+Status expressions may use finite decimals, `+ - * /`, unary signs, parentheses, `record('<static-id>')`, `derived('<static-id>')`, `min`, `max`, `abs`, and `clamp`. A Status Score may reference numeric scalar Records directly or reusable DerivedValues. Put date calculations such as `days_since` in a DerivedValue. Missing Record values propagate through DerivedValues; final valid child Score values clamp to `[0,100]`.
 
 ### Achievements
 

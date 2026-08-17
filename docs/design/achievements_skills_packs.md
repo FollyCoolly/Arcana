@@ -118,6 +118,7 @@ Pack 是兴趣领域与成长定义的组织/分发单元，可以包含：
 
 - manifest；
 - 完整的 RecordDefinition 声明；
+- 可选 DerivedValueDefinition；
 - AchievementDefinition；
 - Arcana Skill 定义；
 - 可选 DimensionDefinition。
@@ -126,7 +127,7 @@ Pack 只有 enabled/disabled 状态，不区分“官方”。manifest 保留 `a
 
 Pack manifest 必须包含整数 `schema_version`，用于解释该 Pack 的全部内容文件；各内容文件不重复保存 Schema 版本。第一版不保存独立内容版本，内容历史由 Git commit 表达。
 
-Pack 不拥有用户 Record 或用户成就状态。Pack 直接拥有其 RecordDefinition、DimensionDefinition、AchievementDefinition、SkillDefinition 和 asset；关闭 Pack 不删除 Pack 内容或用户 Record。
+Pack 不拥有用户 Record 或用户成就状态。Pack 直接拥有其 RecordDefinition、DerivedValueDefinition、DimensionDefinition、AchievementDefinition、SkillDefinition 和 asset；关闭 Pack 不删除 Pack 内容或用户 Record。
 
 ## 7. PackForest
 
@@ -160,7 +161,9 @@ Pack 必须携带自己运行所需的完整 RecordDefinition。启用 Pack 时�
 - 相同 ID 但结构不兼容时，显示差异并阻止相关 Pack 同时启用；
 - 只写 ID、没有完整定义的 Pack 无效。
 
-系统不会把 Pack 定义复制成一份持久化的全局定义。父 Pack 也不向子 Pack 隐式提供 RecordDefinition；子 Pack 必须独立携带所需定义。因此 `parent_pack_id` 不承担 RecordDefinition 继承语义。
+系统不会把 Pack 定义复制成一份持久化的全局定义。父 Pack 也不向子 Pack 隐式提供 RecordDefinition 或 DerivedValueDefinition；子 Pack 必须独立携带所需定义。因此 `parent_pack_id` 不承担 Definition 继承语义。
+
+DerivedValue 采用相同的自包含原则：引用的 RecordDefinition 和其他 DerivedValue 必须由当前 Pack 完整声明，依赖图必须无环。不同 Pack 对同一 DerivedValue ID 的声明只有在名称、单位、公式和非空描述兼容时才能共同启用。
 
 停用 Pack 会移除它对运行时注册表的贡献。如果没有其他已启用 Pack 提供某个定义，对应用户 Record 仍被保留，但在定义再次可用前不能被解释或更新。
 
@@ -189,6 +192,7 @@ Pack 目录保持平铺：
 packs/<pack_id>/
 ├── manifest.json
 ├── record-definitions.json   # 可选
+├── derived-values.json       # 可选，schema v2
 ├── dimensions.json           # 可选
 ├── achievements.json         # 可选
 ├── skills.json               # 可选
@@ -199,7 +203,7 @@ packs/<pack_id>/
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "id": "cooking",
   "name": "烹饪",
   "description": "记录并拓展烹饪能力。",
@@ -220,7 +224,7 @@ packs/<pack_id>/
 - manifest 不保存 enabled、official、安装路径、远端地址、凭证、内容版本或更新时间。
 - 未定义字段一律拒绝。
 
-`arcana.json.enabled_pack_ids` 是唯一启用状态来源。所有 Pack 无论是否启用都必须通过自身 Schema 和内部引用校验；只有已启用 Pack 参与 RecordDefinition 兼容合并和运行时内容查询。
+`arcana.json.enabled_pack_ids` 是唯一启用状态来源。所有 Pack 无论是否启用都必须通过自身 Schema 和内部引用校验；只有已启用 Pack 参与 RecordDefinition/DerivedValue 兼容合并和运行时内容查询。Pack schema v1 仍可读取，但不能包含 `derived-values.json`；新 scaffold 使用 schema v2。
 
 ## 12. `achievements.json`
 

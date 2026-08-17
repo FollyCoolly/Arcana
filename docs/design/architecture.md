@@ -1,7 +1,7 @@
 # 数据平台架构
 
 > **状态**：Current
-> **最后更新**：2026-08-16
+> **最后更新**：2026-08-17
 
 ## 1. 分层
 
@@ -57,7 +57,7 @@ Application Commands 是唯一业务写入口。它们负责：
 
 `settings.json` 可用 `runtime_dir` 与 `repository_dir` 覆盖路径。`data_dir` 是 Items/Gallery/Weather 外部来源目录，与核心 repository 无关。
 
-首次 `init` 创建普通且启用的 `basic` Pack，并从 bundled JSON 资源导入 `identity.nickname`、`identity.birth_date` 两个 Definitions；它们之后与其他 Pack 内容一样从 live repository 读取。
+首次 `init` 创建普通且启用的 `basic` Pack，并从 bundled JSON 资源导入 `identity.nickname`、`identity.birth_date` 两个 RecordDefinitions 与 `identity.game_days` DerivedValueDefinition；它们之后与其他 Pack 内容一样从 live repository 读取。
 
 ## 5. 一致性限制
 

@@ -2,6 +2,7 @@ mod achievement_commands;
 mod batch_commands;
 mod context_commands;
 mod contract;
+mod derived_commands;
 mod memory_commands;
 mod mission_commands;
 mod pack_commands;
@@ -15,6 +16,7 @@ use batch_commands::{execute_batch, BatchAction};
 use clap::{error::ErrorKind, Parser, Subcommand};
 use context_commands::{execute_context, ContextAction};
 use contract::{capabilities, render_json, CliError, EXIT_SUCCESS};
+use derived_commands::{execute_derived, DerivedAction};
 use memory_commands::{execute_memory, MemoryAction};
 use mission_commands::{execute_mission, MissionAction};
 use pack_commands::{execute_pack, PackAction};
@@ -26,7 +28,7 @@ use status_commands::{execute_status, StatusAction};
 use std::path::PathBuf;
 
 #[derive(Parser)]
-#[command(name = "arcana-data", about = "Arcana SQLite data operations CLI")]
+#[command(name = "arcana-data", about = "Arcana local data operations CLI")]
 struct Cli {
     /// Output compact JSON instead of pretty JSON
     #[arg(long, global = true)]
@@ -42,15 +44,15 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Report the stable CLI and data schema capabilities without opening SQLite
+    /// Report the stable CLI and data schema capabilities without opening a runtime
     Capabilities,
-    /// Initialize a fresh SQLite runtime with the basic Pack
+    /// Initialize a fresh local runtime and JSON repository with the basic Pack
     Init {
         /// Runtime directory that will contain arcana.sqlite3
         #[arg(long, value_name = "DIRECTORY")]
         runtime: Option<PathBuf>,
     },
-    /// Read a compact, consistent Agent context from the SQLite runtime
+    /// Read a compact, consistent Agent context from the local runtime
     Context {
         /// Runtime directory containing arcana.sqlite3
         #[arg(long, value_name = "DIRECTORY", global = true)]
@@ -74,7 +76,7 @@ enum Commands {
         #[command(subcommand)]
         action: RecordAction,
     },
-    /// Inspect, validate, and update Packs in the SQLite runtime
+    /// Inspect, validate, and update Packs in the configured JSON repository
     Pack {
         /// Runtime directory containing arcana.sqlite3
         #[arg(long, value_name = "DIRECTORY", global = true)]
@@ -89,6 +91,14 @@ enum Commands {
         runtime: Option<PathBuf>,
         #[command(subcommand)]
         action: StatusAction,
+    },
+    /// List and evaluate reusable DerivedValues from enabled Packs
+    Derived {
+        /// Runtime directory containing Arcana local data
+        #[arg(long, value_name = "DIRECTORY", global = true)]
+        runtime: Option<PathBuf>,
+        #[command(subcommand)]
+        action: DerivedAction,
     },
     /// Query Achievement definitions and update minimal user states
     Achievement {
@@ -122,7 +132,7 @@ enum Commands {
         #[command(subcommand)]
         action: MemoryAction,
     },
-    /// Convert between SQLite and a canonical JSON directory without Git
+    /// Import or export the combined runtime as canonical JSON without Git
     Json {
         #[command(subcommand)]
         action: JsonAction,
@@ -177,6 +187,9 @@ fn execute(command: Commands, dry_run: bool) -> Result<Value, CliError> {
         Commands::Record { runtime, action } => execute_record(runtime, action, dry_run),
         Commands::Pack { runtime, action } => execute_pack(runtime, action, dry_run),
         Commands::Status { runtime, action } => execute_status(runtime, action, dry_run),
+        Commands::Derived { runtime, action } => {
+            without_dry_run(dry_run, "derived", || execute_derived(runtime, action))
+        }
         Commands::Achievement { runtime, action } => execute_achievement(runtime, action, dry_run),
         Commands::Skill { runtime, action } => {
             without_dry_run(dry_run, "skill", || execute_skill(runtime, action))
@@ -284,6 +297,13 @@ mod tests {
             &["status", "list-dimensions"],
             &["status", "evaluate"],
             &["status", "evaluate", "fitness::physical"],
+            &[
+                "status",
+                "evaluate",
+                "fitness::physical",
+                "--as-of",
+                "2026-08-17",
+            ],
             &["status", "select", "0", "fitness::physical"],
             &["status", "select", "0", "--clear"],
         ];
@@ -294,6 +314,32 @@ mod tests {
                 matches!(
                     Cli::try_parse_from(argv).unwrap().command,
                     Commands::Status { .. }
+                ),
+                "failed to parse {arguments:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn parses_every_derived_command() {
+        let commands: &[&[&str]] = &[
+            &["derived", "list"],
+            &["derived", "list", "--as-of", "2026-08-17"],
+            &[
+                "derived",
+                "evaluate",
+                "identity.game_days",
+                "--as-of",
+                "2026-08-17",
+            ],
+        ];
+        for arguments in commands {
+            let mut argv = vec!["arcana-data"];
+            argv.extend_from_slice(arguments);
+            assert!(
+                matches!(
+                    Cli::try_parse_from(argv).unwrap().command,
+                    Commands::Derived { .. }
                 ),
                 "failed to parse {arguments:?}"
             );

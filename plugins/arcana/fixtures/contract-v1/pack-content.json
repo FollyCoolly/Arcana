@@ -1,6 +1,6 @@
 {
   "manifest": {
-    "schema_version": 1,
+    "schema_version": 2,
     "id": "cooking",
     "name": "Cooking",
     "description": "Track practical home-cooking growth.",
@@ -34,6 +34,16 @@
       }
     ]
   },
+  "derived_values": {
+    "values": [
+      {
+        "id": "cooking.experience_score",
+        "name": "Cooking experience score",
+        "description": "A reusable uncapped score derived from total cooking practice.",
+        "expression": "record('cooking.dishes_cooked_total') * 2"
+      }
+    ]
+  },
   "dimensions": {
     "dimensions": [
       {
@@ -46,7 +56,7 @@
             "id": "experience",
             "name": "Experience",
             "weight": 1,
-            "expression": "record('cooking.dishes_cooked_total') * 2"
+            "expression": "derived('cooking.experience_score')"
           }
         ]
       }

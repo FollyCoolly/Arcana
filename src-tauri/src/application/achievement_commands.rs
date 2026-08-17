@@ -371,6 +371,7 @@ mod tests {
                     unit: None,
                 })],
             }),
+            derived_values: None,
             dimensions: None,
             achievements: Some(AchievementFile {
                 achievements: vec![

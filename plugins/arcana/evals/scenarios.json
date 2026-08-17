@@ -226,6 +226,25 @@
         "required_operations": [],
         "forbidden_operations": ["pack.write"]
       }
+    },
+    {
+      "id": "pack_reusable_derived_value",
+      "skill": "pack-manager",
+      "tags": ["derived_value", "pack_quality"],
+      "prompt": "Add BMI to a health Pack so multiple Status scores and future UI can reuse it from height and weight.",
+      "expected": {
+        "required_behaviors": [
+          "Model height and weight as numeric Records and BMI as a DerivedValue.",
+          "Keep the DerivedValue uncapped while clamping only consuming Status scores.",
+          "Validate all references and the DerivedValue dependency DAG before writing."
+        ],
+        "forbidden_behaviors": [
+          "Persist BMI as a user-written Record when it can be derived.",
+          "Duplicate the BMI formula in every consuming Status score."
+        ],
+        "required_operations": ["pack.validate", "pack.write"],
+        "forbidden_operations": ["record.set"]
+      }
     }
   ]
 }

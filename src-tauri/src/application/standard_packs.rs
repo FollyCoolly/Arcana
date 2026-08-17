@@ -1,4 +1,4 @@
-use crate::domain::{Pack, RecordDefinitionFile};
+use crate::domain::{DerivedValueFile, Pack, RecordDefinitionFile};
 use std::collections::BTreeMap;
 
 pub const BASIC_PACK_ID: &str = "basic";
@@ -15,6 +15,12 @@ pub fn basic_pack() -> Pack {
                 "../../resources/basic-pack/record-definitions.json"
             ))
             .expect("bundled basic RecordDefinitions must be valid"),
+        ),
+        derived_values: Some(
+            serde_json::from_str::<DerivedValueFile>(include_str!(
+                "../../resources/basic-pack/derived-values.json"
+            ))
+            .expect("bundled basic DerivedValues must be valid"),
         ),
         dimensions: None,
         achievements: None,
@@ -41,5 +47,9 @@ mod tests {
             .map(|definition| definition.id().to_string())
             .collect();
         assert_eq!(ids, ["identity.birth_date", "identity.nickname"]);
+        assert_eq!(
+            pack.derived_values.unwrap().values[0].id,
+            "identity.game_days"
+        );
     }
 }

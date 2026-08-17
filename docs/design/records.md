@@ -1,7 +1,7 @@
 # RecordDefinition 与 Record
 
 > **状态**：Current
-> **最后更新**：2026-08-16
+> **最后更新**：2026-08-17
 
 ## 1. 定位
 
@@ -9,6 +9,7 @@ Record 是 Arcana 全局、相对扁平、用户所有的事实层。Status 和 
 
 ```text
 RecordDefinition --defines--> Record
+Record --read by--> DerivedValue
 Record --read by--> selected Pack Dimension
 Record --read by--> Agent evaluating Achievement
 ```
@@ -41,7 +42,7 @@ RecordDefinition 第一版只包含：
 - scalar 使用必填 `value_type` 和可选 `unit`；
 - collection/event 使用 `fields` 描述业务字段的类型、必填性和可选单位。
 
-第一版不包含独立版本、所有者 Pack、来源、`update_mode`、UI 配置或计算规则，也不实现任意 JSON Schema。
+第一版 RecordDefinition 不包含独立版本、所有者 Pack、来源、`update_mode`、UI 配置或计算规则，也不实现任意 JSON Schema。可复用计算由独立的 DerivedValueDefinition 表达，不写入 RecordDefinition。
 
 ### 2.1 标准身份 Record
 
@@ -50,7 +51,7 @@ RecordDefinition 第一版只包含：
 - `identity.nickname`：`scalar` + `string`；
 - `identity.birth_date`：`scalar` + `date`。
 
-它们使用与其他事实相同的 Record、SQLite Repository 和 Git JSON 格式。应用只在消费层约定这两个 ID：昵称缺失时显示产品默认值，生日缺失时不计算游戏天数。停用 `basic` Pack 不删除已有 Record。
+它们使用与其他事实相同的 Record、SQLite Repository 和 Git JSON 格式。`basic` Pack 同时定义 `identity.game_days` DerivedValue，由生日和查询日期计算。昵称缺失时显示产品默认值，生日缺失时游戏天数为缺失。停用 `basic` Pack 不删除已有 Record。
 
 创建新用户仓库时应用写入并默认启用标准 `basic` Pack；它仍是仓库中的普通、可编辑 Pack，而不是应用数据库里的隐藏 Definition。新系统不从旧版 Profile JSON 生成这两个 Record；用户在新仓库中按需重新填写。
 

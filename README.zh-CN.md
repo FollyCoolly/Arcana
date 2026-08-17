@@ -27,11 +27,12 @@ Arcana 把现实中的事实与目标组织为 Status、Achievement、Skill 和 
 ## 功能
 
 - **Record**：Status 与 Achievement 共用的扁平事实层。Definition 由已启用 Pack 提供，Record 值归用户所有。
-- **Status**：Pack 中的 Dimension 从数值 Record 计算 0～100 子分数，以加权平均得到最终分数，并派生 Lv.0～Lv.5。
+- **DerivedValue**：Pack 可定义 BMI、游戏天数等具名可复用计算；它们从 Record 惰性计算，不重复持久化。
+- **Status**：Pack 中的 Dimension 从数值 Record 或 DerivedValue 计算 0～100 子分数，以加权平均得到最终分数，并派生 Lv.0～Lv.5。
 - **Achievement**：带前置关系的里程碑，只保存最小的 `tracked` / `achieved` 状态；只有 achieved 才计分。
 - **Skill**：由 Pack 定义、从 achieved Achievement 派生的技能图；等级与节点状态不重复持久化。
 - **Mission**：AI 推荐先作为本机 MissionSuggestion；用户接受后才成为可同步 Mission。Mission 支持 active、completed、archived 生命周期。
-- **Pack**：可分层组织 RecordDefinition、Dimension、Achievement、Skill 与资源。桌面 Pack 页面可管理已安装内容、启用状态与安全删除影响；父子关系只负责组织，不构成启用依赖。
+- **Pack**：可分层组织 RecordDefinition、DerivedValueDefinition、Dimension、Achievement、Skill 与资源。桌面 Pack 页面可管理已安装内容、启用状态与安全删除影响；父子关系只负责组织，不构成启用依赖。
 - **AssistantMemory**：可与用户仓库一起同步的长期语义上下文。
 - **Items 与 Gallery**：读取用户指定的外部文件，外部来源保持权威，不复制进核心数据平台。
 
@@ -86,7 +87,7 @@ cargo build --manifest-path src-tauri/Cargo.toml --bin arcana-data
 ./src-tauri/target/debug/arcana-data context summary
 ```
 
-CLI 提供 Record、Pack、Status、Achievement、Skill、Mission、AssistantMemory、batch、dry-run 与确定性 JSON import/export 命令。多操作 batch 只支持 Record；JSON-backed mutation 使用单独命令。当前合约以 `arcana-data help` 和各命令组的 `help` 为准。
+CLI 提供 Record、DerivedValue、Pack、Status、Achievement、Skill、Mission、AssistantMemory、batch、dry-run 与确定性 JSON import/export 命令。多操作 batch 只支持 Record；JSON-backed mutation 使用单独命令。当前合约以 `arcana-data help` 和各命令组的 `help` 为准。
 
 ## 检查
 

@@ -159,6 +159,7 @@ mod tests {
                 tags: Vec::new(),
             },
             record_definitions: None,
+            derived_values: None,
             dimensions: None,
             achievements: Some(AchievementFile {
                 achievements: vec![

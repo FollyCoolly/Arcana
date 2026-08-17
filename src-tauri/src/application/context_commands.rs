@@ -69,7 +69,8 @@ where
         let mut selections = transaction.status_dimension_selection()?;
         selections.sort_by_key(|selection| selection.position);
 
-        let evaluations = evaluate_dimensions_from_snapshot(&snapshot, &selections, None)?;
+        let evaluations =
+            evaluate_dimensions_from_snapshot(&snapshot, &selections, None, as_of_date)?;
         let mut evaluations_by_id: BTreeMap<String, StatusDimensionEvaluation> = evaluations
             .into_iter()
             .map(|evaluation| (evaluation.dimension_id.clone(), evaluation))

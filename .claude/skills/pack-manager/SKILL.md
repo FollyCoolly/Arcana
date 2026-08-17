@@ -1,6 +1,6 @@
 ---
 name: pack-manager
-description: Create, extend, refine, validate, enable, disable, remove, and add assets to Arcana content Packs containing RecordDefinitions, Status Dimensions, Achievements, and Arcana Skills. Use when a user wants a new domain pack, wants an existing pack expanded or improved, wants Pack availability changed, or needs pack schema and quality problems diagnosed or fixed.
+description: Create, extend, refine, validate, enable, disable, remove, and add assets to Arcana content Packs containing RecordDefinitions, DerivedValues, Status Dimensions, Achievements, and Arcana Skills. Use when a user wants a new domain pack, wants an existing pack expanded or improved, wants Pack availability changed, or needs pack schema and quality problems diagnosed or fixed.
 ---
 
 # Pack Manager
@@ -26,9 +26,9 @@ Let a Pack start small. Use `parent_pack_id` to organize broad-to-specific domai
 
 Keep Records flat and Packs hierarchical. A Pack may declare RecordDefinitions from multiple namespaces. If its Dimensions or Achievements reference a RecordDefinition, include that full definition in the same Pack even when another Pack already declares a compatible copy.
 
-Create a RecordDefinition only for reusable, user-specific facts worth recording. Do not force every Achievement into a measurable Record. Link existing facts with `related_record_definition_ids`; use `tip` for unusual judgment or useful tracking information that does not justify a predefined Record.
+Create a RecordDefinition only for reusable, user-specific facts worth recording. Create a DerivedValue for a named, reusable calculation such as BMI or game days; its value is computed from Records or other DerivedValues and is never recorded. Keep dependencies local to the Pack and acyclic. Do not force every Achievement into a measurable Record. Link existing facts with `related_record_definition_ids`; use `tip` for unusual judgment or useful tracking information that does not justify a predefined Record.
 
-Define Status as one Dimension layer containing weighted child Scores. Keep each Score in `[0,100]` through the system's default clamp and use the safe expression language only. Do not add a recursive tree or final score expression.
+Define Status as one Dimension layer containing weighted child Scores. A Score may reference numeric Records directly or reuse DerivedValues; do not create a DerivedValue for a one-off readable calculation. Keep each Score in `[0,100]` through the system's default clamp and use the safe expression language only. Do not add a recursive tree or final score expression.
 
 Define Achievement completion in natural language. Keep prerequisites local to the Pack and acyclic. Define Arcana Skill nodes as local Achievement references with points; only achieved states score.
 
@@ -55,10 +55,11 @@ Before writing, verify:
 - names and descriptions are distinct, concrete, and game-readable;
 - difficulty reflects real progression;
 - RecordDefinitions are reusable and not near-duplicates;
-- all referenced definitions are fully declared and compatible;
+- all referenced RecordDefinitions and DerivedValues are fully declared and compatible;
+- DerivedValue dependencies form a DAG and date calculations use `days_since`;
 - Achievement prerequisites form a DAG;
 - related Record IDs, Skill nodes, and scoped IDs belong to this Pack;
-- every Score expression is readable and uses numeric scalar Records;
+- every Score expression is readable and uses numeric scalar Records or DerivedValues;
 - Skill Lv.5 is reachable but does not require every possible milestone by design;
 - assets use portable `assets/...` paths and supported image bytes.
 

@@ -12,7 +12,7 @@ Translate the user's explicit account into the smallest truthful Arcana update. 
 1. Resolve `arcana-data` from `PATH`. Inside the Arcana repository, fall back to the built binary for the current platform or `cargo run --manifest-path src-tauri/Cargo.toml --bin arcana-data --`.
 2. Run `arcana-data --compact capabilities` before the first write. Require `contract_version: 1`, `structured_errors`, `dry_run`, and `batch`; refuse writes on an unknown contract.
 3. Read [references/cli-contract.md](references/cli-contract.md) before composing payloads.
-4. Run `context summary`, then use targeted queries for the entities implicated by the user's report. Do not load every Pack or Record without a reason.
+4. Run `context summary`, then use targeted queries for the Records, DerivedValues, or other entities implicated by the user's report. Do not load every Pack or Record without a reason.
 
 ## Decide What Is True
 
@@ -25,6 +25,8 @@ Separate the input into:
 - ambiguity that must remain unwritten until clarified.
 
 Never invent dates, quantities, event fields, past history, or completion states. A user's direct statement that an Achievement is complete is sufficient even without tracking Records. Conversely, a Record update does not automatically prove every related Achievement.
+
+Never write a computed fact as a Record when the Pack defines it as a DerivedValue. Write only the source facts, then use `derived evaluate` when the computed value matters.
 
 Use `tracked` only when the user is actively following or gathering information for an Achievement. It is not numeric progress and contributes no Skill points.
 

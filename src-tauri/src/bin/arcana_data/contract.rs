@@ -1,5 +1,7 @@
 use arcana_lib::application::MutationBatchError;
-use arcana_lib::domain::{RepositoryError, RepositoryErrorCode, SCHEMA_VERSION};
+use arcana_lib::domain::{
+    RepositoryError, RepositoryErrorCode, PACK_SCHEMA_VERSION, REPOSITORY_SCHEMA_VERSION,
+};
 use arcana_lib::storage::sqlite::DATABASE_SCHEMA_VERSION;
 use serde::Serialize;
 use serde_json::{json, Value};
@@ -19,6 +21,7 @@ pub enum RepositoryOperation {
     Pack,
     PackAsset,
     Status,
+    DerivedValue,
     Achievement,
     Skill,
     Mission,
@@ -126,6 +129,7 @@ fn repository_error_code(
             RepositoryOperation::Pack => "pack_not_found",
             RepositoryOperation::PackAsset => "pack_asset_not_found",
             RepositoryOperation::Status => "status_dimension_not_found",
+            RepositoryOperation::DerivedValue => "derived_value_not_found",
             RepositoryOperation::Achievement => "achievement_not_found",
             RepositoryOperation::Skill => "skill_not_found",
             RepositoryOperation::Mission => "mission_not_found",
@@ -141,6 +145,7 @@ fn repository_error_code(
             RepositoryOperation::Pack => "pack_conflict",
             RepositoryOperation::PackAsset => "pack_asset_conflict",
             RepositoryOperation::Status => "status_conflict",
+            RepositoryOperation::DerivedValue => "derived_value_conflict",
             RepositoryOperation::Achievement => "achievement_conflict",
             RepositoryOperation::Skill => "skill_conflict",
             RepositoryOperation::Mission => "mission_conflict",
@@ -156,6 +161,7 @@ fn repository_error_code(
             RepositoryOperation::Pack => "pack_unresolved",
             RepositoryOperation::PackAsset => "pack_asset_unresolved",
             RepositoryOperation::Status => "status_dimension_unresolved",
+            RepositoryOperation::DerivedValue => "derived_value_unresolved",
             RepositoryOperation::Achievement => "achievement_unresolved",
             RepositoryOperation::Skill => "skill_unresolved",
             RepositoryOperation::Mission => "mission_unresolved",
@@ -171,8 +177,8 @@ fn repository_error_code(
 pub fn capabilities() -> Value {
     json!({
         "contract_version": CONTRACT_VERSION,
-        "repository_schema_version": SCHEMA_VERSION,
-        "pack_schema_version": SCHEMA_VERSION,
+        "repository_schema_version": REPOSITORY_SCHEMA_VERSION,
+        "pack_schema_version": PACK_SCHEMA_VERSION,
         "sqlite_schema_version": DATABASE_SCHEMA_VERSION,
         "commands": {
             "init": { "version": 1 },
@@ -235,6 +241,10 @@ pub fn capabilities() -> Value {
             "status": {
                 "version": 1,
                 "actions": ["list-dimensions", "evaluate", "select"]
+            },
+            "derived": {
+                "version": 1,
+                "actions": ["list", "evaluate"]
             },
             "achievement": {
                 "version": 1,

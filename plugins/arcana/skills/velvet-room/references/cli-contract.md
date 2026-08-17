@@ -20,6 +20,8 @@ arcana-data record get <definition_id>
 arcana-data record query --definition-id <id>
 arcana-data record query --namespace <namespace>
 arcana-data record query --pack <pack_id>
+arcana-data derived list
+arcana-data derived evaluate <derived_value_id> --as-of <YYYY-MM-DD>
 arcana-data achievement list --achievement-id <pack::id>
 arcana-data achievement list --status tracked
 arcana-data achievement list --related-record-definition-id <id>
@@ -31,6 +33,8 @@ arcana-data memory list --kind preference
 ```
 
 All filters on one query are combined with AND.
+
+DerivedValues are read-only, lazily computed values from enabled Pack definitions. Missing source Records appear in `missing_record_ids`; update only truthful source Records, never the DerivedValue itself.
 
 ## Record inputs
 

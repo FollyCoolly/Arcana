@@ -1,7 +1,7 @@
 # 数据平台、所有权与 JSON
 
 > **状态**：Current
-> **最后更新**：2026-08-16
+> **最后更新**：2026-08-17
 
 ## 1. 为什么不是“所有东西都进 SQLite”
 
@@ -32,6 +32,7 @@ packs/
 └── <pack_id>/
     ├── manifest.json
     ├── record-definitions.json     # 可选
+    ├── derived-values.json         # 可选，Pack schema v2
     ├── dimensions.json             # 可选
     ├── achievements.json           # 可选
     ├── skills.json                 # 可选
@@ -72,9 +73,11 @@ Codec 负责：
 
 ## 5. 初始化与升级
 
-一个 repository 对应一个用户，不建立 Profile。新运行时创建 `basic` Pack；昵称和生日只是该 Pack 提供的可选 Records。缺少昵称时 UI 使用默认值，缺少生日时不计算游戏天数。
+一个 repository 对应一个用户，不建立 Profile。新运行时创建 Pack schema v2 的 `basic` Pack；昵称和生日是可选 Records，游戏天数是由生日计算且不持久化的 DerivedValue。缺少昵称时 UI 使用默认值，缺少生日时游戏天数为缺失。
 
 当前代码支持从已实现过的 SQLite Schema v1 升级：升级前读取其中的 Pack/semantic/local entities，写入新 JSON store，再执行 Schema v2 migration 删除非 Record 表。旧版应用的其他 JSON 格式按此前决策完全抛弃，不提供转换。
+
+运行时会把内容与旧内置 `basic` Pack 完全一致的 schema v1 副本升级为当前 schema v2，以补充 `identity.game_days`；只要用户改过该 Pack 的任意内容就不自动覆盖，需通过 Pack 工具显式升级。
 
 ## 6. 删除、历史与安全
 

@@ -1,15 +1,15 @@
 # Status 目标模型
 
 > **状态**：Implemented in Domain/Application/CLI/Tauri Status UI
-> **最后更新**：2026-08-16
+> **最后更新**：2026-08-17
 
 ## 1. 定位
 
 Status 不拥有独立事实或需要同步的用户状态。Pack 直接定义 Dimension；UI 从已启用 Pack 提供的 Dimension 中选择五个，并只在本机保存这项显示配置，再从 Record 计算子 Score、Dimension 总分和等级。
 
 ```text
-Record + selected Pack Dimension
-    -> child Score expression
+Record [-> DerivedValue] + selected Pack Dimension
+    -> Status Score expression
     -> Dimension weighted average
     -> Lv.0..Lv.5
 ```
@@ -22,7 +22,7 @@ Status 分数和等级始终可重新计算，不写入同步数据。
 
 - 一个 Pack 可以直接包含若干 DimensionDefinition。
 - 一个 Dimension 包含若干子 Score。
-- 子 Score 通过安全表达式读取一个或多个 Record。
+- 子 Score 通过安全表达式直接读取数值 Record，或读取可复用的 DerivedValue。
 - Dimension 只对子 Score 做加权平均。
 - 本机 UI 配置保存五个互不重复的 `selected_dimension_ids`，不创建额外的 Status 领域实体。
 
@@ -47,8 +47,8 @@ Pack
 - `id` 在所属 Dimension 中稳定且唯一；
 - `name` 用于 UI 和诊断；
 - `weight` 必须大于 0，不要求所有权重之和为 1；
-- `expression` 是只读 Record 的纯表达式；
-- 表达式可以引用多个 Record；
+- `expression` 是只读 Record/DerivedValue 的纯表达式；
+- 表达式可以引用多个 Record 和 DerivedValue；
 - 有效数值结果默认 clamp 到 `[0, 100]`。
 
 表达式原始结果可用于诊断，但不持久化。语法错误、类型错误、NaN 和无穷大必须显示为配置错误，不能伪装成 0、null 或正常分数。
@@ -87,16 +87,18 @@ Status 维持 `Lv.0～Lv.5`：
 
 表达式是确定、无副作用的数值计算，不是任意 JavaScript、Rust、shell 或通用脚本引擎 eval。第一版使用专用的小型 parser 和 AST evaluator。
 
-### 6.1 Record 读取
+### 6.1 Record 与 DerivedValue 读取
 
-唯一的数据读取函数是：
+数据读取函数是：
 
 ```text
 record('<definition_id>')
+derived('<derived_value_id>')
 ```
 
 - 参数必须是静态字符串字面量，不能动态拼接。
 - 引用的 RecordDefinition 必须由当前 Pack 完整声明，并且是 `scalar` + `number`/`integer`。
+- 引用的 DerivedValue 必须由当前 Pack 完整声明；其依赖与计算规则见 [derived_values.md](./derived_values.md)。
 - Definition 有效但用户 Record 缺失时返回 `null`。
 - Definition 不存在、kind/type 不匹配或 Record invalid/unresolved 时报告配置或数据错误，不伪装成 0。
 - 第一版不读取 string、boolean、date、datetime、collection 或 event，也不提供 count/sum/filter 查询。
@@ -112,6 +114,7 @@ record('<definition_id>')
 - 一元 `+`、`-`；
 - 括号；
 - `record(id)`；
+- `derived(id)`；
 - `min(a, b, ...)`、`max(a, b, ...)`；
 - `abs(x)`；
 - `clamp(x, min, max)`。
@@ -122,7 +125,7 @@ record('<definition_id>')
 
 - 越高越好：`record('strength.bench_press_5rm_kg') / 95 * 100`
 - 越低越好：`280 / record('cardio.run_5k_pace_sec_per_km') * 100`
-- 18.5～24.9 为最佳范围：`min(record('health.bmi') / 18.5, 1, 24.9 / record('health.bmi')) * 100`
+- 18.5～24.9 为最佳范围：`min(derived('health.bmi') / 18.5, 1, 24.9 / derived('health.bmi')) * 100`
 
 表达式不做自动单位换算或量纲推导。不同单位只有在作者显式写出换算公式时才能组合；这与旧模型隐式相加原始指标不同。
 
@@ -157,7 +160,7 @@ packs/<pack_id>/dimensions.json
           "id": "endurance",
           "name": "耐力",
           "weight": 0.8,
-          "expression": "280 / record('cardio.run_5k_pace_sec_per_km') * 100"
+          "expression": "derived('cardio.endurance_index')"
         },
         {
           "id": "strength",
@@ -182,6 +185,7 @@ packs/<pack_id>/dimensions.json
 - `scores` 必填、非空并按局部 `id` 排序；同一 Dimension 内 Score ID 不得重复。
 - Score ID 使用小写 snake_case；`name` 和 `expression` 必填且非空；`weight` 必须是有限且大于 0 的数值。
 - 每个表达式引用的完整 RecordDefinition 都必须出现在同一 Pack 的 `record-definitions.json` 中。一个 Pack 因此可以同时携带多个 namespace 的 Definition。
+- 每个表达式引用的 DerivedValue 都必须出现在同一 Pack 的 `derived-values.json` 中；父 Pack 不提供隐式继承。
 - 未定义字段和 JSON `null` 一律拒绝。
 
 ## 8. 本机五项选择
@@ -202,13 +206,13 @@ UI 选择只保存在 runtime 的 `local-state.json`：
 - `local-state.json` 只保存本机五项顺序。
 - 表达式读取的 Records 来自 SQLite。
 - 子 Score、原始表达式结果、clamp 后结果、Dimension 分数和等级都即时计算，不持久化。
-- Pack 启用或导入时解析表达式、校验 RecordDefinition 引用；读取 Status 时只加载已验证 Definition 和一致性 Record 快照。
+- Pack 启用或导入时解析表达式、校验 RecordDefinition/DerivedValue 引用与派生 DAG；读取 Status 时在一致性 Record 快照上惰性计算。
 
 当前 CLI 提供：
 
 ```text
 status list-dimensions
-status evaluate [dimension_id]
+status evaluate [dimension_id] [--as-of YYYY-MM-DD]
 status select <position> <dimension_id>
 status select <position> --clear
 ```

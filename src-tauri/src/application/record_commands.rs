@@ -818,6 +818,7 @@ mod tests {
                     }),
                 ],
             }),
+            derived_values: None,
             dimensions: None,
             achievements: None,
             skills: None,

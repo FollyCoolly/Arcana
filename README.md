@@ -27,11 +27,12 @@ Arcana turns real-life facts and goals into Status dimensions, Achievements, Ski
 ## Features
 
 - **Records**: a flat fact layer shared by Status and Achievement evaluation. Definitions come from enabled Packs; user values remain user-owned.
-- **Status**: Pack-defined Dimensions calculate 0–100 scores from numeric Records, combine sub-scores by weighted average, and derive Lv.0–Lv.5.
+- **Derived Values**: Packs can name reusable calculations such as BMI or game days; values are evaluated lazily from Records and never persisted.
+- **Status**: Pack-defined Dimensions calculate 0–100 child scores from numeric Records or Derived Values, combine them by weighted average, and derive Lv.0–Lv.5.
 - **Achievements**: milestones with prerequisites and minimal `tracked` / `achieved` state. Only achieved milestones contribute points.
 - **Skills**: Pack-defined skill maps derived from achieved Achievements; levels and node state are computed rather than stored separately.
 - **Missions**: local AI suggestions become synchronized Missions only after acceptance. Missions support active, completed, and archived lifecycles.
-- **Packs**: hierarchical domain content containing Record definitions, Dimensions, Achievements, Skills, and assets. The desktop Pack screen manages installed content, enabled state, and safe deletion impact.
+- **Packs**: hierarchical domain content containing Record and Derived Value definitions, Dimensions, Achievements, Skills, and assets. The desktop Pack screen manages installed content, enabled state, and safe deletion impact.
 - **Assistant Memory**: durable semantic context that can be synchronized with the rest of the user repository.
 - **Items and Gallery**: adapters over user-selected external files; these sources remain authoritative and are not copied into the core data platform.
 
@@ -86,7 +87,7 @@ cargo build --manifest-path src-tauri/Cargo.toml --bin arcana-data
 ./src-tauri/target/debug/arcana-data context summary
 ```
 
-The CLI provides Record, Pack, Status, Achievement, Skill, Mission, AssistantMemory, batch, dry-run, and deterministic JSON import/export commands. Multi-operation batch is intentionally Record-only; JSON-backed mutations use individual commands. Run `arcana-data help` or `<group> help` for the current contract.
+The CLI provides Record, Derived Value, Pack, Status, Achievement, Skill, Mission, AssistantMemory, batch, dry-run, and deterministic JSON import/export commands. Multi-operation batch is intentionally Record-only; JSON-backed mutations use individual commands. Run `arcana-data help` or `<group> help` for the current contract.
 
 ## Checks
 

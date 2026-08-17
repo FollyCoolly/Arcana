@@ -1,15 +1,16 @@
 use crate::application::{
     AchievementAvailability, AchievementCommands, AchievementEntry, AchievementStateResult,
-    ArcanaRuntime, PackAssetContent, PackCommands, PackDeleteResult, PackEnabledState, PackSummary,
-    QueryAchievements, QuerySkills, SetAchievementState, SkillCommands, SkillEvaluation,
-    StatusCommands, StatusDimensionEvaluation, StatusScoreEvaluation, StatusSelectionResult,
+    ArcanaRuntime, DerivedValueCommands, PackAssetContent, PackCommands, PackDeleteResult,
+    PackEnabledState, PackSummary, QueryAchievements, QuerySkills, SetAchievementState,
+    SkillCommands, SkillEvaluation, StatusCommands, StatusDimensionEvaluation,
+    StatusScoreEvaluation, StatusSelectionResult,
 };
 use crate::domain::{
     AchievementDefinition, AchievementDifficulty, AchievementState, AchievementStatus,
     ArcanaRepository, ArcanaRepositoryReader, Record, RepositoryError, RepositoryErrorCode,
     ValidationIssue,
 };
-use crate::storage::date_utils::calculate_days_since;
+use chrono::Local;
 use serde::Serialize;
 use std::collections::BTreeMap;
 use tauri::State;
@@ -243,8 +244,9 @@ fn build_status_dashboard<R>(repository: &mut R) -> Result<StatusDashboardData, 
 where
     R: ArcanaRepository,
 {
+    let as_of_date = Local::now().date_naive();
     let dimension_list = StatusCommands::new(repository).list_dimensions()?;
-    let evaluations = StatusCommands::new(repository).evaluate(None)?;
+    let evaluations = StatusCommands::new(repository).evaluate_on(None, as_of_date)?;
     let mut evaluations_by_id: BTreeMap<String, StatusDimensionEvaluation> = evaluations
         .into_iter()
         .map(|evaluation| (evaluation.dimension_id.clone(), evaluation))
@@ -283,8 +285,22 @@ where
     let username = scalar_string(repository, "identity.nickname")?
         .filter(|value| !value.trim().is_empty())
         .unwrap_or_else(|| DEFAULT_USERNAME.to_string());
-    let game_days = scalar_string(repository, "identity.birth_date")?
-        .and_then(|date| calculate_days_since(&date).ok());
+    let game_days =
+        match DerivedValueCommands::new(repository).evaluate_on("identity.game_days", as_of_date) {
+            Ok(evaluation) => evaluation
+                .value
+                .filter(|value| *value >= 0.0)
+                .map(|value| value.floor() as u64),
+            Err(error)
+                if matches!(
+                    error.code,
+                    RepositoryErrorCode::NotFound | RepositoryErrorCode::Unresolved
+                ) =>
+            {
+                None
+            }
+            Err(error) => return Err(error),
+        };
 
     Ok(StatusDashboardData {
         username,
@@ -413,6 +429,7 @@ mod tests {
                 tags: Vec::new(),
             },
             record_definitions: None,
+            derived_values: None,
             dimensions: None,
             achievements: Some(AchievementFile {
                 achievements: vec![AchievementDefinition {
@@ -463,10 +480,19 @@ mod tests {
         runtime.initialize().unwrap();
         runtime
             .with_repository(|repository| {
-                RecordCommands::new(repository).set_scalar_at(
+                let mut commands = RecordCommands::new(repository);
+                commands.set_scalar_at(
                     SetScalarRecord {
                         definition_id: "identity.nickname".to_string(),
                         value: json!("Alice"),
+                        effective_at: None,
+                    },
+                    "2026-08-16T12:00:00+08:00".to_string(),
+                )?;
+                commands.set_scalar_at(
+                    SetScalarRecord {
+                        definition_id: "identity.birth_date".to_string(),
+                        value: json!("2000-01-01"),
                         effective_at: None,
                     },
                     "2026-08-16T12:00:00+08:00".to_string(),
@@ -478,6 +504,7 @@ mod tests {
         let dashboard = runtime.with_repository(build_status_dashboard).unwrap();
 
         assert_eq!(dashboard.username, "Alice");
+        assert!(dashboard.game_days.is_some_and(|days| days > 9_000));
     }
 
     #[test]

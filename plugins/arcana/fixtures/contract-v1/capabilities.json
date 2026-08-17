@@ -26,6 +26,10 @@
       "actions": ["summary"],
       "version": 1
     },
+    "derived": {
+      "actions": ["list", "evaluate"],
+      "version": 1
+    },
     "init": {
       "version": 1
     },
@@ -103,7 +107,7 @@
     "git_sync": false,
     "structured_errors": true
   },
-  "pack_schema_version": 1,
+  "pack_schema_version": 2,
   "repository_schema_version": 1,
   "sqlite_schema_version": 2
 }

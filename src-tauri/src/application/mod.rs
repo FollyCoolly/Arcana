@@ -1,5 +1,6 @@
 mod achievement_commands;
 mod context_commands;
+mod derived_value_commands;
 mod memory_commands;
 mod mission_commands;
 mod mission_dashboard_commands;
@@ -19,6 +20,7 @@ pub use context_commands::{
     ContextAchievementState, ContextCommands, ContextMission, ContextStatusSelection,
     ContextSummary,
 };
+pub use derived_value_commands::{DerivedValueCommands, DerivedValueEvaluation};
 pub use memory_commands::{
     AssistantMemoryDeleteResult, AssistantMemoryResult, CreateAssistantMemory, MemoryCommands,
     QueryAssistantMemory, UpdateAssistantMemory,

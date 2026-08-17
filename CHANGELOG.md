@@ -8,6 +8,7 @@
 - Added deterministic combined JSON import/export, Record-only SQLite Schema v2, and one-time migration of Schema v1 semantic/local data into the new stores.
 - Added canonical external Arcana Skills and restricted multi-operation batches to atomic Record mutations; JSON-backed mutations use individual dry-run commands.
 - Added desktop Pack management with validated write, enable, disable, delete, assets, and deletion impact previews without deleting user Records or Achievement states.
+- Added Pack schema v2 DerivedValues: named, reusable, lazily evaluated formulas over Records/other DerivedValues, deterministic date evaluation, Status integration, and read-only CLI queries without new SQLite tables.
 
 ### Removed
 

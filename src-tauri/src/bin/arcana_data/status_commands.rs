@@ -4,6 +4,7 @@ use super::runtime_commands::runtime_from_cli;
 use arcana_lib::application::{
     MutationOperation, StatusCommands, StatusPositionInput, StatusSelectionInput,
 };
+use chrono::{Local, NaiveDate};
 use clap::Subcommand;
 use serde_json::{json, Value};
 use std::path::PathBuf;
@@ -16,6 +17,9 @@ pub enum StatusAction {
     Evaluate {
         /// Exact Dimension ID, for example fitness::physical
         dimension_id: Option<String>,
+        /// Evaluation date in YYYY-MM-DD form; defaults to today
+        #[arg(long, value_name = "DATE")]
+        as_of: Option<String>,
     },
     /// Set or explicitly clear one local Status display position
     Select {
@@ -32,9 +36,17 @@ pub enum StatusAction {
 #[derive(Debug)]
 enum PreparedStatusAction {
     ListDimensions,
-    Evaluate(Option<String>),
-    Select { position: u8, dimension_id: String },
-    Clear { position: u8 },
+    Evaluate {
+        dimension_id: Option<String>,
+        as_of_date: NaiveDate,
+    },
+    Select {
+        position: u8,
+        dimension_id: String,
+    },
+    Clear {
+        position: u8,
+    },
 }
 
 pub fn execute_status(
@@ -66,7 +78,7 @@ pub fn execute_status(
                 dry_run,
             )
         }
-        action @ (PreparedStatusAction::ListDimensions | PreparedStatusAction::Evaluate(_)) => {
+        action @ (PreparedStatusAction::ListDimensions | PreparedStatusAction::Evaluate { .. }) => {
             action
         }
     };
@@ -86,8 +98,11 @@ pub fn execute_status(
             let mut commands = StatusCommands::new(repository);
             match action {
                 PreparedStatusAction::ListDimensions => Ok(json!(commands.list_dimensions()?)),
-                PreparedStatusAction::Evaluate(dimension_id) => Ok(json!({
-                    "evaluations": commands.evaluate(dimension_id.as_deref())?
+                PreparedStatusAction::Evaluate {
+                    dimension_id,
+                    as_of_date,
+                } => Ok(json!({
+                    "evaluations": commands.evaluate_on(dimension_id.as_deref(), as_of_date)?
                 })),
                 _ => unreachable!("mutations return before read dispatch"),
             }
@@ -98,7 +113,13 @@ pub fn execute_status(
 fn prepare_status_action(action: StatusAction) -> Result<PreparedStatusAction, CliError> {
     match action {
         StatusAction::ListDimensions => Ok(PreparedStatusAction::ListDimensions),
-        StatusAction::Evaluate { dimension_id } => Ok(PreparedStatusAction::Evaluate(dimension_id)),
+        StatusAction::Evaluate {
+            dimension_id,
+            as_of,
+        } => Ok(PreparedStatusAction::Evaluate {
+            dimension_id,
+            as_of_date: parse_as_of(as_of)?,
+        }),
         StatusAction::Select {
             position,
             dimension_id,
@@ -120,6 +141,19 @@ fn prepare_status_action(action: StatusAction) -> Result<PreparedStatusAction, C
                 json!({ "position": position }),
             )),
         },
+    }
+}
+
+fn parse_as_of(value: Option<String>) -> Result<NaiveDate, CliError> {
+    match value {
+        Some(value) => NaiveDate::parse_from_str(&value, "%Y-%m-%d").map_err(|_| {
+            CliError::invalid_command_input(
+                "evaluate Status",
+                "--as-of must be a valid YYYY-MM-DD date",
+                json!({ "as_of": value }),
+            )
+        }),
+        None => Ok(Local::now().date_naive()),
     }
 }
 
@@ -147,7 +181,10 @@ mod tests {
         assert_eq!(listed["selections"], json!([]));
         let evaluated = execute_status(
             Some(runtime_dir),
-            StatusAction::Evaluate { dimension_id: None },
+            StatusAction::Evaluate {
+                dimension_id: None,
+                as_of: None,
+            },
             false,
         )
         .unwrap();

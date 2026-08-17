@@ -1,8 +1,10 @@
 use super::{
-    is_portable_asset_path, is_snake_case_id, split_scoped_id, AchievementFile, DimensionFile,
-    RecordDefinition, RecordDefinitionFile, SkillFile, Validate, ValidationResult, Validator,
+    is_portable_asset_path, is_snake_case_id, split_scoped_id, AchievementFile, DerivedValueFile,
+    DimensionFile, FormulaValue, RecordDefinition, RecordDefinitionFile, SkillFile, Validate,
+    ValidationResult, Validator, ValueType, LEGACY_PACK_SCHEMA_VERSION, PACK_SCHEMA_VERSION,
     SCHEMA_VERSION,
 };
+use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -62,7 +64,10 @@ impl Validate for PackManifest {
     fn validate(&self) -> ValidationResult {
         let mut validator = Validator::default();
         validator.require(
-            self.schema_version == SCHEMA_VERSION,
+            matches!(
+                self.schema_version,
+                LEGACY_PACK_SCHEMA_VERSION | PACK_SCHEMA_VERSION
+            ),
             "unsupported_pack_schema",
             "schema_version",
             "Pack schema_version is not supported",
@@ -115,6 +120,7 @@ impl Validate for PackManifest {
 pub struct Pack {
     pub manifest: PackManifest,
     pub record_definitions: Option<RecordDefinitionFile>,
+    pub derived_values: Option<DerivedValueFile>,
     pub dimensions: Option<DimensionFile>,
     pub achievements: Option<AchievementFile>,
     pub skills: Option<SkillFile>,
@@ -127,6 +133,15 @@ impl Validate for Pack {
         validator.merge("manifest", self.manifest.validate());
         if let Some(file) = &self.record_definitions {
             validator.merge("record-definitions.json", file.validate());
+        }
+        if let Some(file) = &self.derived_values {
+            validator.merge("derived-values.json", file.validate());
+            validator.require(
+                self.manifest.schema_version >= PACK_SCHEMA_VERSION,
+                "derived_values_require_pack_schema_v2",
+                "manifest.schema_version",
+                "derived-values.json requires Pack schema_version 2",
+            );
         }
         if let Some(file) = &self.dimensions {
             validator.merge("dimensions.json", file.validate());
@@ -150,6 +165,68 @@ impl Validate for Pack {
             .flat_map(|file| file.achievements.iter())
             .map(|achievement| achievement.id.as_str())
             .collect();
+        let derived_value_ids: BTreeSet<&str> = self
+            .derived_values
+            .iter()
+            .flat_map(|file| file.values.iter())
+            .map(|value| value.id.as_str())
+            .collect();
+
+        if let Some(file) = &self.derived_values {
+            for (index, value) in file.values.iter().enumerate() {
+                if let Ok(expression) = value.parse_expression() {
+                    for definition_id in expression.record_references() {
+                        let definition = self
+                            .record_definitions
+                            .iter()
+                            .flat_map(|file| file.definitions.iter())
+                            .find(|definition| definition.id() == definition_id);
+                        match definition {
+                            None => validator.error(
+                                "derived_record_definition_missing",
+                                format!("derived-values.json.values[{index}].expression"),
+                                format!(
+                                    "RecordDefinition '{definition_id}' must be fully declared by this Pack"
+                                ),
+                            ),
+                            Some(RecordDefinition::Scalar(definition)) => validator.require(
+                                matches!(
+                                    definition.value_type,
+                                    ValueType::Number | ValueType::Integer | ValueType::Date
+                                ),
+                                "derived_record_definition_type_unsupported",
+                                &format!("derived-values.json.values[{index}].expression"),
+                                "DerivedValue expression may reference only number, integer, or date scalar definitions",
+                            ),
+                            Some(_) => validator.error(
+                                "derived_record_definition_not_scalar",
+                                format!("derived-values.json.values[{index}].expression"),
+                                "DerivedValue expression may reference only scalar definitions",
+                            ),
+                        }
+                    }
+                    for derived_id in expression.derived_value_references() {
+                        validator.require(
+                            derived_value_ids.contains(derived_id),
+                            "derived_value_reference_missing",
+                            &format!("derived-values.json.values[{index}].expression"),
+                            "referenced DerivedValue must be fully declared by this Pack",
+                        );
+                    }
+                    if let Err(error) = expression.evaluate(
+                        |id| sample_formula_record_value(self, id),
+                        |_| Some(1.0),
+                        NaiveDate::from_ymd_opt(2026, 1, 1).expect("valid sample date"),
+                    ) {
+                        validator.error(
+                            "derived_expression_type_error",
+                            format!("derived-values.json.values[{index}].expression"),
+                            format!("DerivedValue expression is not type-safe: {error}"),
+                        );
+                    }
+                }
+            }
+        }
 
         if let Some(file) = &self.dimensions {
             for (index, dimension) in file.dimensions.iter().enumerate() {
@@ -186,6 +263,29 @@ impl Validate for Pack {
                                     "Status expression may only reference number/integer scalar definitions",
                                 ),
                             }
+                        }
+                        for derived_id in expression.derived_value_references() {
+                            validator.require(
+                                derived_value_ids.contains(derived_id),
+                                "score_derived_value_missing",
+                                &format!(
+                                    "dimensions.json.dimensions[{index}].scores[{score_index}].expression"
+                                ),
+                                "referenced DerivedValue must be fully declared by this Pack",
+                            );
+                        }
+                        if let Err(error) = expression.evaluate(
+                            |id| sample_formula_record_value(self, id),
+                            |_| Some(1.0),
+                            NaiveDate::from_ymd_opt(2026, 1, 1).expect("valid sample date"),
+                        ) {
+                            validator.error(
+                                "score_expression_type_error",
+                                format!(
+                                    "dimensions.json.dimensions[{index}].scores[{score_index}].expression"
+                                ),
+                                format!("Status Score expression is not type-safe: {error}"),
+                            );
                         }
                     }
                 }
@@ -282,6 +382,24 @@ impl Validate for Pack {
         }
 
         validator.finish()
+    }
+}
+
+fn sample_formula_record_value(pack: &Pack, id: &str) -> Option<FormulaValue> {
+    let definition = pack
+        .record_definitions
+        .iter()
+        .flat_map(|file| file.definitions.iter())
+        .find(|definition| definition.id() == id)?;
+    match definition {
+        RecordDefinition::Scalar(definition) => match definition.value_type {
+            ValueType::Number | ValueType::Integer => Some(FormulaValue::Number(1.0)),
+            ValueType::Date => Some(FormulaValue::Date(
+                NaiveDate::from_ymd_opt(2000, 1, 1).expect("valid sample date"),
+            )),
+            _ => None,
+        },
+        RecordDefinition::Collection(_) | RecordDefinition::Event(_) => None,
     }
 }
 
@@ -401,8 +519,8 @@ fn valid_card_image_bytes(path: &str, content: &[u8]) -> bool {
 mod tests {
     use super::*;
     use crate::domain::{
-        AchievementDefinition, AchievementDifficulty, FieldDefinition, SkillDefinition, SkillNode,
-        StructuredRecordDefinition, ValueType,
+        AchievementDefinition, AchievementDifficulty, DerivedValueDefinition, FieldDefinition,
+        ScalarRecordDefinition, SkillDefinition, SkillNode, StructuredRecordDefinition, ValueType,
     };
 
     fn base_pack() -> Pack {
@@ -431,6 +549,7 @@ mod tests {
                     )]),
                 })],
             }),
+            derived_values: None,
             dimensions: None,
             achievements: Some(AchievementFile {
                 achievements: vec![AchievementDefinition {
@@ -493,5 +612,38 @@ mod tests {
                 .map(BTreeMap::len),
             Some(2)
         );
+    }
+
+    #[test]
+    fn derived_values_require_v2_and_type_safe_formulas() {
+        let mut pack = base_pack();
+        pack.derived_values = Some(DerivedValueFile {
+            values: vec![DerivedValueDefinition {
+                id: "identity.bad_days".to_string(),
+                name: "Bad days".to_string(),
+                description: None,
+                unit: Some("day".to_string()),
+                expression: "record('identity.birth_date') + 1".to_string(),
+            }],
+        });
+        pack.record_definitions
+            .as_mut()
+            .unwrap()
+            .definitions
+            .push(RecordDefinition::Scalar(ScalarRecordDefinition {
+                id: "identity.birth_date".to_string(),
+                name: "Birth date".to_string(),
+                description: None,
+                value_type: ValueType::Date,
+                unit: None,
+            }));
+
+        let errors = pack.validate().unwrap_err().into_issues();
+        assert!(errors
+            .iter()
+            .any(|issue| issue.code == "derived_values_require_pack_schema_v2"));
+        assert!(errors
+            .iter()
+            .any(|issue| issue.code == "derived_expression_type_error"));
     }
 }

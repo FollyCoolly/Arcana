@@ -5,6 +5,7 @@
 //! must use these types so the two schemas cannot be mixed accidentally.
 
 mod achievements;
+mod derived_values;
 mod expression;
 mod ids;
 mod memory;
@@ -17,6 +18,7 @@ mod status;
 mod validation;
 
 pub use achievements::*;
+pub use derived_values::*;
 pub use expression::*;
 pub use ids::*;
 pub use memory::*;
@@ -28,5 +30,9 @@ pub use skills::*;
 pub use status::*;
 pub use validation::*;
 
-/// Repository and pack schema supported by the first target implementation.
+/// Repository schema. The legacy alias remains for existing callers.
 pub const SCHEMA_VERSION: u32 = 1;
+pub const REPOSITORY_SCHEMA_VERSION: u32 = SCHEMA_VERSION;
+/// Pack schema v1 remains readable; new Packs use v2 with DerivedValues.
+pub const LEGACY_PACK_SCHEMA_VERSION: u32 = 1;
+pub const PACK_SCHEMA_VERSION: u32 = 2;

@@ -1,4 +1,5 @@
 use super::split_record_definition_id;
+use chrono::NaiveDate;
 use std::collections::BTreeSet;
 use std::fmt;
 
@@ -6,12 +7,21 @@ pub const MAX_EXPRESSION_NODES: usize = 256;
 pub const MAX_EXPRESSION_DEPTH: usize = 32;
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct ScoreExpression {
+pub struct FormulaExpression {
     root: ExpressionNode,
     record_references: BTreeSet<String>,
+    derived_value_references: BTreeSet<String>,
 }
 
-impl ScoreExpression {
+pub type ScoreExpression = FormulaExpression;
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum FormulaValue {
+    Number(f64),
+    Date(NaiveDate),
+}
+
+impl FormulaExpression {
     pub fn parse(source: &str) -> Result<Self, ExpressionParseError> {
         let mut parser = Parser::new(source);
         let root = parser.parse_expression(1)?;
@@ -25,6 +35,7 @@ impl ScoreExpression {
         Ok(Self {
             root,
             record_references: parser.record_references,
+            derived_value_references: parser.derived_value_references,
         })
     }
 
@@ -32,11 +43,37 @@ impl ScoreExpression {
         self.record_references.iter().map(String::as_str)
     }
 
+    pub fn derived_value_references(&self) -> impl Iterator<Item = &str> {
+        self.derived_value_references.iter().map(String::as_str)
+    }
+
+    pub fn evaluate(
+        &self,
+        record_value: impl Fn(&str) -> Option<FormulaValue>,
+        derived_value: impl Fn(&str) -> Option<f64>,
+        as_of_date: NaiveDate,
+    ) -> Result<Option<f64>, ExpressionEvaluationError> {
+        let record_value = |id: &str| Ok(record_value(id));
+        let derived_value = |id: &str| Ok(derived_value(id));
+        match self
+            .root
+            .evaluate(&record_value, &derived_value, as_of_date)?
+        {
+            Some(FormulaValue::Number(value)) => Ok(Some(value)),
+            Some(FormulaValue::Date(_)) => Err(ExpressionEvaluationError::NonNumericResult),
+            None => Ok(None),
+        }
+    }
+
     pub fn evaluate_raw(
         &self,
         record_value: impl Fn(&str) -> Option<f64>,
     ) -> Result<Option<f64>, ExpressionEvaluationError> {
-        self.root.evaluate(&record_value)
+        self.evaluate(
+            |id| record_value(id).map(FormulaValue::Number),
+            |_| None,
+            NaiveDate::from_ymd_opt(1970, 1, 1).expect("valid fixed date"),
+        )
     }
 
     pub fn evaluate_score(
@@ -53,6 +90,7 @@ impl ScoreExpression {
 enum ExpressionNode {
     Number(f64),
     Record(String),
+    DerivedValue(String),
     Unary {
         operator: UnaryOperator,
         operand: Box<ExpressionNode>,
@@ -71,7 +109,7 @@ enum ExpressionNode {
 impl ExpressionNode {
     fn depth(&self) -> usize {
         match self {
-            Self::Number(_) | Self::Record(_) => 1,
+            Self::Number(_) | Self::Record(_) | Self::DerivedValue(_) => 1,
             Self::Unary { operand, .. } => 1 + operand.depth(),
             Self::Binary { left, right, .. } => 1 + left.depth().max(right.depth()),
             Self::Function { arguments, .. } => {
@@ -82,34 +120,54 @@ impl ExpressionNode {
 
     fn evaluate(
         &self,
-        record_value: &impl Fn(&str) -> Option<f64>,
-    ) -> Result<Option<f64>, ExpressionEvaluationError> {
+        record_value: &impl Fn(&str) -> Result<Option<FormulaValue>, ExpressionEvaluationError>,
+        derived_value: &impl Fn(&str) -> Result<Option<f64>, ExpressionEvaluationError>,
+        as_of_date: NaiveDate,
+    ) -> Result<Option<FormulaValue>, ExpressionEvaluationError> {
         let value = match self {
-            Self::Number(value) => Some(*value),
-            Self::Record(id) => match record_value(id) {
-                Some(value) if value.is_finite() => Some(value),
-                Some(_) => return Err(ExpressionEvaluationError::NonFiniteRecord(id.clone())),
+            Self::Number(value) => Some(FormulaValue::Number(*value)),
+            Self::Record(id) => match record_value(id)? {
+                Some(FormulaValue::Number(value)) if value.is_finite() => {
+                    Some(FormulaValue::Number(value))
+                }
+                Some(FormulaValue::Number(_)) => {
+                    return Err(ExpressionEvaluationError::NonFiniteRecord(id.clone()))
+                }
+                Some(value @ FormulaValue::Date(_)) => Some(value),
                 None => None,
             },
-            Self::Unary { operator, operand } => operand.evaluate(record_value)?.map(|value| {
-                if *operator == UnaryOperator::Minus {
+            Self::DerivedValue(id) => match derived_value(id)? {
+                Some(value) if value.is_finite() => Some(FormulaValue::Number(value)),
+                Some(_) => {
+                    return Err(ExpressionEvaluationError::NonFiniteDerivedValue(id.clone()))
+                }
+                None => None,
+            },
+            Self::Unary { operator, operand } => {
+                let Some(value) = operand.evaluate(record_value, derived_value, as_of_date)? else {
+                    return Ok(None);
+                };
+                let value = require_number(value)?;
+                Some(FormulaValue::Number(if *operator == UnaryOperator::Minus {
                     -value
                 } else {
                     value
-                }
-            }),
+                }))
+            }
             Self::Binary {
                 operator,
                 left,
                 right,
             } => {
-                let Some(left) = left.evaluate(record_value)? else {
+                let Some(left) = left.evaluate(record_value, derived_value, as_of_date)? else {
                     return Ok(None);
                 };
-                let Some(right) = right.evaluate(record_value)? else {
+                let Some(right) = right.evaluate(record_value, derived_value, as_of_date)? else {
                     return Ok(None);
                 };
-                Some(match operator {
+                let left = require_number(left)?;
+                let right = require_number(right)?;
+                Some(FormulaValue::Number(match operator {
                     BinaryOperator::Add => left + right,
                     BinaryOperator::Subtract => left - right,
                     BinaryOperator::Multiply => left * right,
@@ -117,7 +175,7 @@ impl ExpressionNode {
                         return Err(ExpressionEvaluationError::DivisionByZero)
                     }
                     BinaryOperator::Divide => left / right,
-                })
+                }))
             }
             Self::Function {
                 function,
@@ -125,27 +183,51 @@ impl ExpressionNode {
             } => {
                 let mut values = Vec::with_capacity(arguments.len());
                 for argument in arguments {
-                    let Some(value) = argument.evaluate(record_value)? else {
+                    let Some(value) = argument.evaluate(record_value, derived_value, as_of_date)?
+                    else {
                         return Ok(None);
                     };
                     values.push(value);
                 }
-                Some(match function {
-                    Function::Min => values.into_iter().fold(f64::INFINITY, f64::min),
-                    Function::Max => values.into_iter().fold(f64::NEG_INFINITY, f64::max),
-                    Function::Abs => values[0].abs(),
-                    Function::Clamp if values[1] > values[2] => {
-                        return Err(ExpressionEvaluationError::InvalidClampBounds)
-                    }
-                    Function::Clamp => values[0].clamp(values[1], values[2]),
-                })
+                if *function == Function::DaysSince {
+                    let FormulaValue::Date(date) = values.remove(0) else {
+                        return Err(ExpressionEvaluationError::ExpectedDate);
+                    };
+                    Some(FormulaValue::Number(
+                        as_of_date.signed_duration_since(date).num_days() as f64,
+                    ))
+                } else {
+                    let values = values
+                        .into_iter()
+                        .map(require_number)
+                        .collect::<Result<Vec<_>, _>>()?;
+                    Some(FormulaValue::Number(match function {
+                        Function::Min => values.into_iter().fold(f64::INFINITY, f64::min),
+                        Function::Max => values.into_iter().fold(f64::NEG_INFINITY, f64::max),
+                        Function::Abs => values[0].abs(),
+                        Function::Clamp if values[1] > values[2] => {
+                            return Err(ExpressionEvaluationError::InvalidClampBounds)
+                        }
+                        Function::Clamp => values[0].clamp(values[1], values[2]),
+                        Function::DaysSince => unreachable!(),
+                    }))
+                }
             }
         };
 
-        match value {
-            Some(value) if !value.is_finite() => Err(ExpressionEvaluationError::NonFiniteResult),
-            value => Ok(value),
+        match &value {
+            Some(FormulaValue::Number(value)) if !value.is_finite() => {
+                Err(ExpressionEvaluationError::NonFiniteResult)
+            }
+            _ => Ok(value),
         }
+    }
+}
+
+fn require_number(value: FormulaValue) -> Result<f64, ExpressionEvaluationError> {
+    match value {
+        FormulaValue::Number(value) => Ok(value),
+        FormulaValue::Date(_) => Err(ExpressionEvaluationError::ExpectedNumber),
     }
 }
 
@@ -169,6 +251,7 @@ enum Function {
     Max,
     Abs,
     Clamp,
+    DaysSince,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -194,8 +277,12 @@ impl std::error::Error for ExpressionParseError {}
 pub enum ExpressionEvaluationError {
     DivisionByZero,
     NonFiniteRecord(String),
+    NonFiniteDerivedValue(String),
     NonFiniteResult,
     InvalidClampBounds,
+    ExpectedNumber,
+    ExpectedDate,
+    NonNumericResult,
 }
 
 impl fmt::Display for ExpressionEvaluationError {
@@ -203,8 +290,14 @@ impl fmt::Display for ExpressionEvaluationError {
         match self {
             Self::DivisionByZero => write!(f, "division by zero"),
             Self::NonFiniteRecord(id) => write!(f, "Record '{id}' is not finite"),
+            Self::NonFiniteDerivedValue(id) => {
+                write!(f, "DerivedValue '{id}' is not finite")
+            }
             Self::NonFiniteResult => write!(f, "expression produced a non-finite result"),
             Self::InvalidClampBounds => write!(f, "clamp minimum exceeds maximum"),
+            Self::ExpectedNumber => write!(f, "numeric value expected"),
+            Self::ExpectedDate => write!(f, "date value expected"),
+            Self::NonNumericResult => write!(f, "expression result must be numeric"),
         }
     }
 }
@@ -217,6 +310,7 @@ struct Parser<'a> {
     position: usize,
     node_count: usize,
     record_references: BTreeSet<String>,
+    derived_value_references: BTreeSet<String>,
 }
 
 impl<'a> Parser<'a> {
@@ -227,6 +321,7 @@ impl<'a> Parser<'a> {
             position: 0,
             node_count: 0,
             record_references: BTreeSet::new(),
+            derived_value_references: BTreeSet::new(),
         }
     }
 
@@ -371,12 +466,24 @@ impl<'a> Parser<'a> {
             self.record_references.insert(id.clone());
             return self.node(depth, ExpressionNode::Record(id));
         }
+        if name == "derived" {
+            self.skip_whitespace();
+            let id = self.parse_static_id_literal("DerivedValue")?;
+            self.expect(
+                b')',
+                "expected_closing_parenthesis",
+                "expected ')' after DerivedValue id",
+            )?;
+            self.derived_value_references.insert(id.clone());
+            return self.node(depth, ExpressionNode::DerivedValue(id));
+        }
 
         let function = match name {
             "min" => Function::Min,
             "max" => Function::Max,
             "abs" => Function::Abs,
             "clamp" => Function::Clamp,
+            "days_since" => Function::DaysSince,
             _ => return Err(self.error("unknown_function", format!("unknown function '{name}'"))),
         };
         let mut arguments = Vec::new();
@@ -406,6 +513,7 @@ impl<'a> Parser<'a> {
             Function::Min | Function::Max => arguments.len() >= 2,
             Function::Abs => arguments.len() == 1,
             Function::Clamp => arguments.len() == 3,
+            Function::DaysSince => arguments.len() == 1,
         };
         if !valid_arity {
             return Err(self.error(
@@ -423,10 +531,20 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_record_id_literal(&mut self) -> Result<String, ExpressionParseError> {
+        self.parse_static_id_literal("Record")
+    }
+
+    fn parse_static_id_literal(
+        &mut self,
+        entity_name: &str,
+    ) -> Result<String, ExpressionParseError> {
         if self.peek() != Some(b'\'') {
             return Err(self.error(
                 "record_id_not_literal",
-                "record() requires a single-quoted static id",
+                format!(
+                    "{} reference requires a single-quoted static id",
+                    entity_name
+                ),
             ));
         }
         self.position += 1;
@@ -452,7 +570,7 @@ impl<'a> Parser<'a> {
         if split_record_definition_id(&id).is_none() {
             return Err(self.error(
                 "invalid_record_id",
-                "Record id must be <namespace>.<name> using lowercase snake_case",
+                format!("{entity_name} id must be <namespace>.<name> using lowercase snake_case"),
             ));
         }
         Ok(id)
@@ -575,6 +693,45 @@ mod tests {
         assert_eq!(
             expression.evaluate_score(|_| Some(0.0)),
             Err(ExpressionEvaluationError::DivisionByZero)
+        );
+    }
+
+    #[test]
+    fn evaluates_dates_and_derived_values_with_an_explicit_date() {
+        let expression = FormulaExpression::parse(
+            "days_since(record('identity.birth_date')) + derived('identity.bonus_days')",
+        )
+        .unwrap();
+        assert_eq!(
+            expression.derived_value_references().collect::<Vec<_>>(),
+            vec!["identity.bonus_days"]
+        );
+        assert_eq!(
+            expression
+                .evaluate(
+                    |_| Some(FormulaValue::Date(
+                        NaiveDate::from_ymd_opt(2026, 8, 1).unwrap()
+                    )),
+                    |_| Some(2.0),
+                    NaiveDate::from_ymd_opt(2026, 8, 17).unwrap(),
+                )
+                .unwrap(),
+            Some(18.0)
+        );
+    }
+
+    #[test]
+    fn rejects_using_a_date_as_a_number() {
+        let expression = FormulaExpression::parse("record('identity.birth_date') + 1").unwrap();
+        assert_eq!(
+            expression.evaluate(
+                |_| Some(FormulaValue::Date(
+                    NaiveDate::from_ymd_opt(2026, 8, 1).unwrap()
+                )),
+                |_| None,
+                NaiveDate::from_ymd_opt(2026, 8, 17).unwrap(),
+            ),
+            Err(ExpressionEvaluationError::ExpectedNumber)
         );
     }
 }

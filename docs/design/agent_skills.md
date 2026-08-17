@@ -1,7 +1,7 @@
 # 外部 Agent Skill 与 CLI 合约
 
 > **状态**：Current
-> **最后更新**：2026-08-16
+> **最后更新**：2026-08-17
 
 ## 1. 边界
 
@@ -41,6 +41,7 @@ init
 capabilities
 context summary
 record get|query|set|increment|correct|create-empty-collection|create-empty-event|add-item|correct-item|remove-item|append-event|correct-event|delete-event|delete
+derived list|evaluate
 achievement list|state-set|state-revoke
 skill list
 mission list|create|update|complete|archive|delete|suggestion-list|suggest|accept|reject|suggestion-delete
@@ -85,7 +86,8 @@ Record batch 按数组顺序在一个 SQLite transaction 中执行，失败返�
 ## 5. 读取与派生
 
 - Record query 可按 Definition ID、namespace、Pack、kind 和是否有值过滤。
-- Status 从 live Dimension Definitions 与 SQLite Records 即时计算；selection 来自本机 JSON。
+- DerivedValue 从 live Definitions 与 SQLite Records 惰性计算，只读且不持久化。
+- Status 从 live Dimension/DerivedValue Definitions 与 SQLite Records 即时计算；selection 来自本机 JSON。
 - Achievement list 合并 live Definitions 与 JSON AchievementState；unresolved 状态不丢失。
 - Skill points/level 只从 achieved Achievement 即时派生。
 - MissionSuggestion 来自本机 JSON；accept 后 Mission 写入 live JSON repository。
@@ -98,7 +100,7 @@ Record batch 按数组顺序在一个 SQLite transaction 中执行，失败返�
 
 把用户明确陈述变为最小真实更新：
 
-1. targeted query 相关 Definitions、Records、Achievements、Missions 与 Memory；
+1. targeted query 相关 Definitions、Records、DerivedValues、Achievements、Missions 与 Memory；
 2. 区分明确事实、候选判断和未知信息，不虚构日期/数量/历史；
 3. 把相关 Record mutations 组成一个 batch 并 dry-run；
 4. Achievement/Mission/Memory/selection 各自 dry-run；
@@ -115,7 +117,7 @@ Record batch 按数组顺序在一个 SQLite transaction 中执行，失败返�
 
 创建、扩展与校验 Pack：
 
-- Pack 必须完整声明自身 Dimension/Achievement 使用的 RecordDefinitions；
+- Pack 必须完整声明自身公式/Dimension/Achievement 使用的 RecordDefinitions 与 DerivedValues；
 - PackForest 只组织，不提供隐式依赖；
 - Achievement 用自然语言 requirement 与可选 `tip`；
 - Status 只有一层 weighted Scores；

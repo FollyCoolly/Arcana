@@ -1,8 +1,9 @@
 use super::{
     AchievementState, AchievementStateFile, ArcanaManifest, AssistantMemory, AssistantMemoryFile,
-    DashboardMissionSelection, DashboardMissionSelections, DefinitionRegistry, Mission,
-    MissionFile, MissionSuggestion, Pack, Record, RecordFile, StatusDimensionSelection, Validate,
-    ValidationErrors, ValidationIssue, ValidationResult, Validator,
+    DashboardMissionSelection, DashboardMissionSelections, DefinitionRegistry,
+    DerivedValueRegistry, Mission, MissionFile, MissionSuggestion, Pack, Record, RecordFile,
+    StatusDimensionSelection, Validate, ValidationErrors, ValidationIssue, ValidationResult,
+    Validator,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
@@ -21,6 +22,15 @@ pub struct SyncedRepositorySnapshot {
 impl SyncedRepositorySnapshot {
     pub fn definition_registry(&self) -> Result<DefinitionRegistry, ValidationErrors> {
         DefinitionRegistry::build(
+            self.manifest
+                .enabled_pack_ids
+                .iter()
+                .filter_map(|id| self.packs.get(id)),
+        )
+    }
+
+    pub fn derived_value_registry(&self) -> Result<DerivedValueRegistry, ValidationErrors> {
+        DerivedValueRegistry::build(
             self.manifest
                 .enabled_pack_ids
                 .iter()
@@ -101,6 +111,9 @@ impl Validate for SyncedRepositorySnapshot {
                 None
             }
         };
+        if let Err(errors) = self.derived_value_registry() {
+            validator.merge("derived_value_registry", Err(errors));
+        }
         for (namespace, file) in &self.records {
             validator.require(
                 namespace == &file.namespace,
@@ -292,6 +305,7 @@ mod tests {
                 tags: vec![],
             },
             record_definitions: None,
+            derived_values: None,
             dimensions: None,
             achievements: None,
             skills: None,

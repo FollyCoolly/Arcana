@@ -12,7 +12,7 @@ Generate useful MissionSuggestions without turning unaccepted AI output into syn
 1. Resolve `arcana-data` from `PATH`; inside the repository, fall back to the current-platform debug binary or `cargo run --manifest-path src-tauri/Cargo.toml --bin arcana-data --`.
 2. Run `arcana-data --compact capabilities`. Require contract v1 plus structured errors and dry-run before writing.
 3. Read [references/mission-contract.md](references/mission-contract.md) before composing a suggestion.
-4. Read `context summary`, active Missions, pending/rejected suggestions, tracked Achievements, and only the Records or Definitions needed for plausible candidates.
+4. Read `context summary`, active Missions, pending/rejected suggestions, tracked Achievements, and only the Records, DerivedValues, or Definitions needed for plausible candidates.
 
 ## Generate Candidates
 

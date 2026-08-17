@@ -1,7 +1,7 @@
 # Arcana 数据与领域设计
 
 > **状态**：Current
-> **最后更新**：2026-08-16
+> **最后更新**：2026-08-17
 
 本目录是 Arcana 核心数据平台与领域模型的权威设计说明。当前实现采用三个明确的数据所有者：live JSON repository 保存可读、可同步的语义数据；SQLite 只保存 Records；runtime-local JSON 保存不跨设备的 UI/推荐状态。
 
@@ -10,18 +10,20 @@
 1. [architecture.md](./architecture.md)：分层、依赖与写入边界。
 2. [data_platform.md](./data_platform.md)：数据所有权、JSON repository 和导入导出。
 3. [records.md](./records.md)：Record 与 RecordDefinition。
-4. [sqlite_storage.md](./sqlite_storage.md)：Record-only SQLite DDL 与事务。
-5. [achievements_skills_packs.md](./achievements_skills_packs.md)：Pack、Achievement、Skill。
-6. [status.md](./status.md)：Dimension、Score、表达式与本机选择。
-7. [missions_memory.md](./missions_memory.md)：Mission、Suggestion 与 AssistantMemory。
-8. [agent_skills.md](./agent_skills.md)：外部 Skill/CLI 合约。
-9. [sync_migration.md](./sync_migration.md)：当前初始化/升级，以及尚未实现的 Git 闭环。
+4. [derived_values.md](./derived_values.md)：具名、可复用且不持久化的派生值。
+5. [sqlite_storage.md](./sqlite_storage.md)：Record-only SQLite DDL 与事务。
+6. [achievements_skills_packs.md](./achievements_skills_packs.md)：Pack、Achievement、Skill。
+7. [status.md](./status.md)：Dimension、Score、表达式与本机选择。
+8. [missions_memory.md](./missions_memory.md)：Mission、Suggestion 与 AssistantMemory。
+9. [agent_skills.md](./agent_skills.md)：外部 Skill/CLI 合约。
+10. [sync_migration.md](./sync_migration.md)：当前初始化/升级，以及尚未实现的 Git 闭环。
 
 ## 已确定的原则
 
 - 一个数据仓库对应一个用户；不建立 Profile 或 `profile_id`。
 - `identity.nickname` 与 `identity.birth_date` 是 `basic` Pack 提供的普通 RecordDefinition。
 - Definitions 与 Pack 层级来自 JSON；Records 保持扁平并存入 SQLite。
+- 计算链是单向的 `Record -> DerivedValue -> Status Score -> Dimension Score`；Status Score 也可直接读取数值 Record。
 - PackForest 父子关系只用于组织，不级联启用，也不是隐式运行依赖。
 - Status 只有一层子 Score 和一层加权平均；所有结果限制在 `0..100`。
 - Achievement requirement 使用自然语言与可选 `tip`，不建立自动解锁规则 DSL。

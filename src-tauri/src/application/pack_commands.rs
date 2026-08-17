@@ -1,7 +1,8 @@
 use crate::domain::{
     is_portable_asset_path, AchievementFile, ArcanaRepository, ArcanaRepositoryReader,
-    ArcanaRepositoryTransaction, DimensionFile, Pack, PackManifest, RecordDefinitionFile,
-    RepositoryError, RepositoryErrorCode, RepositoryResult, SkillFile, Validate, SCHEMA_VERSION,
+    ArcanaRepositoryTransaction, DerivedValueFile, DimensionFile, Pack, PackManifest,
+    RecordDefinitionFile, RepositoryError, RepositoryErrorCode, RepositoryResult, SkillFile,
+    Validate, PACK_SCHEMA_VERSION,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -18,6 +19,8 @@ pub struct PackContent {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub record_definitions: Option<RecordDefinitionFile>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub derived_values: Option<DerivedValueFile>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub dimensions: Option<DimensionFile>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub achievements: Option<AchievementFile>,
@@ -29,7 +32,7 @@ impl PackContent {
     pub fn scaffold(id: String, name: String) -> RepositoryResult<Self> {
         let content = Self {
             manifest: PackManifest {
-                schema_version: SCHEMA_VERSION,
+                schema_version: PACK_SCHEMA_VERSION,
                 id,
                 name,
                 description: None,
@@ -38,6 +41,7 @@ impl PackContent {
                 tags: Vec::new(),
             },
             record_definitions: None,
+            derived_values: None,
             dimensions: None,
             achievements: None,
             skills: None,
@@ -50,6 +54,7 @@ impl PackContent {
         Self {
             manifest: pack.manifest.clone(),
             record_definitions: pack.record_definitions.clone(),
+            derived_values: pack.derived_values.clone(),
             dimensions: pack.dimensions.clone(),
             achievements: pack.achievements.clone(),
             skills: pack.skills.clone(),
@@ -60,6 +65,7 @@ impl PackContent {
         Pack {
             manifest: self.manifest.clone(),
             record_definitions: self.record_definitions.clone(),
+            derived_values: self.derived_values.clone(),
             dimensions: self.dimensions.clone(),
             achievements: self.achievements.clone(),
             skills: self.skills.clone(),
@@ -77,6 +83,7 @@ pub struct PackSummary {
     pub parent_pack_id: Option<String>,
     pub tags: Vec<String>,
     pub record_definition_count: usize,
+    pub derived_value_count: usize,
     pub dimension_count: usize,
     pub achievement_count: usize,
     pub skill_count: usize,
@@ -530,6 +537,11 @@ impl PackSummary {
                 .as_ref()
                 .map(|file| file.definitions.len())
                 .unwrap_or_default(),
+            derived_value_count: pack
+                .derived_values
+                .as_ref()
+                .map(|file| file.values.len())
+                .unwrap_or_default(),
             dimension_count: pack
                 .dimensions
                 .as_ref()
@@ -603,7 +615,7 @@ mod tests {
     fn content(id: &str) -> PackContent {
         PackContent {
             manifest: PackManifest {
-                schema_version: SCHEMA_VERSION,
+                schema_version: PACK_SCHEMA_VERSION,
                 id: id.to_string(),
                 name: "Test Pack".to_string(),
                 description: None,
@@ -620,6 +632,7 @@ mod tests {
                     unit: None,
                 })],
             }),
+            derived_values: None,
             dimensions: None,
             achievements: None,
             skills: None,
@@ -713,7 +726,7 @@ mod tests {
     #[test]
     fn scaffold_uses_current_pack_schema() {
         let scaffold = PackContent::scaffold("cooking".to_string(), "Cooking".to_string()).unwrap();
-        assert_eq!(scaffold.manifest.schema_version, SCHEMA_VERSION);
+        assert_eq!(scaffold.manifest.schema_version, PACK_SCHEMA_VERSION);
         assert_eq!(scaffold.manifest.id, "cooking");
     }
 

@@ -1114,6 +1114,48 @@ fn status_commands_evaluate_records_and_preserve_disabled_selection() {
 }
 
 #[test]
+fn derived_commands_evaluate_basic_values_on_an_explicit_date() {
+    let directory = tempfile::tempdir().unwrap();
+    let runtime = directory.path().join("runtime");
+    let runtime_arg = path_string(&runtime);
+    assert!(arcana_data(&["init", "--runtime", &runtime_arg])
+        .status
+        .success());
+
+    let birth_date = write_json_argument(
+        directory.path(),
+        "birth-date.json",
+        &serde_json::json!({
+            "definition_id": "identity.birth_date",
+            "value": "2026-08-01"
+        }),
+    );
+    let set = arcana_data(&[
+        "record",
+        "--runtime",
+        &runtime_arg,
+        "set",
+        "--file",
+        &birth_date,
+    ]);
+    assert!(set.status.success(), "{}", utf8(&set.stderr));
+
+    let evaluated = arcana_data(&[
+        "derived",
+        "--runtime",
+        &runtime_arg,
+        "evaluate",
+        "identity.game_days",
+        "--as-of",
+        "2026-08-17",
+    ]);
+    assert!(evaluated.status.success(), "{}", utf8(&evaluated.stderr));
+    let value = parse_json(&evaluated.stdout);
+    assert_eq!(value["value"], 16.0);
+    assert_eq!(value["as_of_date"], "2026-08-17");
+}
+
+#[test]
 fn achievement_commands_derive_availability_and_revoke_unresolved_state() {
     let directory = tempfile::tempdir().unwrap();
     let runtime = directory.path().join("runtime");

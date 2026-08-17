@@ -266,7 +266,7 @@ mod tests {
             false,
         )
         .unwrap();
-        assert_eq!(output["manifest"]["schema_version"], 1);
+        assert_eq!(output["manifest"]["schema_version"], 2);
         assert_eq!(output["manifest"]["id"], "cooking");
     }
 

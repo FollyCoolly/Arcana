@@ -20,6 +20,7 @@ const ASSISTANT_MEMORY: &str = "assistant-memory.json";
 const MISSIONS: &str = "missions.json";
 const PACK_MANIFEST: &str = "manifest.json";
 const RECORD_DEFINITIONS: &str = "record-definitions.json";
+const DERIVED_VALUES: &str = "derived-values.json";
 const DIMENSIONS: &str = "dimensions.json";
 const ACHIEVEMENTS: &str = "achievements.json";
 const SKILLS: &str = "skills.json";
@@ -245,6 +246,13 @@ fn render_snapshot(
                 &mut files,
                 &format!("{base}/{RECORD_DEFINITIONS}"),
                 &canonical,
+            )?;
+        }
+        if let Some(derived_values) = &pack.derived_values {
+            insert_json(
+                &mut files,
+                &format!("{base}/{DERIVED_VALUES}"),
+                derived_values,
             )?;
         }
         if let Some(dimensions) = &pack.dimensions {
@@ -494,6 +502,10 @@ fn read_packs(root: &Path) -> RepositoryResult<BTreeMap<String, Pack>> {
             &entry.path().join(RECORD_DEFINITIONS),
             &format!("packs/{pack_id}/{RECORD_DEFINITIONS}"),
         )?;
+        let derived_values = read_optional_json(
+            &entry.path().join(DERIVED_VALUES),
+            &format!("packs/{pack_id}/{DERIVED_VALUES}"),
+        )?;
         let dimensions = read_optional_json(
             &entry.path().join(DIMENSIONS),
             &format!("packs/{pack_id}/{DIMENSIONS}"),
@@ -512,6 +524,7 @@ fn read_packs(root: &Path) -> RepositoryResult<BTreeMap<String, Pack>> {
             Pack {
                 manifest,
                 record_definitions,
+                derived_values,
                 dimensions,
                 achievements,
                 skills,
@@ -628,6 +641,7 @@ fn reject_unknown_pack_json(root: &Path, pack_id: &str) -> RepositoryResult<()> 
     let known = BTreeSet::from([
         PACK_MANIFEST,
         RECORD_DEFINITIONS,
+        DERIVED_VALUES,
         DIMENSIONS,
         ACHIEVEMENTS,
         SKILLS,
@@ -906,11 +920,12 @@ mod tests {
     use crate::domain::{
         AchievementDefinition, AchievementDifficulty, AchievementFile, AchievementState,
         AchievementStateFile, AchievementStatus, AssistantMemory, AssistantMemoryFile,
-        AssistantMemoryKind, CollectionRecord, DimensionDefinition, DimensionFile, EventEntry,
-        EventRecord, FieldDefinition, Mission, MissionDifficulty, MissionFile, MissionStatus,
-        MissionSuggestion, MissionSuggestionStatus, PackManifest, ScalarRecord,
-        ScalarRecordDefinition, ScoreDefinition, SkillDefinition, SkillFile, SkillNode,
-        StructuredRecordDefinition, ValueType, SCHEMA_VERSION,
+        AssistantMemoryKind, CollectionRecord, DerivedValueDefinition, DerivedValueFile,
+        DimensionDefinition, DimensionFile, EventEntry, EventRecord, FieldDefinition, Mission,
+        MissionDifficulty, MissionFile, MissionStatus, MissionSuggestion, MissionSuggestionStatus,
+        PackManifest, ScalarRecord, ScalarRecordDefinition, ScoreDefinition, SkillDefinition,
+        SkillFile, SkillNode, StructuredRecordDefinition, ValueType, PACK_SCHEMA_VERSION,
+        SCHEMA_VERSION,
     };
     use crate::storage::DataRepository;
     use serde_json::json;
@@ -918,7 +933,7 @@ mod tests {
     fn sample_snapshot() -> SyncedRepositorySnapshot {
         let pack = Pack {
             manifest: PackManifest {
-                schema_version: SCHEMA_VERSION,
+                schema_version: PACK_SCHEMA_VERSION,
                 id: "fitness".to_string(),
                 name: "Fitness".to_string(),
                 description: Some("Fitness records".to_string()),
@@ -962,6 +977,15 @@ mod tests {
                         )]),
                     }),
                 ],
+            }),
+            derived_values: Some(DerivedValueFile {
+                values: vec![DerivedValueDefinition {
+                    id: "fitness.run_score".to_string(),
+                    name: "Run score".to_string(),
+                    description: None,
+                    unit: None,
+                    expression: "record('fitness.total_runs') * 10".to_string(),
+                }],
             }),
             dimensions: Some(DimensionFile {
                 dimensions: vec![DimensionDefinition {
@@ -1150,6 +1174,10 @@ mod tests {
             "\"id\": \"fitness.running\",\n      \"name\": \"Running\",\n      \"kind\": \"event\""
         ));
         assert!(!definitions.contains("\"kind\": \"event\",\n      \"id\""));
+
+        let derived_values =
+            fs::read_to_string(first.join("packs/fitness/derived-values.json")).unwrap();
+        assert!(derived_values.contains("\"id\": \"fitness.run_score\""));
 
         let records = fs::read_to_string(first.join("records/fitness.json")).unwrap();
         assert!(records.contains("\"items\": []"));

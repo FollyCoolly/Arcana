@@ -64,4 +64,4 @@ Record 不对 JSON 中的 RecordDefinition 建数据库外键。Definition 可�
 
 ## 6. 派生查询
 
-Status、Skill 和 context summary 会在 runtime lock 下组合 JSON Definitions、SQLite Records 与 local state 后即时计算。派生分数、等级、进度、剩余天数均不写回数据库。
+DerivedValue、Status、Skill 和 context summary 会在 runtime lock 下组合 JSON Definitions、SQLite Records 与 local state 后即时计算。派生值、分数、等级、进度、游戏天数和剩余天数均不写回数据库。

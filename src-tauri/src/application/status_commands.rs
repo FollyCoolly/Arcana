@@ -1,8 +1,10 @@
+use super::derived_value_commands::FormulaSnapshotEvaluator;
 use crate::domain::{
     aggregate_dimension_score, dimension_level, ArcanaRepository, ArcanaRepositoryReader,
-    ArcanaRepositoryTransaction, DimensionDefinition, Record, RepositoryError, RepositoryErrorCode,
+    ArcanaRepositoryTransaction, DimensionDefinition, RepositoryError, RepositoryErrorCode,
     RepositoryResult, ScoreDefinition, StatusDimensionSelection, ValidationIssue,
 };
+use chrono::{Local, NaiveDate};
 use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -120,10 +122,19 @@ where
         &mut self,
         dimension_id: Option<&str>,
     ) -> RepositoryResult<Vec<StatusDimensionEvaluation>> {
+        self.evaluate_on(dimension_id, Local::now().date_naive())
+    }
+
+    pub fn evaluate_on(
+        &mut self,
+        dimension_id: Option<&str>,
+        as_of_date: NaiveDate,
+    ) -> RepositoryResult<Vec<StatusDimensionEvaluation>> {
         let transaction = self.repository.begin_transaction()?;
         let snapshot = transaction.load_synced_snapshot()?;
         let selections = transaction.status_dimension_selection()?;
-        let matches = evaluate_dimensions_from_snapshot(&snapshot, &selections, dimension_id)?;
+        let matches =
+            evaluate_dimensions_from_snapshot(&snapshot, &selections, dimension_id, as_of_date)?;
         transaction.rollback()?;
         Ok(matches)
     }
@@ -224,23 +235,13 @@ pub(crate) fn evaluate_dimensions_from_snapshot(
     snapshot: &crate::domain::SyncedRepositorySnapshot,
     selections: &[StatusDimensionSelection],
     dimension_id: Option<&str>,
+    as_of_date: NaiveDate,
 ) -> RepositoryResult<Vec<StatusDimensionEvaluation>> {
     let selected_positions: BTreeMap<&str, u8> = selections
         .iter()
         .map(|selection| (selection.dimension_id.as_str(), selection.position))
         .collect();
-    let numeric_records: BTreeMap<&str, f64> = snapshot
-        .records
-        .values()
-        .flat_map(|file| file.records.iter())
-        .filter_map(|record| match record {
-            Record::Scalar(record) => record
-                .value
-                .as_f64()
-                .map(|value| (record.definition_id.as_str(), value)),
-            Record::Collection(_) | Record::Event(_) => None,
-        })
-        .collect();
+    let mut evaluator = FormulaSnapshotEvaluator::new(snapshot, as_of_date)?;
 
     let mut matches = enabled_dimensions(snapshot)
         .filter(|(_, definition)| {
@@ -251,7 +252,7 @@ pub(crate) fn evaluate_dimensions_from_snapshot(
                 pack_id,
                 definition,
                 selected_positions.get(definition.id.as_str()).copied(),
-                &numeric_records,
+                &mut evaluator,
             )
         })
         .collect::<RepositoryResult<Vec<_>>>()?;
@@ -308,7 +309,7 @@ fn evaluate_dimension(
     pack_id: &str,
     definition: &DimensionDefinition,
     selected_position: Option<u8>,
-    numeric_records: &BTreeMap<&str, f64>,
+    evaluator: &mut FormulaSnapshotEvaluator,
 ) -> RepositoryResult<StatusDimensionEvaluation> {
     let mut scores = Vec::with_capacity(definition.scores.len());
     for score in &definition.scores {
@@ -320,13 +321,23 @@ fn evaluate_dimension(
                 error.to_string(),
             )
         })?;
-        let missing_record_ids = expression
+        let mut missing_record_ids = expression
             .record_references()
-            .filter(|id| !numeric_records.contains_key(*id))
+            .filter(|id| evaluator.record_value(id).is_none())
             .map(str::to_string)
-            .collect();
+            .collect::<BTreeSet<_>>();
+        let mut derived_values = BTreeMap::new();
+        for id in expression.derived_value_references() {
+            let computation = evaluator.evaluate_id(id)?;
+            missing_record_ids.extend(computation.missing_record_ids);
+            derived_values.insert(id.to_string(), computation.value);
+        }
         let raw_value = expression
-            .evaluate_raw(|id| numeric_records.get(id).copied())
+            .evaluate(
+                |id| evaluator.record_value(id),
+                |id| derived_values.get(id).copied().flatten(),
+                evaluator.as_of_date(),
+            )
             .map_err(|error| {
                 status_evaluation_error(
                     definition,
@@ -342,7 +353,7 @@ fn evaluate_dimension(
             expression: score.expression.clone(),
             raw_value,
             score: raw_value.map(|value| value.clamp(0.0, 100.0)),
-            missing_record_ids,
+            missing_record_ids: missing_record_ids.into_iter().collect(),
         });
     }
     let score = aggregate_dimension_score(
@@ -391,8 +402,9 @@ mod tests {
     use super::*;
     use crate::application::{basic_pack, RecordCommands, SetScalarRecord};
     use crate::domain::{
-        ArcanaRepositoryTransaction, DimensionFile, Pack, PackManifest, RecordDefinition,
-        RecordDefinitionFile, ScalarRecordDefinition, ScoreDefinition, ValueType, SCHEMA_VERSION,
+        ArcanaRepositoryTransaction, DerivedValueDefinition, DerivedValueFile, DimensionFile, Pack,
+        PackManifest, RecordDefinition, RecordDefinitionFile, ScalarRecordDefinition,
+        ScoreDefinition, ValueType, PACK_SCHEMA_VERSION,
     };
     use crate::storage::DataRepository;
     use serde_json::json;
@@ -400,7 +412,7 @@ mod tests {
     fn status_pack() -> Pack {
         Pack {
             manifest: PackManifest {
-                schema_version: SCHEMA_VERSION,
+                schema_version: PACK_SCHEMA_VERSION,
                 id: "fitness".to_string(),
                 name: "Fitness".to_string(),
                 description: None,
@@ -426,6 +438,15 @@ mod tests {
                     }),
                 ],
             }),
+            derived_values: Some(DerivedValueFile {
+                values: vec![DerivedValueDefinition {
+                    id: "fitness.endurance_score".to_string(),
+                    name: "Endurance score".to_string(),
+                    description: None,
+                    unit: None,
+                    expression: "record('fitness.endurance') * 2".to_string(),
+                }],
+            }),
             dimensions: Some(DimensionFile {
                 dimensions: vec![DimensionDefinition {
                     id: "fitness::physical".to_string(),
@@ -443,7 +464,7 @@ mod tests {
                             id: "endurance".to_string(),
                             name: "Endurance".to_string(),
                             weight: 1.0,
-                            expression: "record('fitness.endurance') * 2".to_string(),
+                            expression: "derived('fitness.endurance_score')".to_string(),
                         },
                         ScoreDefinition {
                             id: "strength".to_string(),

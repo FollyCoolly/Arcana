@@ -599,6 +599,7 @@ fn load_packs(connection: &Connection) -> RepositoryResult<(BTreeMap<String, Pac
         let pack = Pack {
             manifest,
             record_definitions: load_record_definitions(connection, &id)?,
+            derived_values: None,
             dimensions: load_dimensions(connection, &id)?,
             achievements: load_achievement_definitions(connection, &id)?,
             skills: load_skill_definitions(connection, &id)?,

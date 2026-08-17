@@ -57,9 +57,11 @@ git diff --check
 
 - 一个 live repository / SQLite runtime 对应一个用户，不建立 Profile 或 `profile_id`。
 - `identity.nickname` 与 `identity.birth_date` 是 `basic` Pack 的普通 RecordDefinition。
+- `identity.game_days` 是 `basic` Pack 的 DerivedValue；DerivedValue 由 JSON Definition 惰性计算，不写入 SQLite。
 - RecordDefinition ID 为 `<namespace>.<name>`；Record 通过 `definition_id` 引用定义。
 - Pack 父子关系只用于组织；跨 Pack 引用必须显式且不能依赖父级自动启用。
-- Status Dimension 是子 Score 的加权平均，范围固定裁剪到 0～100，四个 threshold 派生 Lv.0～Lv.5。
+- 计算依赖单向流动：`Record -> DerivedValue -> Status Score -> Dimension Score`；Status Score 也可直接读取数值 Record。
+- Status Dimension 是子 Score 的加权平均，Score 范围固定裁剪到 0～100，四个 threshold 派生 Lv.0～Lv.5。
 - Achievement 仅保存 `tracked` / `achieved` 状态，不保存自动解锁规则或派生进度。
 - MissionSuggestion 只在本机；接受后创建可同步 Mission。
 - AssistantMemory 可同步；Agent Session、凭证与设备配置不同步。

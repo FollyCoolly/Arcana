@@ -295,7 +295,17 @@ impl ArcanaRuntime {
 
     fn ensure_semantic_repository(&self) -> RepositoryResult<()> {
         if self.repository_dir.exists() {
-            JsonRepositoryCodec::read_semantic_directory(&self.repository_dir)?;
+            let mut snapshot = JsonRepositoryCodec::read_semantic_directory(&self.repository_dir)?;
+            if snapshot
+                .packs
+                .get(BASIC_PACK_ID)
+                .is_some_and(is_unmodified_legacy_basic_pack)
+            {
+                snapshot
+                    .packs
+                    .insert(BASIC_PACK_ID.to_string(), basic_pack());
+                JsonRepositoryCodec::update_semantic_directory(&self.repository_dir, snapshot)?;
+            }
             return Ok(());
         }
 
@@ -349,6 +359,13 @@ impl ArcanaRuntime {
             }
         }
     }
+}
+
+fn is_unmodified_legacy_basic_pack(pack: &crate::domain::Pack) -> bool {
+    let mut legacy = basic_pack();
+    legacy.manifest.schema_version = crate::domain::LEGACY_PACK_SCHEMA_VERSION;
+    legacy.derived_values = None;
+    pack == &legacy
 }
 
 fn initial_snapshot() -> SyncedRepositorySnapshot {
@@ -508,6 +525,7 @@ mod tests {
                     unit: None,
                 })],
             }),
+            derived_values: None,
             dimensions: None,
             achievements: None,
             skills: None,
@@ -570,6 +588,36 @@ mod tests {
         runtime.initialize().unwrap();
         let error = runtime.initialize().unwrap_err();
         assert_eq!(error.code, RepositoryErrorCode::Conflict);
+    }
+
+    #[test]
+    fn upgrades_only_the_unmodified_legacy_basic_pack() {
+        let directory = tempfile::tempdir().unwrap();
+        let runtime_dir = directory.path().join("runtime");
+        let repository_dir = directory.path().join("repository");
+        let mut snapshot = initial_snapshot();
+        let legacy = snapshot.packs.get_mut(BASIC_PACK_ID).unwrap();
+        legacy.manifest.schema_version = crate::domain::LEGACY_PACK_SCHEMA_VERSION;
+        legacy.derived_values = None;
+        JsonRepositoryCodec::write_snapshot_to_new_directory(snapshot, &repository_dir).unwrap();
+
+        let runtime = ArcanaRuntime::new_with_repository(&runtime_dir, &repository_dir).unwrap();
+        runtime.initialize().unwrap();
+        runtime
+            .with_repository(|repository| {
+                let snapshot = repository.load_synced_snapshot()?;
+                let basic = &snapshot.packs[BASIC_PACK_ID];
+                assert_eq!(
+                    basic.manifest.schema_version,
+                    crate::domain::PACK_SCHEMA_VERSION
+                );
+                assert_eq!(
+                    basic.derived_values.as_ref().unwrap().values[0].id,
+                    "identity.game_days"
+                );
+                Ok(())
+            })
+            .unwrap();
     }
 
     #[test]

@@ -10,6 +10,7 @@ arcana-data mission suggestion-list --status rejected
 arcana-data achievement list --status tracked
 arcana-data achievement list --pack <pack_id>
 arcana-data record query --pack <pack_id> --has-value true
+arcana-data derived evaluate <derived_value_id> --as-of <YYYY-MM-DD>
 arcana-data memory list
 ```
 

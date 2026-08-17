@@ -1,7 +1,7 @@
 # Arcana 当前架构
 
 > **状态**：Current
-> **最后更新**：2026-08-16
+> **最后更新**：2026-08-17
 
 Arcana 是本地优先的 Tauri 桌面应用。Svelte 提供 UI；Rust 统一承载用例、领域校验与持久化；外部 Arcana Skills 通过类型化 `arcana-data` CLI 使用这些能力，应用内不运行 LLM 或 Agent Session。
 
@@ -59,7 +59,9 @@ JSON repository 是日常运行时数据源，不再只是 SQLite 的导出物�
 ```text
 Enabled Pack -> RecordDefinition registry
 Record -> definition_id
-Record + DimensionDefinition -> Status score / level
+Record -> DerivedValue -> Status Score
+Record ----------------> Status Score
+Status Score + DimensionDefinition -> Dimension score / level
 Record + user statement + AchievementDefinition -> AchievementState
 achieved Achievement + SkillDefinition -> Skill points / level
 MissionSuggestion --accept--> Mission
@@ -67,7 +69,8 @@ MissionSuggestion --accept--> Mission
 
 - Record 是扁平的用户事实；RecordDefinition 随 Pack 发放。Definition namespace 与 Pack ID 是不同概念。
 - Pack 可组成单父级 PackForest。父子关系只用于组织，启用不级联；每个 Pack 必须完整声明自己使用的 Definition。
-- Status Dimension 是一层加权 Score，子 Score 与总分裁剪到 `0..100`；正分为 Lv.1，四个 threshold 定义 Lv.2～Lv.5，零分为 Lv.0。
+- DerivedValue 是 Pack 定义、惰性计算且不持久化的具名数值，可依赖 Record 或其他 DerivedValue，但必须形成 DAG。
+- Status Dimension 是一层加权 Status Score；Score 可直接读取数值 Record 或 DerivedValue，并裁剪到 `0..100`，四个 threshold 定义 Lv.2～Lv.5，零分为 Lv.0。
 - Achievement 只持久化 `tracked` 或 `achieved` 状态。自然语言要求与可选 `tip` 帮助 Agent 判断，不存在自动解锁 DSL；Record 改变不会自动撤销 achieved。
 - Skill 只从 achieved Achievement 派生积分和等级。
 - 未接受推荐是本机 MissionSuggestion；接受后才成为可同步 Mission。

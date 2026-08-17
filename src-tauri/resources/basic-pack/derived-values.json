@@ -1,0 +1,11 @@
+{
+  "values": [
+    {
+      "id": "identity.game_days",
+      "name": "游戏时间",
+      "description": "从生日到指定日期经历的自然日数",
+      "unit": "day",
+      "expression": "days_since(record('identity.birth_date'))"
+    }
+  ]
+}
