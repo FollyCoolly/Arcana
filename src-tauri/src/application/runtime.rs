@@ -156,6 +156,19 @@ impl ArcanaRuntime {
         temporary.activate_without_overwrite(&database_path)
     }
 
+    /// Ensure the runtime is usable without overwriting existing data. A new
+    /// installation creates both stores; an existing Record-only database
+    /// with a missing semantic repository receives the standard basic Pack.
+    pub fn ensure_initialized(&self) -> RepositoryResult<()> {
+        if !self.database_path().exists() {
+            return self.initialize();
+        }
+
+        let _lock = self.acquire_lock(LockMode::Exclusive)?;
+        self.ensure_semantic_repository()?;
+        RecordRepository::open(self.database_path())?.checkpoint_and_close()
+    }
+
     /// Execute a normal local command while holding the exclusive runtime lock.
     /// JSON-backed writes require process-wide serialization; Record commands
     /// use the same boundary so a composed snapshot cannot change mid-command.
@@ -318,13 +331,15 @@ impl ArcanaRuntime {
             return Ok(());
         }
 
-        Err(RepositoryError::new(
-            RepositoryErrorCode::NotFound,
-            format!(
-                "Arcana JSON repository does not exist: {}",
-                self.repository_dir.display()
-            ),
-        ))
+        // A previously created Record-only database may predate the live JSON
+        // repository. Validate it before creating files, then install only the
+        // standard semantic defaults; SQLite Records remain untouched.
+        RecordRepository::open(self.database_path())?.checkpoint_and_close()?;
+        JsonRepositoryCodec::write_snapshot_to_new_directory(
+            initial_snapshot(),
+            &self.repository_dir,
+        )?;
+        Ok(())
     }
 
     fn acquire_lock(&self, mode: LockMode) -> RepositoryResult<RuntimeLock> {
@@ -588,6 +603,47 @@ mod tests {
         runtime.initialize().unwrap();
         let error = runtime.initialize().unwrap_err();
         assert_eq!(error.code, RepositoryErrorCode::Conflict);
+    }
+
+    #[test]
+    fn existing_record_database_recreates_missing_repository_without_losing_records() {
+        let directory = tempfile::tempdir().unwrap();
+        let runtime = ArcanaRuntime::new(directory.path().join("runtime")).unwrap();
+        runtime.initialize().unwrap();
+        runtime
+            .with_repository(|repository| {
+                RecordCommands::new(repository).set_scalar_at(
+                    SetScalarRecord {
+                        definition_id: "identity.nickname".to_string(),
+                        value: json!("Alice"),
+                        effective_at: None,
+                    },
+                    "2026-08-18T20:30:00+08:00".to_string(),
+                )?;
+                Ok(())
+            })
+            .unwrap();
+        std::fs::remove_dir_all(runtime.repository_dir()).unwrap();
+
+        runtime.ensure_initialized().unwrap();
+
+        assert!(runtime.repository_dir().join("arcana.json").is_file());
+        assert!(runtime
+            .repository_dir()
+            .join("packs/basic/manifest.json")
+            .is_file());
+        runtime
+            .with_repository(|repository| {
+                let Record::Scalar(nickname) = repository
+                    .get_record("identity.nickname")?
+                    .expect("nickname Record must remain")
+                else {
+                    panic!("nickname must be scalar");
+                };
+                assert_eq!(nickname.value, json!("Alice"));
+                Ok(())
+            })
+            .unwrap();
     }
 
     #[test]

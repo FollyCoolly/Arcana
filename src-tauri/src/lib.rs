@@ -205,9 +205,7 @@ pub fn run() {
         .setup(|app| {
             let runtime =
                 application::ArcanaRuntime::from_settings(&storage::settings::load_settings())?;
-            if !runtime.database_path().exists() {
-                runtime.initialize()?;
-            }
+            runtime.ensure_initialized()?;
             app.manage(runtime);
 
             let window = app.get_webview_window("main").unwrap();

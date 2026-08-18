@@ -80,6 +80,8 @@ Codec 负责：
 
 当前代码支持从已实现过的 SQLite Schema v1 升级：升级前读取其中的 Pack/semantic/local entities，写入新 JSON store，再执行 Schema v2 migration 删除非 Record 表。旧版应用的其他 JSON 格式按此前决策完全抛弃，不提供转换。
 
+若 Record-only SQLite 已存在、但 live JSON repository 尚未建立（例如重构期间已经生成数据库），启动和普通数据命令会先验证 SQLite，再创建标准 `basic` Pack repository；现有 Records 不会被覆盖。若 SQLite 本身无效，则拒绝恢复且不创建 repository。
+
 运行时会把内容与旧内置 `basic` Pack 完全一致的 schema v1 副本升级为当前 schema v2，以补充 `identity.game_days`；只要用户改过该 Pack 的任意内容就不自动覆盖，需通过 Pack 工具显式升级。
 
 ## 6. 删除、历史与安全
