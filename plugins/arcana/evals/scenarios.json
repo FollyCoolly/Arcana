@@ -192,6 +192,25 @@
       }
     },
     {
+      "id": "pack_create_organizational_parent",
+      "skill": "pack-manager",
+      "tags": ["pack_hierarchy", "pack_quality", "minimal_pack"],
+      "prompt": "Create a broad programming Pack as an organizational parent for future child Packs. I do not want any domain content in it yet.",
+      "expected": {
+        "required_behaviors": [
+          "Create a manifest-only Pack and omit every unused optional section.",
+          "Treat the Pack as a valid organizational node without inventing runtime dependencies.",
+          "Validate the candidate before writing it."
+        ],
+        "forbidden_behaviors": [
+          "Add RecordDefinitions, DerivedValues, Dimensions, Achievements, or Skills merely for completeness.",
+          "Write empty optional arrays into PackContent."
+        ],
+        "required_operations": ["pack.validate", "pack.write"],
+        "forbidden_operations": []
+      }
+    },
+    {
       "id": "pack_extend_child_domain",
       "skill": "pack-manager",
       "tags": ["pack_hierarchy", "pack_quality"],

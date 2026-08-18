@@ -1,7 +1,7 @@
 # Achievement、Skill 与 Content Pack
 
 > **状态**：Achievement/Skill Domain、Application、CLI 与 Tauri UI 已实现
-> **最后更新**：2026-08-16
+> **最后更新**：2026-08-18
 
 ## 1. 依赖方向
 
@@ -114,14 +114,17 @@ skill list [--skill-id <id>] [--pack <pack_id>]
 
 ## 6. Pack 内容
 
-Pack 是兴趣领域与成长定义的组织/分发单元，可以包含：
+Pack 是兴趣领域与成长定义的组织/分发单元。只有 manifest 必需，其余内容全部按领域需要选择：
 
-- manifest；
-- 完整的 RecordDefinition 声明；
-- 可选 DerivedValueDefinition；
-- AchievementDefinition；
-- Arcana Skill 定义；
-- 可选 DimensionDefinition。
+- 必需的 manifest；
+- 可选的完整 RecordDefinition 声明；
+- 可选的 DerivedValueDefinition；
+- 可选的 AchievementDefinition；
+- 可选的 Arcana Skill 定义；
+- 可选的 DimensionDefinition；
+- 可选的 asset。
+
+只有 manifest 的 Pack 是合法的 PackForest 组织节点。创建 Pack 时必须省略没有实际用途的内容文件，不能用空数组占位，也不能为了显得完整而虚构 Record、DerivedValue、Dimension、Achievement 或 Skill。
 
 Pack 只有 enabled/disabled 状态，不区分“官方”。manifest 保留 `author`。
 
@@ -169,7 +172,9 @@ DerivedValue 采用相同的自包含原则：引用的 RecordDefinition 和其�
 
 ## 9. Status Dimension
 
-Pack 可以直接定义 Dimension，不经过模板采用或复制。已启用 Pack 的 Dimension 进入本机 UI 可选列表，用户从中选择五个展示。选择只引用稳定 Dimension ID；自定义 Dimension 应直接放在用户维护的 Pack 中。
+Dimension 是 Pack 的可选能力，不是领域 Pack 的默认组成。大多数 Pack，尤其是细分子领域 Pack，不应定义 Status；只有领域能够提供用户确实希望长期展示、含义稳定且可解释的 0～100 评价视角时才添加 Dimension。
+
+需要 Status 时，Pack 可以直接定义 Dimension，不经过模板采用或复制。已启用 Pack 的 Dimension 进入本机 UI 可选列表，用户从中选择五个展示。选择只引用稳定 Dimension ID；自定义 Dimension 应直接放在用户维护的 Pack 中。
 
 ## 10. 内容演进
 

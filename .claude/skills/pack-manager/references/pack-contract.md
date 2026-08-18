@@ -23,20 +23,19 @@ Pack mutations cannot be part of a multi-operation `batch apply`; that command i
 
 ## PackContent
 
-Top-level fields:
+The minimal valid PackContent contains only a manifest:
 
 ```json
 {
-  "manifest": {},
-  "record_definitions": { "definitions": [] },
-  "derived_values": { "values": [] },
-  "dimensions": { "dimensions": [] },
-  "achievements": { "achievements": [] },
-  "skills": { "skills": [] }
+  "manifest": {
+    "schema_version": 2,
+    "id": "programming",
+    "name": "Programming"
+  }
 }
 ```
 
-Only `manifest` is required. Omit an unused optional section; do not provide an empty array. Unknown fields and `null` are rejected.
+Only `manifest` is required. `record_definitions`, `derived_values`, `dimensions`, `achievements`, and `skills` are independent optional top-level sections whose shapes are documented below. Omit an unused section; do not provide an empty array. The complete fixture demonstrates every field for contract testing and is not a recommended creation template. Unknown fields and `null` are rejected.
 
 ### Manifest
 

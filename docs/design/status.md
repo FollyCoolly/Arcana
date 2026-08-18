@@ -1,11 +1,13 @@
 # Status 目标模型
 
 > **状态**：Implemented in Domain/Application/CLI/Tauri Status UI
-> **最后更新**：2026-08-17
+> **最后更新**：2026-08-18
 
 ## 1. 定位
 
 Status 不拥有独立事实或需要同步的用户状态。Pack 直接定义 Dimension；UI 从已启用 Pack 提供的 Dimension 中选择五个，并只在本机保存这项显示配置，再从 Record 计算子 Score、Dimension 总分和等级。
+
+Dimension 是显式选择加入的长期评价视角，不是 Pack 的必备内容。大多数 Pack，尤其是狭窄的子领域 Pack，不定义 Dimension；不能为了让 Pack 显得完整而生成 Status 配置。
 
 ```text
 Record [-> DerivedValue] + selected Pack Dimension

@@ -1,6 +1,6 @@
 ---
 name: pack-manager
-description: Create, extend, refine, validate, enable, disable, remove, and add assets to Arcana content Packs containing RecordDefinitions, DerivedValues, Status Dimensions, Achievements, and Arcana Skills. Use when a user wants a new domain pack, wants an existing pack expanded or improved, wants Pack availability changed, or needs pack schema and quality problems diagnosed or fixed.
+description: Create, extend, refine, validate, enable, disable, remove, and add assets to Arcana domain Packs, selecting optional RecordDefinitions, DerivedValues, Status Dimensions, Achievements, and Arcana Skills only when the domain needs them. Use when a user wants a new domain pack, wants an existing pack expanded or improved, wants Pack availability changed, or needs pack schema and quality problems diagnosed or fixed.
 ---
 
 # Pack Manager
@@ -20,7 +20,7 @@ Design self-contained, high-quality Arcana Packs and write them through `arcana-
 - Extend: add a coherent subdomain, Achievement, Dimension, Skill, or RecordDefinition while preserving existing IDs and content.
 - Refine: improve existing definitions or organization while explicitly identifying compatibility and user-data impact.
 
-Let a Pack start small. Use `parent_pack_id` to organize broad-to-specific domains when one Pack would become unwieldy; the relationship is organizational, not an enablement or runtime dependency.
+Let a Pack start small. Only its manifest is required; a manifest-only Pack is a valid organizational node. Select each optional content section deliberately, omit unused sections instead of writing empty arrays, and never add content merely to make a Pack look complete. Use `parent_pack_id` to organize broad-to-specific domains when one Pack would become unwieldy; the relationship is organizational, not an enablement or runtime dependency.
 
 ## Model the Domain
 
@@ -28,13 +28,13 @@ Keep Records flat and Packs hierarchical. A Pack may declare RecordDefinitions f
 
 Create a RecordDefinition only for reusable, user-specific facts worth recording. Create a DerivedValue for a named, reusable calculation such as BMI or game days; its value is computed from Records or other DerivedValues and is never recorded. Keep dependencies local to the Pack and acyclic. Do not force every Achievement into a measurable Record. Link existing facts with `related_record_definition_ids`; use `tip` for unusual judgment or useful tracking information that does not justify a predefined Record.
 
-Define Status as one Dimension layer containing weighted child Scores. A Score may reference numeric Records directly or reuse DerivedValues; do not create a DerivedValue for a one-off readable calculation. Keep each Score in `[0,100]` through the system's default clamp and use the safe expression language only. Do not add a recursive tree or final score expression.
+Do not add a Status Dimension by default. Most Packs, especially narrow child domains, should not define Status. Add a Dimension only when the domain offers a stable, long-lived, interpretable 0-100 evaluation perspective that the user wants on the Status screen. When justified, define Status as one Dimension layer containing weighted child Scores. A Score may reference numeric Records directly or reuse DerivedValues; do not create a DerivedValue for a one-off readable calculation. Keep each Score in `[0,100]` through the system's default clamp and use the safe expression language only. Do not add a recursive tree or final score expression.
 
 Define Achievement completion in natural language. Keep prerequisites local to the Pack and acyclic. Define Arcana Skill nodes as local Achievement references with points; only achieved states score.
 
 ## Write Safely
 
-1. Start a new Pack with `pack scaffold <id> --name <name>` or the published PackContent fixture.
+1. Start a new Pack with `pack scaffold <id> --name <name>`. Use the complete PackContent fixture only as a field reference, then add optional sections justified by the domain.
 2. Keep IDs and all required arrays sorted. Preserve every existing stable ID unless the user explicitly chooses a breaking replacement strategy.
 3. Write candidate PackContent to a temporary JSON file.
 4. Run `pack validate --file <candidate.json>` and fix every issue.
@@ -52,6 +52,7 @@ For deletion, first run `pack show`, then `pack delete --dry-run <id>`. Surface 
 
 Before writing, verify:
 
+- every optional section serves an explicit domain need, with no completeness-driven Record, DerivedValue, Dimension, Achievement, Skill, or empty array;
 - names and descriptions are distinct, concrete, and game-readable;
 - difficulty reflects real progression;
 - RecordDefinitions are reusable and not near-duplicates;
