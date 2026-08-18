@@ -16,13 +16,13 @@
 
 ## 2. 当前 repository 格式
 
-完整布局与人工编辑规则见 [data_platform.md](./data_platform.md)。repository Schema 与 Pack Schema 当前均为整数版本 1；遇到不支持版本必须拒绝，不能尽力猜测。
+完整布局与人工编辑规则见 [data_platform.md](./data_platform.md)。当前 repository Schema 为 2，Pack Schema 为 2（仍可读取 Pack Schema 1）；遇到不支持版本必须拒绝，不能尽力猜测。旧的 repository Schema 1 不迁移。
 
 Live runtime 会直接读取 semantic managed paths：
 
 ```text
 arcana.json
-achievement-states.json
+achievement-states/**
 assistant-memory.json
 missions.json
 packs/**

@@ -9,6 +9,7 @@
 - Added canonical external Arcana Skills and restricted multi-operation batches to atomic Record mutations; JSON-backed mutations use individual dry-run commands.
 - Added desktop Pack management with validated write, enable, disable, delete, assets, and deletion impact previews without deleting user Records or Achievement states.
 - Added Pack schema v2 DerivedValues: named, reusable, lazily evaluated formulas over Records/other DerivedValues, deterministic date evaluation, Status integration, and read-only CLI queries without new SQLite tables.
+- Changed repository Schema v2 to store global AchievementState data as deterministic per-Pack files under `achievement-states/`, keeping user state separate from replaceable Pack definitions.
 
 ### Removed
 

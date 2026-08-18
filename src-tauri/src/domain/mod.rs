@@ -30,8 +30,9 @@ pub use skills::*;
 pub use status::*;
 pub use validation::*;
 
-/// Repository schema. The legacy alias remains for existing callers.
-pub const SCHEMA_VERSION: u32 = 1;
+/// Repository schema. Version 2 shards AchievementState JSON by Pack.
+/// The legacy alias remains for existing callers.
+pub const SCHEMA_VERSION: u32 = 2;
 pub const REPOSITORY_SCHEMA_VERSION: u32 = SCHEMA_VERSION;
 /// Pack schema v1 remains readable; new Packs use v2 with DerivedValues.
 pub const LEGACY_PACK_SCHEMA_VERSION: u32 = 1;

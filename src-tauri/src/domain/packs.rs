@@ -526,7 +526,7 @@ mod tests {
     fn base_pack() -> Pack {
         Pack {
             manifest: PackManifest {
-                schema_version: SCHEMA_VERSION,
+                schema_version: LEGACY_PACK_SCHEMA_VERSION,
                 id: "cooking".to_string(),
                 name: "Cooking".to_string(),
                 description: None,

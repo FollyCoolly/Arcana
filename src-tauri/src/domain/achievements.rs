@@ -158,7 +158,7 @@ impl Validate for AchievementStateFile {
             !self.states.is_empty(),
             "empty_file",
             "states",
-            "achievement-states.json must be omitted instead of storing an empty object",
+            "an empty AchievementState file must be omitted",
         );
         for (id, state) in &self.states {
             validator.require(

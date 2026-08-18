@@ -11,7 +11,7 @@ Arcana 的内容定义与大部分用户状态需要便于阅读、手动编辑�
 | --- | --- | --- |
 | Pack manifest、Definitions、assets | live JSON repository | 是 |
 | enabled Pack IDs | `arcana.json` | 是 |
-| AchievementState | `achievement-states.json` | 是 |
+| AchievementState | `achievement-states/<pack_id>.json` | 是 |
 | 已接受 Mission | `missions.json` | 是 |
 | AssistantMemory | `assistant-memory.json` | 是 |
 | Record | SQLite | 通过导入/导出的 `records/*.json` 投影 |
@@ -23,7 +23,8 @@ Arcana 的内容定义与大部分用户状态需要便于阅读、手动编辑�
 
 ```text
 arcana.json
-achievement-states.json             # 可选
+achievement-states/                 # 可选；用户状态按 Pack 分文件
+└── <pack_id>.json
 assistant-memory.json               # 可选
 missions.json                       # 可选
 records/                            # 完整 export/import 时使用
@@ -45,12 +46,14 @@ packs/
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "enabled_pack_ids": ["basic"]
 }
 ```
 
 不使用通用 Envelope，不保存 Profile、导出时间、本机路径、SQLite row ID、缓存或凭证。空的可选实体文件省略。
+
+AchievementState 在领域模型中仍是一份全局用户状态集合，保证每个 Achievement 最多一条状态；JSON 仅为降低人工浏览和 Git 冲突范围，按 Achievement ID 的 Pack 前缀拆成 `achievement-states/<pack_id>.json`。状态不嵌入 `packs/`，因为 Pack 是可替换的定义，而 AchievementState 是用户数据。即使对应 Pack 已删除，其文件和 unresolved 状态仍保留。
 
 ## 3. 人工编辑
 

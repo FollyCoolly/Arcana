@@ -134,7 +134,7 @@ impl Validate for SyncedRepositorySnapshot {
             }
         }
         if let Some(states) = &self.achievement_states {
-            validator.merge("achievement-states.json", states.validate());
+            validator.merge("achievement-states", states.validate());
         }
         if let Some(missions) = &self.missions {
             validator.merge("missions.json", missions.validate());

@@ -108,6 +108,6 @@
     "structured_errors": true
   },
   "pack_schema_version": 2,
-  "repository_schema_version": 1,
+  "repository_schema_version": 2,
   "sqlite_schema_version": 2
 }

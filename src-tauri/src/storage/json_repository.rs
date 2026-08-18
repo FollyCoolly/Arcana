@@ -1,8 +1,8 @@
 use crate::domain::{
-    is_snake_case_id, ArcanaManifest, ArcanaRepository, ArcanaRepositoryReader,
-    ArcanaRepositoryTransaction, FieldDefinition, Pack, Record, RecordDefinition,
-    RecordDefinitionFile, RecordFile, RepositoryError, RepositoryErrorCode, RepositoryResult,
-    SyncedRepositorySnapshot, Validate, ValueType,
+    is_snake_case_id, split_scoped_id, AchievementState, AchievementStateFile, ArcanaManifest,
+    ArcanaRepository, ArcanaRepositoryReader, ArcanaRepositoryTransaction, FieldDefinition, Pack,
+    Record, RecordDefinition, RecordDefinitionFile, RecordFile, RepositoryError,
+    RepositoryErrorCode, RepositoryResult, SyncedRepositorySnapshot, Validate, ValueType,
 };
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -15,7 +15,7 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 const ROOT_MANIFEST: &str = "arcana.json";
-const ACHIEVEMENT_STATES: &str = "achievement-states.json";
+const ACHIEVEMENT_STATES_DIRECTORY: &str = "achievement-states";
 const ASSISTANT_MEMORY: &str = "assistant-memory.json";
 const MISSIONS: &str = "missions.json";
 const PACK_MANIFEST: &str = "manifest.json";
@@ -107,7 +107,7 @@ impl JsonRepositoryCodec {
         let packs = read_packs(&source.join("packs"))?;
         let records = read_records(&source.join("records"))?;
         let achievement_states =
-            read_optional_json(&source.join(ACHIEVEMENT_STATES), ACHIEVEMENT_STATES)?;
+            read_achievement_states(&source.join(ACHIEVEMENT_STATES_DIRECTORY))?;
         let missions = read_optional_json(&source.join(MISSIONS), MISSIONS)?;
         let assistant_memory =
             read_optional_json(&source.join(ASSISTANT_MEMORY), ASSISTANT_MEMORY)?;
@@ -135,7 +135,7 @@ impl JsonRepositoryCodec {
         let manifest: ArcanaManifest = read_json(&source.join(ROOT_MANIFEST), ROOT_MANIFEST)?;
         let packs = read_packs(&source.join("packs"))?;
         let achievement_states =
-            read_optional_json(&source.join(ACHIEVEMENT_STATES), ACHIEVEMENT_STATES)?;
+            read_achievement_states(&source.join(ACHIEVEMENT_STATES_DIRECTORY))?;
         let missions = read_optional_json(&source.join(MISSIONS), MISSIONS)?;
         let assistant_memory =
             read_optional_json(&source.join(ASSISTANT_MEMORY), ASSISTANT_MEMORY)?;
@@ -222,7 +222,7 @@ fn render_snapshot(
     insert_json(&mut files, ROOT_MANIFEST, &snapshot.manifest)?;
 
     if let Some(states) = &snapshot.achievement_states {
-        insert_json(&mut files, ACHIEVEMENT_STATES, states)?;
+        render_achievement_states(&mut files, states)?;
     }
     if let Some(memory) = &snapshot.assistant_memory {
         insert_json(&mut files, ASSISTANT_MEMORY, memory)?;
@@ -557,6 +557,74 @@ fn read_records(root: &Path) -> RepositoryResult<BTreeMap<String, RecordFile>> {
     Ok(records)
 }
 
+fn read_achievement_states(root: &Path) -> RepositoryResult<Option<AchievementStateFile>> {
+    if !path_entry_exists(root)? {
+        return Ok(None);
+    }
+    require_directory(root, "achievement-states directory")?;
+    let mut states = BTreeMap::new();
+    for entry in sorted_entries(root)? {
+        let name = utf8_file_name(&entry)?;
+        let metadata = fs::symlink_metadata(entry.path())
+            .map_err(|error| io_error("inspect AchievementState file", error))?;
+        let pack_id = name.strip_suffix(".json").unwrap_or_default();
+        if !metadata.file_type().is_file() || !is_snake_case_id(pack_id) {
+            return Err(codec_validation_error(format!(
+                "invalid AchievementState file 'achievement-states/{name}'"
+            )));
+        }
+        let display_path = format!("achievement-states/{name}");
+        let file: AchievementStateFile = read_json(&entry.path(), &display_path)?;
+        for (achievement_id, state) in file.states {
+            let Some((state_pack_id, _)) = split_scoped_id(&achievement_id) else {
+                return Err(codec_validation_error(format!(
+                    "invalid Achievement id '{achievement_id}' in '{display_path}'"
+                )));
+            };
+            if state_pack_id != pack_id {
+                return Err(codec_validation_error(format!(
+                    "AchievementState '{achievement_id}' belongs in 'achievement-states/{state_pack_id}.json', not '{display_path}'"
+                )));
+            }
+            if states.insert(achievement_id.clone(), state).is_some() {
+                return Err(codec_validation_error(format!(
+                    "duplicate AchievementState '{achievement_id}'"
+                )));
+            }
+        }
+    }
+    if states.is_empty() {
+        return Err(codec_validation_error(
+            "achievement-states directory must be omitted when it has no state files",
+        ));
+    }
+    Ok(Some(AchievementStateFile { states }))
+}
+
+fn render_achievement_states(
+    files: &mut BTreeMap<String, Vec<u8>>,
+    state_file: &AchievementStateFile,
+) -> RepositoryResult<()> {
+    let mut states_by_pack: BTreeMap<String, BTreeMap<String, AchievementState>> = BTreeMap::new();
+    for (achievement_id, state) in &state_file.states {
+        let (pack_id, _) = split_scoped_id(achievement_id).ok_or_else(|| {
+            codec_validation_error(format!("invalid AchievementState id '{achievement_id}'"))
+        })?;
+        states_by_pack
+            .entry(pack_id.to_string())
+            .or_default()
+            .insert(achievement_id.clone(), state.clone());
+    }
+    for (pack_id, states) in states_by_pack {
+        insert_json(
+            files,
+            &format!("{ACHIEVEMENT_STATES_DIRECTORY}/{pack_id}.json"),
+            &AchievementStateFile { states },
+        )?;
+    }
+    Ok(())
+}
+
 fn read_assets(root: &Path) -> RepositoryResult<BTreeMap<String, Vec<u8>>> {
     if !path_entry_exists(root)? {
         return Ok(BTreeMap::new());
@@ -618,12 +686,7 @@ fn read_assets_recursive(
 }
 
 fn reject_unknown_root_json(root: &Path) -> RepositoryResult<()> {
-    let known = BTreeSet::from([
-        ROOT_MANIFEST,
-        ACHIEVEMENT_STATES,
-        ASSISTANT_MEMORY,
-        MISSIONS,
-    ]);
+    let known = BTreeSet::from([ROOT_MANIFEST, ASSISTANT_MEMORY, MISSIONS]);
     for entry in sorted_entries(root)? {
         let name = utf8_file_name(&entry)?;
         if Path::new(&name).extension() == Some(OsStr::new("json"))
@@ -1184,6 +1247,8 @@ mod tests {
         assert!(!records.contains("-0.0"));
         assert!(!records.contains('\r'));
         assert!(records.ends_with('\n'));
+        assert!(first.join("achievement-states/fitness.json").is_file());
+        assert!(!first.join("achievement-states.json").exists());
         assert_eq!(
             fs::read(first.join("packs/fitness/assets/card.png")).unwrap(),
             b"\x89PNG\r\n\x1a\nfixture"
@@ -1265,8 +1330,36 @@ mod tests {
         let target = directory.path().join("minimal");
         JsonRepositoryCodec::write_snapshot_to_new_directory(snapshot, &target).unwrap();
         assert!(!target.join("records").exists());
-        assert!(!target.join(ACHIEVEMENT_STATES).exists());
+        assert!(!target.join(ACHIEVEMENT_STATES_DIRECTORY).exists());
         assert!(!target.join(MISSIONS).exists());
         assert!(!target.join(ASSISTANT_MEMORY).exists());
+    }
+
+    #[test]
+    fn achievement_states_are_sharded_by_pack_and_reject_misplaced_ids() {
+        let mut snapshot = sample_snapshot();
+        snapshot.achievement_states.as_mut().unwrap().states.insert(
+            "archived_pack::legacy".to_string(),
+            AchievementState {
+                status: AchievementStatus::Tracked,
+                achieved_at: None,
+            },
+        );
+        let directory = tempfile::tempdir().unwrap();
+        let target = directory.path().join("repository");
+        JsonRepositoryCodec::write_snapshot_to_new_directory(snapshot, &target).unwrap();
+        assert!(target.join("achievement-states/fitness.json").is_file());
+        assert!(target
+            .join("achievement-states/archived_pack.json")
+            .is_file());
+
+        fs::rename(
+            target.join("achievement-states/fitness.json"),
+            target.join("achievement-states/wrong_pack.json"),
+        )
+        .unwrap();
+        let error = JsonRepositoryCodec::read_directory(&target).unwrap_err();
+        assert_eq!(error.code, RepositoryErrorCode::ValidationFailed);
+        assert!(error.message.contains("belongs in"));
     }
 }

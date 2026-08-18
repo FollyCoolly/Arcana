@@ -268,7 +268,7 @@ packs/<pack_id>/
 
 ## 13. 用户 Achievement 状态
 
-同步仓库根目录使用 `achievement-states.json`：
+同步仓库使用 `achievement-states/<pack_id>.json`。例如 `achievement-states/cooking.json`：
 
 ```json
 {
@@ -284,7 +284,8 @@ packs/<pack_id>/
 }
 ```
 
-- 文件缺失表示没有任何用户状态；文件存在时 `states` 必填且非空，key 按 Achievement ID 排序。
+- 整个目录缺失表示没有任何用户状态；每个文件存在时 `states` 必填且非空，key 按 Achievement ID 排序。
+- 文件名必须等于状态 key 中 Achievement ID 的 Pack 前缀；一个文件只保存一个 Pack 的状态。这个拆分只是 JSON 组织方式，领域模型仍保证全局每个 Achievement 最多一条状态。
 - 每个 Achievement 最多一条状态，且只允许 `tracked` 或 `achieved`。
 - `achieved_at` 只允许出现在 achieved 状态，且必须是有效的 `YYYY`、`YYYY-MM` 或 `YYYY-MM-DD`；它仍然可省略。
 - tracked 不保存开始时间、note、progress detail 或 may-be-incomplete；相应事实属于 Record 或 AssistantMemory。
@@ -332,7 +333,7 @@ packs/<pack_id>/
 ## 15. 存储
 
 - AchievementDefinition、SkillDefinition 与 asset 直接保存在 live Pack JSON/asset 目录。
-- 最小用户状态保存在根级 `achievement-states.json`；找不到 Definition 时仍保留为 unresolved。
+- 最小用户状态按 Pack 保存在 `achievement-states/<pack_id>.json`；它不属于 Pack Definition，找不到 Pack 或 Achievement Definition 时仍保留为 unresolved。
 - Skill 积分、等级和节点解锁状态不建表、不缓存，每次从 SkillDefinition 与 achieved 状态计算。
 - 删除 Pack 只删除该 Pack 的 Definition 与 asset；用户 Achievement 状态继续保留。
 - SQLite 不保存 Pack、Achievement 或 Skill 数据。
