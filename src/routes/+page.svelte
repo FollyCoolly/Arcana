@@ -19,7 +19,6 @@
     import ItemsScreen from "$lib/screens/ItemsScreen.svelte";
     import GalleryScreen from "$lib/screens/GalleryScreen.svelte";
     import MissionsScreen from "$lib/screens/MissionsScreen.svelte";
-    import PacksScreen from "$lib/screens/PacksScreen.svelte";
 
     type MenuScreen =
         | "main"
@@ -28,16 +27,14 @@
         | "skills"
         | "items"
         | "gallery"
-        | "missions"
-        | "packs";
+        | "missions";
     type MenuItemId =
         | "status"
         | "skills"
         | "achievements"
         | "items"
         | "gallery"
-        | "missions"
-        | "packs";
+        | "missions";
 
     type MenuItem = {
         id: MenuItemId;
@@ -81,12 +78,6 @@
             id: "missions",
             label: "Missions",
             description: "Daily and long-term mission tracking.",
-            enabled: true,
-        },
-        {
-            id: "packs",
-            label: "Packs",
-            description: "Manage installed domain content and availability.",
             enabled: true,
         },
     ];
@@ -276,27 +267,6 @@
                 outline: true,
             },
         ],
-        packs: [
-            { char: "P", size: "1.18em", yOffset: -3, rotate: -6, weight: 800 },
-            {
-                char: "a",
-                size: "0.86em",
-                yOffset: 4,
-                rotate: 4,
-                color: "black",
-                rounded: true,
-            },
-            { char: "C", size: "1.06em", yOffset: -1, rotate: -3 },
-            {
-                char: "K",
-                size: "0.9em",
-                yOffset: 3,
-                rotate: 5,
-                color: "black",
-                outline: true,
-            },
-            { char: "S", size: "1.03em", yOffset: -2, rotate: -4 },
-        ],
     };
 
     const DEFAULT_FOCUS_INDEX = Math.max(
@@ -311,7 +281,6 @@
         { rot: -8, clip: "polygon(10% 40%, 60% 0%, 95% 85%, 2% 100%)" },
         { rot: -2, clip: "polygon(10% 40%, 60% 0%, 92% 90%, 30% 90%)" },
         { rot: 2, clip: "polygon(10% 45%, 50% 0%, 100% 50%, 30% 92%)" },
-        { rot: 7, clip: "polygon(4% 20%, 94% 0%, 100% 92%, 12% 100%)" },
     ];
 
     let currentScreen = $state<MenuScreen>("main");
@@ -718,15 +687,6 @@
             />
         {/if}
 
-        {#if currentScreen === "packs"}
-            <PacksScreen
-                onBack={goBack}
-                onPacksChanged={() => {
-                    statusData = null;
-                    achievementData = null;
-                }}
-            />
-        {/if}
     </section>
 </main>
 
@@ -1169,10 +1129,6 @@
     .rm-menu-line:nth-child(6) {
         margin-left: 10vw;
     }
-    .rm-menu-line:nth-child(7) {
-        margin-left: 13vw;
-    }
-
     .rm-menu-line:nth-child(1) .rm-menu-item {
         transform: rotate(-30deg);
         clip-path: polygon(0% 10%, 100% 0%, 90% 88%, 10% 96%);
@@ -1197,11 +1153,6 @@
         transform: rotate(2deg);
         clip-path: polygon(0% 8%, 99% 0%, 100% 100%, 3% 92%);
     }
-    .rm-menu-line:nth-child(7) .rm-menu-item {
-        transform: rotate(7deg);
-        clip-path: polygon(3% 0%, 96% 7%, 100% 92%, 0% 100%);
-    }
-
     .rm-menu-item {
         width: fit-content;
         border: 0;
