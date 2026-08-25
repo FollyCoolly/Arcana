@@ -1,205 +1,228 @@
-# Arcana - UI Design Spec
+# Arcana UI 设计规范
 
-> **最后更新**: 2026-08-15
-> **状态**: 反映当前代码实现
+> 状态：Current · 实现基线：2026-08-25
 
----
+本文定义当前桌面 UI 的信息架构、导航状态、输入、页面职责、数据流和窗口契约。颜色、字体、图形、动效与视觉状态由 [视觉系统](./visual_style_guide.md) 定义；本文不复制逐项 CSS 数值。
 
-## 1. 信息架构
+## 1. 应用外壳
 
-Arcana 采用单页 SPA 架构（非 SvelteKit 路由），所有屏幕通过 `currentScreen` 状态变量条件渲染：
+Arcana UI 是 SvelteKit SPA，但没有使用 SvelteKit 页面路由。`src/routes/+page.svelte` 持有 `currentScreen`，按状态条件渲染一个主菜单或一个业务 screen：
 
-- `"main"` — 主菜单
-- `"status"` — 状态面板
-- `"achievements"` — 成就
-- `"skills"` — 技能树
-- `"items"` — 物品
-- `"gallery"` — 画廊
-- `"missions"` — 任务
+```text
+main
+├── status
+├── skills
+├── achievements
+├── items
+├── gallery
+└── missions
+```
 
-主菜单固定 6 项（按顺序，全部可用）：
+主菜单顺序固定为 Status、Skills、Achievements、Items、Gallery、Missions，当前六项均启用。切换 screen 不改变 URL，也不保留浏览器式历史栈；返回统一回到 `main`。
 
-1. Status
-2. Skills
-3. Achievements
-4. Items
-5. Gallery
-6. Missions
+页面外壳还负责：
 
-主菜单底部显示两个键位提示按钮：`"Esc: Hide"`（隐藏界面）和 `"↵: Confirm"`（确认选择）。
+- 监听窗口召唤事件并重置到主菜单。
+- 预加载主菜单需要的 Status 和 Mission Menu Dashboard 数据。
+- 在进入 Skills 前尽力预加载 Achievement 数据。
+- 在主菜单展示 Calendar、Mission 倒计时/提示和 Phan-Site 进度。
+- 保存跨 screen 共享的 Status、Achievement 和 Mission Menu 最新投影。
 
----
+## 2. 召唤、隐藏与返回
 
-## 2. 交互状态机
+### 2.1 窗口状态
 
-状态转换规则（实现于 `src/routes/+page.svelte`）：
+- 应用启动时窗口隐藏。
+- macOS 使用 `Cmd+Shift+R`，Windows/Linux 使用 `Ctrl+Shift+R` 全局切换窗口。
+- 隐藏时，快捷键显示窗口、贴合主显示器、置于顶层、聚焦，并发送 `reality://summoned`。
+- 显示时，快捷键取消顶层状态并隐藏窗口。
+- UI 内的 Hide / `Esc` 会先重置再隐藏；全局快捷键可直接隐藏，但下次召唤事件仍会重置到主菜单，因此不会恢复之前的详情页。
 
-1. 全局快捷键 `Ctrl+Shift+R` 呼出 → `currentScreen = "main"`
-2. 主菜单选中项 → `currentScreen = item.id`
-3. 子菜单按 `Esc` → `currentScreen = "main"`（委托给各屏幕的 `onBack`）
-4. 主菜单按 `Esc` → 隐藏界面
-5. 主菜单点击 `Esc: Hide` → 隐藏界面
-6. 全局快捷键在可见状态 → 直接隐藏
-7. 隐藏时调用 `resetToMainMenu()`，下次呼出必定进入主菜单
+### 2.2 `Esc` 退栈
 
----
+`Esc` 只回退当前最内层状态：
 
-## 3. 输入规则
+| 当前状态 | `Esc` 结果 |
+| --- | --- |
+| 主菜单 | 隐藏窗口 |
+| 普通业务 screen | 返回主菜单 |
+| Status detail / configure | 返回 Status 雷达概览 |
+| Skills Achievement modal | 关闭 modal |
+| Gallery detail | 返回 Gallery 封面墙 |
+| Missions 建议详情 | 关闭建议详情 |
+| Missions Phan-Site 列表 | 退出 Phan-Site 模式 |
+| Missions 普通详情 | 关闭详情 |
 
-### 3.1 通用键位
+业务 screen 自己监听 `Esc` 并调用 `onBack`；根页面只在 `main` 处理隐藏。新增嵌套视图必须保持这一“先关闭内层，再离开 screen”的顺序。
 
-| 键 | 主菜单 | 子菜单 |
-|----|--------|--------|
-| `↑` / `↓` | 移动焦点 | 由各屏幕定义 |
-| `Enter` | 激活当前菜单项 | 由各屏幕定义 |
-| `Esc` | 隐藏界面 | 返回主菜单 |
+## 3. 输入模型
 
-鼠标悬停菜单项即切换焦点，单击即激活。
+鼠标和键盘都必须能够触发主要操作。当前 screen 的快捷键如下：
 
-### 3.2 各屏幕键位
+| Screen | 键位 | 当前行为 |
+| --- | --- | --- |
+| Main | `↑` / `↓` | 在六个菜单项间循环 |
+| Main | `Enter` | 打开当前项 |
+| Main | `Esc` | 隐藏窗口 |
+| Status detail | `Q` / `E` | 在 All 与已选择维度间循环 |
+| Skills | `Q` / `E` | 在当前筛选结果的技能间循环 |
+| Skills | `H` | 在 Started（等级大于 0）与 All 间切换 |
+| Items | `↑` / `↓` | 在当前分类和排序结果中移动，边界处停止 |
+| Missions | `↑` / `↓` | 在普通任务或建议列表中移动，边界处停止 |
+| Missions | `Enter` | 打开当前详情；普通详情已打开时关闭它 |
+| Missions | `Q` / `E` | 非 Phan-Site 模式下循环排序字段 |
+| Missions | `P` | 切换普通任务与 Phan-Site 建议 |
+| Missions | `R` | 重新加载任务和主菜单 Dashboard |
 
-| 屏幕 | 键位 | 功能 |
-|------|------|------|
-| StatusDetailView | `Q` / `E` | 切换维度 |
-| SkillsScreen | `Q` / `E` | 上一个/下一个技能 |
-| MissionsScreen | `Q` / `E` | 切换排序方式 |
-| MissionsScreen | `P` | 切换 Phan-Site 模式 |
-| MissionsScreen | `R` | 刷新任务数据 |
-| MissionsScreen | `Enter` | 打开任务详情 |
-| ItemsScreen | `↑` / `↓` | 导航物品列表 |
+Main 菜单以及 Achievements、Items、Gallery 的侧栏使用 hover 即选中、click 确认或打开。Achievements 和 Gallery 当前没有自定义方向键导航，主要依赖原生 Tab、鼠标和点击；这属于当前实现限制，不应在文档中表述为完整键盘体验。
 
----
+## 4. 主菜单
 
-## 4. 主菜单页
+主菜单是入口和概览，不承担领域编辑：
 
-### 4.1 布局
+- Calendar 显示当前日期、星期、时段与天气。
+- Mission countdown 在槽位有值且 `days_remaining <= 99` 时显示；标签按 2 字或 4 字素材排版。
+- Mission hints 按顺序使用一块 fat board 和后续 slim board。
+- Mission progress 使用共享的 `PhanSiteProgress`。
+- `↑` / `↓` 控制逻辑焦点；hover 同步焦点；click 或 `Enter` 打开 screen。
+- 左下角 Hide 与 Confirm 是可点击的快捷键提示。
 
-- 左侧：8 层大五角星 + 6 层小五角星堆叠（`80vh`，左 35%），黑白交替
-- 对角线：`20%` 处斜切分隔线，左右半星独立 clip
-- 菜单列表：梯形 `clip-path` + 旋转（`-30deg` 至 `2deg`），从左 30% 开始
-- 右上：任务倒计时板 + 玩家信息（用户名 / Day N）
-- 任务提示区：活跃任务的 slim/fat 提示板
-- PhanSite 进度条
-- 选中指示：红色四边形覆盖层，`mix-blend-mode: difference`，各菜单项独立配置
+主菜单只消费 `MissionMenuDashboardData` 的展示投影，不自行计算任务候选，也不直接修改 Dashboard 槽位。
 
-### 4.2 菜单项样式
+## 5. Screen 职责
 
-| 属性 | 值 |
-|------|-----|
-| 底色 | `var(--rm-black)` |
-| hover/焦点 | `var(--rm-red)` 底 + 白色字 |
-| `clip-path` | 逐项不同的梯形 polygon |
-| 旋转角 | `-30deg` → `-27deg` → `-20deg` → `-8deg` → `-2deg` → `2deg` |
-| 横向偏移 | `margin-left` 从 `1.5vw` 递增至 `10vw` |
-| transition | `140ms ease`（背景色） |
+### 5.1 Status
 
-完整 clip-path 值见 `docs/visual_style_guide.md` 第 5.1 节。
+`StatusScreen.svelte` 有三个内部视图：
 
----
+- `radar`：显示用户名、游戏天数和最多五个已选择维度。雷达节点可打开详情。
+- `detail`：显示 All 或单个维度的 score 卡、缺失 Record ID、分数条、等级和称号；`Q` / `E` 循环标签。
+- `configure`：五个固定 slot 使用原生 `select` 选择或清除维度，写入后重新加载 dashboard。
 
-## 5. 子菜单页
+没有选中维度、没有 score 或数据不可用时显示明确空态。Status 只展示后端已经计算好的 score、level 和缺失项，不在前端实现评分公式。
 
-### 5.1 通用模式
+### 5.2 Achievements
 
-每个子菜单页独立实现，共享以下模式：
-- 左上角 `KeyHint` + `PromptWord("Back")` 返回按钮
-- 不提供直接 Hide 按钮（统一 Esc 回主菜单再 Hide）
-- 三种状态：`loading` / `error` / `empty` / `normal`
+`AchievementsScreen.svelte` 展示 pack 侧栏和当前 pack 的 Achievement 卡片网格：
 
-### 5.2 Status
+- 切换 pack 时重置筛选和排序。
+- 名称、难度、解锁状态排序按钮按“升序 → 降序 → 默认”循环。
+- 难度可多选；状态可在 All 与 Unlocked 间切换。
+- 卡片显示状态、名称、难度、描述、达成日期和 prerequisites。
+- `enabled` Achievement 可以 Mark achieved 或 Revoke；写入期间禁用全部状态操作，成功后重载 Achievement dashboard。
 
-- `src/lib/screens/StatusScreen.svelte` + `StatusDetailView.svelte`
-- 顶层概览：雷达图（`RadarChart`）+ 维度概要卡片
-- 详情视图：按维度切换，显示指标贡献条，目标区间可视化
-- 系统指标（`sys_` 前缀）由后端实时计算
-- 右上角 `Status.png` 标题图
-- 背景：`#444444` 和黑色交替的五角星装饰
+### 5.3 Skills
 
-### 5.3 Achievements
+`SkillsScreen.svelte` 展示 Achievement 派生的技能进度：
 
-- `src/lib/screens/AchievementsScreen.svelte`
-- 左侧：扩展包选择侧边栏，带选中四边形覆盖层
-- 右侧：成就卡片列表，按包分组
-- 筛选栏：排序（名称/难度/解锁）、难度过滤、全部/已解锁切换
-- 卡片显示名称、难度、描述、解锁状态
+- 默认只显示 Started 技能；`H` 切换到 All。
+- 左侧展示选中技能的名称、等级、描述和 pack card image；素材读取失败时使用 `/card_examples/fool.png`。
+- 右侧按 9/8 列交错六边形排列节点，并尽量让 prerequisite 与 dependent 对齐。
+- 点击节点打开 Achievement 详情 modal；可用节点支持 Mark achieved / Revoke，成功后并行刷新 Achievement 与 Skill dashboard。
+- prerequisites 影响布局和说明，但不阻止用户显式标记达成。
 
-### 5.4 Skills
+当前 screen 使用二维六边形网格，不渲染 `SkillNebula.svelte` 的 Three.js 视图。
 
-- `src/lib/screens/SkillsScreen.svelte`
-- 六边形网格技能树 + 3D 星云卡片（`SkillNebula.svelte` / Three.js）
-- 节点颜色：未解锁 `var(--rm-black)`，已解锁 `#e0093b`
-- 点击节点弹出详情 modal，可解锁/锁定成就
-- Achievement 状态通过 Application command 修改 live JSON，成功后同时刷新 Achievement 与 Skill 派生数据
-- `Q` / `E` 导航技能
+### 5.4 Items
 
-### 5.5 Items
+`ItemsScreen.svelte` 是外部物品数据的只读浏览器：
 
-- `src/lib/screens/ItemsScreen.svelte`
-- 左侧：分类侧边栏，带四边形选中效果
-- 右侧：横向滚动物品列表，梯形 `clip-path`，滚动驱动径向扇形透视
-- 物品行：名称 + 数据 pill 标签
-- `↑` / `↓` 导航物品
+- 默认选择统计中的第一个分类；分类 hover 或 click 会切换列表。
+- 支持 Name、Owned days、Price、Daily cost 排序，重复点击反转方向。
+- 当前排序不是 Name 时，行尾 pill 显示对应数值；缺失值显示 `—`。
+- 滚动位置驱动扇面缩放、旋转、可见性和只读滚动指示器。
+- hover、click 或方向键改变当前行选择。
 
-### 5.6 Gallery
+当前没有物品详情视图和写操作；不要把未渲染的 source stats 或 `extra` 字段写成现有功能。
 
-- `src/lib/screens/GalleryScreen.svelte`
-- 左侧：分类侧边栏
-- 主区：瀑布流封面卡片，点击展开详情
-- 详情：星级评分、成就关联、图片展示
+### 5.5 Gallery
 
-### 5.7 Missions
+`GalleryScreen.svelte` 是外部媒体数据的只读浏览器：
 
-- `src/lib/screens/MissionsScreen.svelte`
-- 任务列表：多列布局，支持排序（Q/E 切换排序方式）
-- 排序轮播：可配置排序字段和方向
-- 详情卡片：弹出式 overlay，显示完整描述、进度条、操作按钮
-- Phan-Site 模式（P 键切换）：显示 AI 提议的任务，支持 accept/reject
-- Mission 详情支持 complete/archive，并可选择或清除 countdown、progress、hint 1、hint 2 本机主菜单槽位
-- 滚动指示器
+- 固定分类为 Anime、Games、TV、Movie、Book，并按 source 的 `media_type` 过滤。
+- Anime/TV/Movie/Book 支持 Rating 和 Consume date；Games 支持 Playtime 和 Rating。新分类默认使用第一个排序字段、降序。
+- 封面墙展示名称，以及评分或游戏时长/成就进度；点击进入详情。
+- 详情按媒体类型显示可用的评分、日期、集数、标签、时长、发行日和游戏成就信息。
+- Douban 图片经本地 `imgproxy.localhost` 代理；封面失败会重试三次后显示 fallback。
 
----
+`Esc` 或左下返回按钮先关闭详情，再离开 Gallery。
 
-## 6. 组件库
+### 5.6 Missions
 
-可复用组件分布在 `src/lib/` 根目录和 `src/lib/components/`：
+`MissionsScreen.svelte` 同时管理已接受 Mission 和本机 MissionSuggestion：
 
-| 组件 | 用途 |
-|------|------|
-| `src/lib/MenuItem.svelte` | 逐字符几何化菜单标签渲染 |
-| `src/lib/KeyHint.svelte` | 键位提示方块（白底黑框 + 键名） |
-| `src/lib/PromptWord.svelte` | Canvas 倾斜文字渲染器（支持描边） |
-| `src/lib/CollageLabel.svelte` | 碎片化金底黑字标签（维度名等） |
-| `src/lib/CallingCardText.svelte` | 倾斜字母 + 黑底红边白辉光效果 |
-| `src/lib/components/CardTitle.svelte` | SVG 卡片标题（SkillNebula 用） |
-| `src/lib/components/RadarChart.svelte` | SVG 五角星雷达图（交互式） |
-| `src/lib/components/SkillNebula.svelte` | Three.js 3D 轨道卡片星云 |
-| `src/lib/PhanSiteProgress.svelte` | 任务进度条（"poll" 风格） |
-| `src/lib/Calendar.svelte` | P5 风格日期/天气组件 |
+- 普通列表包含 active、completed、archived，排序字段固定循环为 Pubtime、State、Difficulty。
+- Mission 详情显示状态、难度、描述、进度和 deadline 派生文案；active 可 Complete，非 archived 可 Archive。
+- Active Mission 可以绑定主菜单的 countdown、progress、hint 1、hint 2。countdown 还要求 Mission 有 deadline；再次点击已选 slot 会清除它。
+- `P` 进入 Phan-Site 建议列表；建议详情展示原因并支持 Accept / Reject。
+- Complete、Archive、Accept、Reject 成功后重新加载 Mission dashboard 和 Mission Menu dashboard，并关闭详情；Dashboard slot 修改只刷新 Mission Menu dashboard，详情保持打开。
+- `R` 提供显式刷新；滚动指示器只反映位置，不接受拖动。
 
----
+## 6. 数据流与状态所有权
 
-## 7. 数据流
+前端使用 Svelte 5 runes，没有全局 Svelte store。状态按以下边界所有：
 
-- 所有状态使用 Svelte 5 `$state()` runes（无 Svelte stores）
-- 屏幕间数据通过 `$state` 变量 + prop 传递
-- 数据加载：`onMount` 时预加载（`preloadStatusData()`、`preloadMissionMenuData()`），各屏幕按需调用 `invoke()`
-- Tauri invoke 命令：`load_status_dashboard`、`select_status_dimension`、`clear_status_dimension`、`load_achievement_dashboard`、`set_achievement_achieved`、`revoke_achievement_state`、`load_skill_dashboard`、`load_pack_asset`、`load_mission_dashboard`、`load_mission_menu_dashboard`、`complete_mission`、`archive_mission`、`accept_mission_suggestion`、`reject_mission_suggestion`、`select_mission_dashboard_slot`、`clear_mission_dashboard_slot`、`load_items`、`load_gallery`、`get_weather`
+| 所有者 | 状态 |
+| --- | --- |
+| `+page.svelte` | 当前 screen、主菜单焦点、Status cache、Achievement cache、Mission Menu cache |
+| 各 screen | loading/error、内部视图、筛选、排序、当前选择、modal 和 mutation busy 状态 |
+| Rust Application 层 | 领域读取、计算、校验和持久化 |
 
----
+数据加载规则：
 
-## 8. 窗口配置
+1. 根页面挂载时并行发起 Status 和 Mission Menu 预加载；失败是非致命的，screen 可再次加载。
+2. Skills 打开前尝试加载 Achievement，失败时仍允许进入，并使用 ID fallback。
+3. Achievements、Status 和 Missions 通过 callback 把 mutation 后的新投影交还根页面。
+4. Skills mutation 同时刷新 Skill 与共享 Achievement；Items 和 Gallery 每次挂载自行读取。
+5. UI 只通过 Tauri commands 访问数据，不读写 repository、SQLite 或 local-state 文件。
 
-`src-tauri/tauri.conf.json`：
-- 默认尺寸：1200×800
-- `decorations: false`、`shadow: false`、`transparent: true`
-- `visible: false`（启动隐藏，快捷键呼出）
-- `resizable: false`、`maximizable: false`
-- `alwaysOnTop` 由运行时 toggle（呼出时置顶，隐藏时取消）
-- 呼出时扩展至主显示器全屏（`fit_to_primary()`）
-- `app.css` 中 `:root { font-size: calc(100vw / 240) }` 实现流体缩放
+具体实体所有权和持久化位置见 [当前架构](./architecture.md)。UI 文档只描述消费方式，不复制 command 全量清单或数据 schema。
 
----
+## 7. 异步、错误与空态
 
-## 9. 与 visual_style_guide.md 的关系
+每个 screen 都要区分 loading、error、empty 和 normal：
 
-本文档描述交互架构、页面结构、数据流和组件组织。色彩、字体、动效、几何形状等视觉细节见 `docs/visual_style_guide.md`。
+- 初次加载期间在内容区显示 loading 文案，不呈现伪数据。
+- command 错误转换为可操作或至少可识别的错误文案，并保留在当前 screen。
+- mutation 期间禁用会造成重复写入的操作；成功后以重新读取的后端投影为准。
+- 合法的空集合显示领域空态，例如 “No missions yet” 或 “No skills available yet”，不能与加载失败混为一谈。
+- 图片等非关键素材失败时使用 fallback，不阻塞其余数据。
+
+共享 cache 是显示优化，不是权威状态。发生写入后必须刷新受影响投影，不能只在前端乐观改一个字段。
+
+## 8. 窗口与缩放契约
+
+Tauri 配置和运行时共同形成以下行为：
+
+- 配置初始尺寸为 `1200 × 800`，但 setup 和每次召唤都会把无边框窗口贴合主显示器。
+- `decorations: false`、`shadow: false`、`transparent: true`、`resizable: false`、`maximizable: false`、启动不可见。
+- 可见期间：macOS 使用 status window level，其他平台设置 always-on-top；隐藏时恢复普通层级。
+- DPI scale factor 变化时重新贴合主显示器。
+- `+layout.svelte` 调用 `setZoom(1 / devicePixelRatio)`，目的是在 Windows 抵消显示缩放，并在 scale change 后重算。
+- `src/app.css` 以 `calc(100vw / 240)` 设置根字号，使 rem 相对 3840px 设计宽度缩放。
+
+`app.css` 中存在 `data-platform="macos"` 的 16px override，但当前代码没有设置这个属性，因此不能把它视为已生效的平台策略。除主菜单的窄 viewport 降级外，各业务 screen 尚未完成统一响应式和跨平台缩放适配。
+
+## 9. 可访问性现状
+
+当前实现大量使用原生 `button`，装饰图形多标记为 `aria-hidden`，Skills 节点 modal 具有 `role="dialog"` 和 `aria-modal="true"`。但仍有已知缺口：
+
+- Achievement 和 Gallery 没有方向键级的自定义导航。
+- modal 打开后没有统一 focus trap、初始聚焦和焦点恢复机制。
+- Missions 详情是视觉 overlay，但不是语义 dialog。
+- 没有 `prefers-reduced-motion` 适配。
+- 部分 canvas 文字和图片式标题依赖周边控件的可访问名称。
+
+新增功能不得扩大这些缺口：主要操作使用原生交互元素，视觉标签提供可访问名称，modal 应管理焦点，状态不能只靠颜色。
+
+## 10. 实现约束
+
+- `+page.svelte` 只管理 shell、screen 切换和确有跨 screen 消费者的共享投影。
+- screen 自己管理局部筛选、排序、详情、loading/error 和键位，并通过 `onBack` 返回。
+- 领域计算和持久化留在 Rust；Svelte 是 command 的薄适配器。
+- mutation 后刷新所有受影响投影，尤其是 Achievement → Skill 和 Mission → Main Menu 的关系。
+- 新增嵌套 UI 时先定义 `Esc` 退栈，再增加快捷键提示。
+- 不把未挂载组件、未使用类型或后端存在但 UI 未暴露的 command 记为当前 UI 功能。
+- 视觉修改遵循 [视觉系统](./visual_style_guide.md)，不要在本文维护颜色、字体、角度或 transition 清单。
+
+主要实现入口：`src/routes/+page.svelte`、`src/lib/screens/`、`src/lib/` 共享组件、`src-tauri/src/lib.rs` 和 `src-tauri/tauri.conf.json`。

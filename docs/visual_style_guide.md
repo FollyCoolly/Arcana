@@ -1,227 +1,160 @@
-# Arcana - 视觉风格指南（P5-Inspired）
+# Arcana 视觉系统
 
-> **最后更新**: 2026-08-15
-> **状态**: 反映当前代码实现
+> 状态：Current · 实现基线：2026-08-25
 
----
+本文定义 Arcana UI 的视觉语言：颜色、字体、形状、层级、状态表达、动效和缩放。页面职责、导航、键位、数据加载与窗口行为由 [UI 设计规范](./ui_design_spec.md) 定义；这里不维护逐页功能清单，也不复制组件中的具体坐标或 `clip-path`。
 
-## 1. 核心视觉语法
+## 1. 视觉方向
 
-- 主色基调严格限定为 `红 / 黑 / 白`
-- 窗口透明背景，界面主体以不规则图形层叠呈现
-- 倾斜与切角是核心语法，避免通篇圆角卡片化
-- 通过层叠、遮挡、错位制造节奏和速度感
-- 文本层级优先，标题与数据应比装饰图形更强势
-- UI 元素必须有强形状：裸文字不构成 UI 组件，任何按钮、标签、导航项都需要有几何底座
-- 状态变化必须是形状+颜色双重变化，不允许仅改变透明度或颜色来表达交互状态
+Arcana 使用受 Persona 5 启发、但服务于自身信息结构的桌面 HUD 风格。当前实现有五个稳定特征：
 
----
+- 红、黑、白构成高对比主界面，金色只强调 Status 数据，深灰只承担结构和弱化层。
+- 硬边、斜切、旋转和不规则多边形替代常规圆角卡片。
+- 星形、放射线、错位底板和遮挡形成层次；装饰不得盖过标题、数值和操作。
+- 标题采用拼贴式字形和粗描边，正文保持可读，不把每段文字都做成装饰字。
+- 选中、达成、完成等状态同时使用底板、位置、图标或文字变化，避免只依赖颜色。
 
-## 2. 色彩规范
+当前 CSS 中没有使用渐变。新增 UI 应继续使用纯色、透明叠层、图片或 SVG，而不是 `linear-gradient`、`radial-gradient` 或 `conic-gradient`。
 
-### 2.1 Design Tokens
+## 2. 颜色
 
-定义于 `src/routes/+page.svelte` 的 `.rm-overlay` 内：
+全局视觉 token 定义在 `src/routes/+page.svelte` 的 `.rm-overlay`：
 
 ```css
 --rm-black: #000000;
 --rm-white: #ffffff;
 --rm-red: #e5191c;
---rm-gold: #f5a623;
 --rm-gray: #2e2e2e;
+--rm-gold: #f5a623;
 ```
 
-### 2.2 使用规则
+| Token | 职责 |
+| --- | --- |
+| `--rm-black` | 主底板、轮廓、遮挡层和最高对比文字背景 |
+| `--rm-white` | 主文字、描边、分隔线和反相底板 |
+| `--rm-red` | 当前选择、主要行动、强调和高进度状态 |
+| `--rm-gray` | 背景结构、次级轨道和非关键装饰 |
+| `--rm-gold` | Status 雷达、维度标签和数据强调；不作为通用强调色 |
 
-- **禁止使用渐变**（linear-gradient / radial-gradient / conic-gradient）
-- 核心 UI 配色为红 / 黑 / 白三色体系
-- 金色专用于数据可视化层：维度标签、雷达图填充、分数指示等 Status 相关元素。不得用于通用 UI 组件
-- 灰色专用于装饰性结构元素：背景星形、分隔线、次级几何图形等
+整个界面叠加在 `rgba(30, 0, 0, 0.8)` 的深红透明蒙版上。窗口和页面根节点本身透明，因此桌面内容会透出；当前实现没有 Acrylic、Mica 或 CSS blur 层。
 
-### 2.3 实际代码中的颜色变体
+各 screen 可以为数据可视化或领域状态使用局部色值，例如雷达图的金色明暗面、技能节点红色和半透明白色。局部颜色应留在组件内，不应悄悄扩充全局 palette；需要跨页面复用时再提升为 token。
 
-以下为代码中实际使用的颜色变体（非 token，硬编码在各组件中）：
+## 3. 字体与文字图形
 
-| 颜色 | 用途 | 位置 |
-|------|------|------|
-| `#FCCC2C` | 雷达图数据星右半三角 | `RadarChart.svelte` |
-| `#E7AE16` | 雷达图数据星左半三角 | `RadarChart.svelte` |
-| `#1a1a1a` | 雷达图网格星描边 / 辐线 | `RadarChart.svelte` |
-| `#2d2d2d` | 雷达图网格星交替填充 | `RadarChart.svelte` |
-| `#555555` | 雷达图网格点 | `RadarChart.svelte` |
-| `#444444` | Status 页装饰星形填充 | `StatusScreen.svelte` |
-| `#e0093b` | 技能树已解锁节点 | `SkillsScreen.svelte` |
-| `rgba(30, 0, 0, 0.8)` | 全局蒙版层 | `+page.svelte` |
-| `rgba(255,255,255,0.xx)` | 多处白色半透明变体 | 各组件 |
+### 3.1 字体栈
 
----
-
-## 3. 字体规范
-
-### 3.1 英数标题字体栈
+英数展示文字默认使用：
 
 ```css
 font-family: "p5hatty", "Orbitron", Arial, sans-serif;
 ```
 
-- `p5hatty` 为项目首选字体（由系统安装或外部加载）
-- `Orbitron` 为几何感等宽回退
-- `Arial`、`sans-serif` 为系统回退
-
-### 3.2 中文正文字体栈
+中文正文主要使用：
 
 ```css
 font-family: "Source Han Sans SC", "Noto Sans SC", "方正兰亭黑_GBK", "Microsoft YaHei", sans-serif;
 ```
 
-用于 `MissionsScreen`、`ItemsScreen`、`PhanSiteProgress`、`+page.svelte` 等页面的中文正文区域。
+按键徽标默认使用 `"Bebas Neue", Arial, sans-serif`。这些字体没有随应用打包；缺少本机字体时会走 fallback，字宽和排版可能变化。字体安装要求以仓库根目录 `README.md` 为准。
 
-### 3.3 特殊字体
+### 3.2 文字角色
 
-- `KeyHint.svelte` 使用 `"Bebas Neue", Arial, sans-serif` 用于按键提示
+- `MenuItem`：主菜单和侧栏导航。逐字符改变尺寸、旋转、垂直偏移和黑白底板。
+- `PromptWord`：操作提示。Canvas 以确定性抖动、黑色粗轮廓和外层反色描边绘制。
+- `CallingCardText`：页面级展示标题。每次挂载可产生轻微不同的字符角度与红色点缀。
+- `CollageLabel`：Status 维度和等级。金/黑碎片拼贴，不用于普通按钮或正文。
+- 普通正文、元数据和错误文本：使用稳定字形、正常阅读顺序和足够行高，不增加逐字旋转。
 
-### 3.4 字号层级
+文字图形可以夸张，但操作名称、状态和关键数值必须仍以真实文本或可访问名称表达。图片标题需要有效 `alt`；纯装饰图形使用 `aria-hidden="true"` 或空 `alt`。
 
-- `Display`：菜单主项，`clamp(3rem, 7vw, 4.8rem)`（约 48–77px）
-- `H1`: 32-40px
-- `H2`: 24-28px
-- `Body`: 14-16px
-- `Meta`: 11-12px（标签、注释）
+## 4. 形状与构图
 
----
+### 4.1 基础语法
 
-## 4. 分层结构
+- 主要容器使用直角、斜切角和 `clip-path: polygon(...)`。
+- 相邻元素可轻微错位或旋转，但正文基线和数据列需要稳定。
+- 底板通常由黑/白主体、红色选择层和粗描边组成；不要用默认浏览器按钮外观。
+- 圆角只用于确有语义或素材需要的局部元素，不作为默认卡片语言。
+- 阴影应短、硬、近似印刷错版；避免柔和的大面积投影。
 
-界面呼出时为 4 层结构（从底到顶）：
+### 4.2 当前构图模式
 
-| 层级 | 名称 | 实现方式 | 说明 |
-|------|------|----------|------|
-| 0 | OS 模糊层 | Tauri `Effect::Acrylic` | 将桌面及其他窗口磨砂模糊 |
-| 1 | 蒙版层 | `background: rgba(30, 0, 0, 0.8)` | 全屏深暗红半透明覆盖 |
-| 2 | 结构层 | 几何背景图形 | 五角星叠层，居于左侧 |
-| 3 | 交互层 | 菜单项、信息面板 | 可点击的 UI 组件 |
+- 主菜单以大、小两组黑白星形和斜向分割线建立视觉中心，六个菜单项沿放射方向排列。
+- 主菜单、Achievements、Items 和 Gallery 的导航都使用不规则底板与独立移动的选择四边形；选择层通过 `mix-blend-mode: difference` 反相文字。
+- Status 以星形雷达、金色拼贴标签和右上标题图组织页面。
+- Skills 使用左侧塔罗式图片卡和右侧交错六边形节点网格；当前 screen 没有渲染 Three.js 星云。
+- Items 的列表行围绕左侧圆心形成滚动扇面；Gallery 以轻微旋转的封面墙构图；Missions 使用印章、等级字母和斜切详情卡。
 
-### 4.1 背景星形
+这些是可复用的构图模式，不是必须复制的坐标。新增页面应先建立一个清晰视觉锚点，再添加少量方向一致的装饰，避免同时堆叠多套放射中心。
 
-主页面左侧星形堆叠（`+page.svelte`）：
+## 5. 交互状态
 
-- **8 颗大星**：`width: 80vh`，`scale` 从 `0.92` 递减至 `0.08`，黑白交替
-- **6 颗小星**：`scale` 从 `0.5` 递减至 `0.08`，黑白交替
-- **分割线**：对角线 `clip-path` 分割左右两半，中间白色细线
-- 星形使用 10 顶点标准五角星 `clip-path` 多边形
+当前实现的主要反馈模式如下：
 
-各屏幕页（`StatusScreen`、`SkillsScreen` 等）有独立的星形配置。
+| 状态 | 表达方式 |
+| --- | --- |
+| 导航 hover / active | 底板由黑变红、字符反相、选择四边形移动到目标 |
+| 键盘焦点 | 原生 `button` 焦点能力；主菜单额外显示白色 `:focus-visible` 轮廓 |
+| Achievement / Skill 达成 | `✓`/`○`、状态文字、节点或卡片配色共同变化 |
+| Mission 状态 | 独立状态印章、状态文字、行样式和可用操作共同变化 |
+| 选中列表行 | 形状或指示三角与底色同时出现 |
+| disabled / busy | 禁用交互，并显示省略号、禁用样式或错误信息 |
+| loading / empty / error | 内容区内的明确文字；错误使用红色和加粗 |
 
----
+新状态至少要有一种非颜色信号，例如文字、图标、边框、形状或位置。透明度可以辅助弱化，但不能成为完成、错误或当前选择的唯一信号。
 
-## 5. 几何与布局规范
+## 6. 动效
 
-### 5.1 菜单项
+动效用于确认选择和保持空间连续性，不用于持续吸引注意。当前组件采用以下区间，而不是单一的全局 timing token：
 
-主菜单项使用梯形 `clip-path` + 旋转，模拟从左侧星形向外辐射的扇形：
+- `100–160ms`：hover、焦点、菜单四边形移动和颜色切换。
+- `180–260ms`：详情卡、modal 和较大状态变化。
+- `300–400ms`：进度条填充。
+- 常见曲线为 `ease`、`ease-out` 和 `cubic-bezier(0.2, 0.8, 0.2, 1)`。
 
-| 子项 | 旋转角 | clip-path |
-|------|--------|-----------|
-| 1 | `-30deg` | `polygon(0% 10%, 100% 0%, 90% 88%, 10% 96%)` |
-| 2 | `-27deg` | `polygon(0% 5%, 99% 10%, 96% 94%, 2% 100%)` |
-| 3 | `-20deg` | `polygon(2% 0%, 100% 8%, 98% 100%, 0% 90%)` |
-| 4 | `-8deg` | `polygon(0% 6%, 98% 0%, 100% 92%, 1% 100%)` |
-| 5 | `-2deg` | `polygon(1% 0%, 100% 4%, 97% 96%, 0% 100%)` |
-| 6 | `2deg` | `polygon(0% 8%, 99% 0%, 100% 100%, 3% 92%)` |
+优先过渡 `transform`、位置、尺寸和颜色。选择层需要让形状与目标一起移动，进度条只对宽度变化做一次性过渡。当前代码尚未实现 `prefers-reduced-motion`；在补齐该能力前，不应新增自动循环或长时间装饰动画。
 
-### 5.2 选中四边形
+## 7. 尺寸与适配
 
-菜单选中时出现四边形覆盖层，配合 `mix-blend-mode: difference`，各菜单项有独立配置（旋转角 `-35deg` 至 `2deg`，各异的 `polygon` clip-path）。
+UI 以 3840px 宽的设计基准使用 rem：
 
-### 5.3 侧边导航按钮
+```css
+:root {
+  font-size: calc(100vw / 240);
+}
+```
 
-侧边导航按钮（`rm-ach-pack-btn`、`rm-gallery-pack-btn`、`rm-items-cat-btn` 等模式）：
-- 斜切多边形 `clip-path` 底板
-- hover 时配色反转（黑转红或红转黑）
-- 选中指示使用独立的四边形覆盖层（quad），与主菜单的选中逻辑一致
+因此基于 rem 的几何和字体随 viewport 宽度线性缩放。大量关键尺寸同时使用 `clamp()`，用于限制极端大小。当前只有主菜单在 `max-width: 980px` 下提供专门布局降级，并隐藏移动选择四边形；其他 screen 还没有完整的小窗口响应式方案。
 
-### 5.4 返回按钮
+不要把这一实现描述为已完成的跨平台适配。应用目前以全屏主显示器为运行形态，Windows 4K/100% 是主要设计环境；缩放与平台行为见 [UI 设计规范](./ui_design_spec.md#8-窗口与缩放契约)。
 
-返回按钮（`rm-back-btn`）：
-- `position: fixed`，固定在左下角
-- `background: none; border: none`（透明底，无几何色块）
-- `transform: rotate(2deg)`
-- hover: `scale(1.06)`
-- 子元素 `KeyHint` + `PromptWord` 组合构成视觉表现
+## 8. 共享视觉原语
 
-### 5.5 几何形状
+活跃页面直接复用的原语包括：
 
-- 斜切角范围：约 `2deg` 至 `35deg`（含菜单项、选中四边形、各页侧边栏按钮）
-- 圆角极少使用，核心区使用硬边或切角
-- 广泛使用 `clip-path: polygon()` 实现非矩形形状
+| 原语 | 视觉职责 |
+| --- | --- |
+| `src/lib/MenuItem.svelte` | 拼贴式导航文字 |
+| `src/lib/KeyHint.svelte` | 白底黑框按键徽标 |
+| `src/lib/PromptWord.svelte` | 操作提示文字图形 |
+| `src/lib/CallingCardText.svelte` | Calling-card 风格标题 |
+| `src/lib/CollageLabel.svelte` | 金/黑碎片标签 |
+| `src/lib/Calendar.svelte` | 日期、星期、时段和天气组合图 |
+| `src/lib/PhanSiteProgress.svelte` | Phan-Site 问题与进度条 |
+| `src/lib/components/RadarChart.svelte` | 可交互 Status 雷达图 |
 
----
+`src/lib/components/SkillNebula.svelte`、`CardTitle.svelte` 及 `src/routes/+page.svelte` 中的全局塔罗卡样式仍在仓库中，但当前 Skills screen 不使用它们。它们不是现行页面的视觉依赖，复用前应先确认是否保留。
 
-## 6. 动效规范
+## 9. 修改检查
 
-### 6.1 实际使用的时长与曲线
+视觉改动提交前至少确认：
 
-代码中实际使用的 transition 组合（按频率排序）：
+- 使用现有 token，或为新增跨页面颜色明确建立 token。
+- 没有引入渐变、默认圆角卡片或无底板的主操作。
+- active、disabled、error、achieved 等状态不只依赖颜色或透明度。
+- 装饰元素不拦截点击，且具有正确的可访问性标记。
+- 字体 fallback 下仍可读，长文本不会穿出底板。
+- 在全屏目标分辨率和较窄 viewport 下检查遮挡、滚动与焦点轮廓。
 
-| 时长 | 曲线 | 典型用途 |
-|------|------|----------|
-| `120ms ease` | 选择四边形、按钮 hover、返回按钮、侧边按钮 |
-| `120ms cubic-bezier(0.2, 0.8, 0.2, 1)` | Tab 按钮、排序按钮 |
-| `140ms ease` | 菜单项 / 侧边导航按钮背景色切换 |
-| `180ms cubic-bezier(0.2, 0.8, 0.2, 1)` | Modal 弹出动画 |
-| `260ms cubic-bezier(0.2, 0.8, 0.2, 1)` | Modal 弹出、进度条填充 |
-| `100ms ease` | 任务行快速交互 |
-| `150ms ease` | 技能节点状态变化 |
-| `180ms ease-out` | 详情卡片弹出 |
-| `200ms ease` | 百分比文字变色 |
-| `300ms ease` | 进度条填充 |
-| `400ms cubic-bezier(0.2, 0.8, 0.2, 1)` | PhanSite 任务进度条 |
-
-### 6.2 动效类型
-
-- 进场：位移 + 透明度 / 缩放弹出
-- 切换：背景色反转 + 形状位移
-- 选择指示：四边形的 position/size/transform/clip 同步过渡
-
-### 6.3 注意
-
-- 当前代码**未实现 `prefers-reduced-motion` 支持**
-- 无全局 keyframe 动画定义于 `app.css`，动画均由各组件内联定义
-
----
-
-## 7. 组件风格参考
-
-### 7.1 按钮
-
-- 主导航按钮：几何斜切底板 + 色彩反转 hover
-- Tab 按钮：`clip-path: polygon(0% 0%, 100% 0%, 96% 100%, 4% 100%)` + `::before` 内填充
-- 裸文字按钮仅用于 `rm-back-btn` 等特殊场合，子元素提供几何底座
-
-### 7.2 卡片
-
-- 卡片有底板阴影层
-- 标题区与数据区明确分区
-- 状态条/角标仅使用红或白
-
----
-
-## 附录：文件索引
-
-| 文件 | 主要内容 |
-|------|----------|
-| `src/routes/+page.svelte` | Design tokens、分层结构、菜单项、返回按钮、字体栈 |
-| `src/app.css` | Tailwind v4 导入、全局 font-size |
-| `src/lib/components/RadarChart.svelte` | 雷达图色彩（金、灰变体） |
-| `src/lib/MenuItem.svelte` | 菜单项字体 |
-| `src/lib/CollageLabel.svelte` | 标签字体 |
-| `src/lib/PromptWord.svelte` | Canvas 文字渲染 |
-| `src/lib/KeyHint.svelte` | 按键提示字体 |
-| `src/lib/screens/StatusScreen.svelte` | Status 页装饰星形色彩 |
-| `src/lib/screens/SkillsScreen.svelte` | 技能节点色彩、`--rm-gold` 局部覆写 |
-| `src/lib/screens/MissionsScreen.svelte` | 任务行动效 |
-| `src/lib/screens/AchievementsScreen.svelte` | 成就页动效 |
-| `src/lib/screens/ItemsScreen.svelte` | 物品页动效 |
-| `src/lib/screens/GalleryScreen.svelte` | 画廊页动效 |
-| `src/lib/screens/StatusDetailView.svelte` | 状态详情动效 |
-| `src/lib/PhanSiteProgress.svelte` | 任务进度条动效 |
+页面结构和交互发生变化时更新 UI 设计规范；只有视觉语言或共享视觉原语变化时才更新本文。
