@@ -140,7 +140,7 @@
     font-size: 0.48em;
     line-height: 1;
     /* Star color matches the menu item background to create hollow illusion */
-    color: var(--rm-black, #000);
+    color: var(--arcana-black, #000);
     -webkit-text-stroke: 0;
     pointer-events: none;
     transition: color 140ms ease;
@@ -148,6 +148,6 @@
 
   /* When active, bg is red so counter star must become red to keep illusion */
   .p5m.is-active .p5m-char[data-special="star-counter"]::after {
-    color: var(--rm-red, #E5191C);
+    color: var(--arcana-red, #E5191C);
   }
 </style>

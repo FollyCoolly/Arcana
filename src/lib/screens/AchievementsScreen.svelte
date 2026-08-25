@@ -300,29 +300,29 @@
     });
 </script>
 
-<section class="rm-stage">
-    <button type="button" class="rm-back-btn" onclick={onBack}>
+<section class="arcana-stage">
+    <button type="button" class="arcana-back-btn" onclick={onBack}>
         <KeyHint key="Esc" fontSize={36} />
         <PromptWord text="Back" fontSize={72} />
     </button>
 
-    <div class="rm-ach-layout">
+    <div class="arcana-ach-layout">
         {#if achievementLoading}
             <p class="state-text">Loading achievements...</p>
         {:else if achievementError}
             <p class="state-text error">{achievementError}</p>
         {:else if achievementData}
             <!-- LEFT: Pack nav (main menu style) -->
-            <nav class="rm-ach-sidebar" bind:this={sidebarRef}>
-                <ul class="rm-ach-pack-list">
+            <nav class="arcana-ach-sidebar" bind:this={sidebarRef}>
+                <ul class="arcana-ach-pack-list">
                     {#each achievementData.packs as pack, pi}
                         <li
-                            class="rm-ach-pack-line"
+                            class="arcana-ach-pack-line"
                             style:z-index={pi === selectedPackIndex ? 10 : 0}
                         >
                             <button
                                 type="button"
-                                class="rm-ach-pack-btn"
+                                class="arcana-ach-pack-btn"
                                 class:is-active={pi === selectedPackIndex}
                                 onclick={() => selectPack(pi)}
                                 onmouseenter={() => {
@@ -342,26 +342,26 @@
                         </li>
                     {/each}
                 </ul>
-                <div class="rm-ach-pack-quad" aria-hidden="true"></div>
+                <div class="arcana-ach-pack-quad" aria-hidden="true"></div>
             </nav>
 
             <!-- RIGHT: Achievement content -->
-            <div class="rm-ach-content">
+            <div class="arcana-ach-content">
                 {#if getSelectedPack()}
                     {@const pack = getSelectedPack()!}
 
-                    <div class="rm-ach-content-header">
+                    <div class="arcana-ach-content-header">
                         <CallingCardText text={pack.pack_name} fontSize={104} />
                         <CallingCardText text="Achievements" fontSize={104} />
                     </div>
 
                     <!-- FILTER BAR -->
-                    <div class="rm-ach-filters">
-                        <div class="rm-ach-filter-row">
+                    <div class="arcana-ach-filters">
+                        <div class="arcana-ach-filter-row">
                             <PromptWord text="Sort" fontSize={36} />
                             <button
                                 type="button"
-                                class="rm-ach-tab"
+                                class="arcana-ach-tab"
                                 class:active={sortKey === "name"}
                                 onclick={() => toggleSort("name")}
                             >
@@ -369,7 +369,7 @@
                             </button>
                             <button
                                 type="button"
-                                class="rm-ach-tab"
+                                class="arcana-ach-tab"
                                 class:active={sortKey === "difficulty"}
                                 onclick={() => toggleSort("difficulty")}
                             >
@@ -377,20 +377,20 @@
                             </button>
                             <button
                                 type="button"
-                                class="rm-ach-tab"
+                                class="arcana-ach-tab"
                                 class:active={sortKey === "unlocked"}
                                 onclick={() => toggleSort("unlocked")}
                             >
                                 Unlock{getSortIndicator("unlocked")}
                             </button>
 
-                            <span class="rm-ach-filter-divider"></span>
+                            <span class="arcana-ach-filter-divider"></span>
 
                             <PromptWord text="Diff" fontSize={36} />
                             {#each DIFFICULTIES as diff}
                                 <button
                                     type="button"
-                                    class="rm-ach-tab"
+                                    class="arcana-ach-tab"
                                     class:active={selectedDifficulties.has(
                                         diff,
                                     )}
@@ -400,12 +400,12 @@
                                 </button>
                             {/each}
 
-                            <span class="rm-ach-filter-divider"></span>
+                            <span class="arcana-ach-filter-divider"></span>
 
                             <PromptWord text="Status" fontSize={36} />
                             <button
                                 type="button"
-                                class="rm-ach-tab active"
+                                class="arcana-ach-tab active"
                                 onclick={() => {
                                     showUnlockedOnly = !showUnlockedOnly;
                                 }}
@@ -416,13 +416,13 @@
                     </div>
 
                     <!-- Achievement grid (scrollable) -->
-                    <div class="rm-ach-card-scroll">
+                    <div class="arcana-ach-card-scroll">
                         {#if filteredAchievements.length === 0}
-                            <p class="rm-ach-empty">
+                            <p class="arcana-ach-empty">
                                 No achievements match the current filters.
                             </p>
                         {:else}
-                            <div class="rm-achievement-grid">
+                            <div class="arcana-achievement-grid">
                                 {#each filteredAchievements as achievement}
                                     {@const unlocked =
                                         isAchieved(achievement.id)}
@@ -431,36 +431,36 @@
                                             achievement.id
                                         ]}
                                     <article
-                                        class="rm-achievement-card"
+                                        class="arcana-achievement-card"
                                         class:is-unlocked={!!unlocked}
                                     >
-                                        <div class="rm-achievement-card-header">
+                                        <div class="arcana-achievement-card-header">
                                             <span
-                                                class="rm-achievement-status-icon"
+                                                class="arcana-achievement-status-icon"
                                                 >{unlocked ? "✓" : "○"}</span
                                             >
-                                            <span class="rm-achievement-name"
+                                            <span class="arcana-achievement-name"
                                                 >{achievement.name}</span
                                             >
                                             <span
-                                                class="rm-difficulty rm-difficulty--{achievement.difficulty}"
+                                                class="arcana-difficulty arcana-difficulty--{achievement.difficulty}"
                                                 >{getDifficultyLabel(
                                                     achievement.difficulty,
                                                 )}</span
                                             >
                                         </div>
-                                        <p class="rm-achievement-desc">
+                                        <p class="arcana-achievement-desc">
                                             {achievement.description}
                                         </p>
                                         {#if progress?.achieved_at}
-                                            <p class="rm-achievement-date">
+                                            <p class="arcana-achievement-date">
                                                 {progress.achieved_at}
                                             </p>
                                         {/if}
                                         {#if achievement.prerequisites.length > 0}
-                                            <div class="rm-achievement-prereqs">
+                                            <div class="arcana-achievement-prereqs">
                                                 {#each achievement.prerequisites as prereq}
-                                                    <span class="rm-prereq-tag"
+                                                    <span class="arcana-prereq-tag"
                                                         >{prereq
                                                             .split("::")[1]
                                                             ?.replace(
@@ -474,7 +474,7 @@
                                         {#if achievement.enabled}
                                             <button
                                                 type="button"
-                                                class="rm-achievement-action"
+                                                class="arcana-achievement-action"
                                                 class:is-revoke={unlocked}
                                                 disabled={changingAchievementId !==
                                                     null}
@@ -505,7 +505,7 @@
 </section>
 
 <style>
-    .rm-ach-layout {
+    .arcana-ach-layout {
         flex: 1;
         display: grid;
         grid-template-columns: 1fr 3fr;
@@ -515,7 +515,7 @@
 
     /* ── Sidebar (main menu style) ── */
 
-    .rm-ach-sidebar {
+    .arcana-ach-sidebar {
         position: relative;
         overflow-y: auto;
         height: 100%;
@@ -525,26 +525,26 @@
         scrollbar-gutter: stable;
     }
 
-    .rm-ach-sidebar::-webkit-scrollbar {
+    .arcana-ach-sidebar::-webkit-scrollbar {
         width: 14px;
     }
-    .rm-ach-sidebar::-webkit-scrollbar-track {
-        background: var(--rm-black, #000);
-        border: 4px solid var(--rm-white, #fff);
+    .arcana-ach-sidebar::-webkit-scrollbar-track {
+        background: var(--arcana-black, #000);
+        border: 4px solid var(--arcana-white, #fff);
         border-radius: 0;
         margin-top: 12vh;
         margin-bottom: 12vh;
     }
-    .rm-ach-sidebar::-webkit-scrollbar-thumb {
-        background: var(--rm-white, #fff);
+    .arcana-ach-sidebar::-webkit-scrollbar-thumb {
+        background: var(--arcana-white, #fff);
         border-radius: 0;
         border: none;
     }
-    .rm-ach-sidebar::-webkit-scrollbar-thumb:hover {
-        background: var(--rm-white, #fff);
+    .arcana-ach-sidebar::-webkit-scrollbar-thumb:hover {
+        background: var(--arcana-white, #fff);
     }
 
-    .rm-ach-pack-list {
+    .arcana-ach-pack-list {
         list-style: none;
         margin: 0;
         padding: 0;
@@ -552,69 +552,69 @@
         flex-direction: column;
     }
 
-    .rm-ach-pack-line {
+    .arcana-ach-pack-line {
         margin: -1.2rem 0;
         position: relative;
     }
 
-    .rm-ach-pack-line:nth-child(odd) {
+    .arcana-ach-pack-line:nth-child(odd) {
         margin-left: 0;
     }
-    .rm-ach-pack-line:nth-child(even) {
+    .arcana-ach-pack-line:nth-child(even) {
         margin-left: 3vw;
     }
 
-    .rm-ach-pack-btn {
+    .arcana-ach-pack-btn {
         display: inline-flex;
         align-items: center;
         gap: 0.5rem;
         border: none;
-        background: var(--rm-black);
+        background: var(--arcana-black);
         cursor: pointer;
         padding: 1.1rem 2.8rem 1.1rem 2.4rem;
         width: fit-content;
         transition: background-color 140ms ease;
     }
 
-    .rm-ach-pack-btn:not(.is-active):hover {
-        background: var(--rm-red);
+    .arcana-ach-pack-btn:not(.is-active):hover {
+        background: var(--arcana-red);
     }
 
-    .rm-ach-pack-btn.is-active {
-        background: var(--rm-red);
+    .arcana-ach-pack-btn.is-active {
+        background: var(--arcana-red);
     }
 
     /* Per-item rotation + clip-path */
-    .rm-ach-pack-line:nth-child(6n + 1) .rm-ach-pack-btn {
+    .arcana-ach-pack-line:nth-child(6n + 1) .arcana-ach-pack-btn {
         transform: rotate(-5deg);
         clip-path: polygon(0% 8%, 100% 0%, 98% 92%, 2% 100%);
     }
-    .rm-ach-pack-line:nth-child(6n + 2) .rm-ach-pack-btn {
+    .arcana-ach-pack-line:nth-child(6n + 2) .arcana-ach-pack-btn {
         transform: rotate(-3deg);
         clip-path: polygon(1% 5%, 99% 0%, 97% 96%, 0% 100%);
     }
-    .rm-ach-pack-line:nth-child(6n + 3) .rm-ach-pack-btn {
+    .arcana-ach-pack-line:nth-child(6n + 3) .arcana-ach-pack-btn {
         transform: rotate(-1deg);
         clip-path: polygon(2% 0%, 100% 4%, 96% 100%, 0% 92%);
     }
-    .rm-ach-pack-line:nth-child(6n + 4) .rm-ach-pack-btn {
+    .arcana-ach-pack-line:nth-child(6n + 4) .arcana-ach-pack-btn {
         transform: rotate(1deg);
         clip-path: polygon(0% 6%, 98% 0%, 100% 94%, 3% 100%);
     }
-    .rm-ach-pack-line:nth-child(6n + 5) .rm-ach-pack-btn {
+    .arcana-ach-pack-line:nth-child(6n + 5) .arcana-ach-pack-btn {
         transform: rotate(2deg);
         clip-path: polygon(1% 0%, 97% 4%, 99% 100%, 2% 96%);
     }
-    .rm-ach-pack-line:nth-child(6n + 6) .rm-ach-pack-btn {
+    .arcana-ach-pack-line:nth-child(6n + 6) .arcana-ach-pack-btn {
         transform: rotate(-2deg);
         clip-path: polygon(0% 4%, 100% 0%, 98% 96%, 1% 100%);
     }
 
-    .rm-ach-pack-btn :global(.p5m) {
+    .arcana-ach-pack-btn :global(.p5m) {
         font-size: clamp(3.6rem, 7vw, 5.6rem);
     }
 
-    .rm-ach-pack-quad {
+    .arcana-ach-pack-quad {
         position: absolute;
         left: var(--pack-quad-x);
         top: var(--pack-quad-y);
@@ -622,7 +622,7 @@
         height: var(--pack-quad-h);
         transform: rotate(var(--pack-quad-rot));
         z-index: 15;
-        background: var(--rm-red);
+        background: var(--arcana-red);
         mix-blend-mode: difference;
         clip-path: var(
             --pack-quad-clip,
@@ -640,7 +640,7 @@
 
     /* ── Content area ── */
 
-    .rm-ach-content {
+    .arcana-ach-content {
         display: flex;
         flex-direction: column;
         overflow: hidden;
@@ -651,7 +651,7 @@
     }
 
     /* Scrollable card region */
-    .rm-ach-card-scroll {
+    .arcana-ach-card-scroll {
         flex: 1;
         overflow-y: auto;
         padding-right: clamp(8rem, 14vw, 20rem);
@@ -659,26 +659,26 @@
         scrollbar-gutter: stable;
     }
 
-    .rm-ach-card-scroll::-webkit-scrollbar {
+    .arcana-ach-card-scroll::-webkit-scrollbar {
         width: 14px;
     }
-    .rm-ach-card-scroll::-webkit-scrollbar-track {
-        background: var(--rm-black, #000);
-        border: 4px solid var(--rm-white, #fff);
+    .arcana-ach-card-scroll::-webkit-scrollbar-track {
+        background: var(--arcana-black, #000);
+        border: 4px solid var(--arcana-white, #fff);
         border-radius: 0;
         margin-top: 12vh;
         margin-bottom: 12vh;
     }
-    .rm-ach-card-scroll::-webkit-scrollbar-thumb {
-        background: var(--rm-white, #fff);
+    .arcana-ach-card-scroll::-webkit-scrollbar-thumb {
+        background: var(--arcana-white, #fff);
         border-radius: 0;
         border: none;
     }
-    .rm-ach-card-scroll::-webkit-scrollbar-thumb:hover {
-        background: var(--rm-white, #fff);
+    .arcana-ach-card-scroll::-webkit-scrollbar-thumb:hover {
+        background: var(--arcana-white, #fff);
     }
 
-    .rm-ach-content-header {
+    .arcana-ach-content-header {
         display: flex;
         align-items: baseline;
         gap: clamp(0.5rem, 0.8vw, 1.2rem);
@@ -687,7 +687,7 @@
 
     /* ── Filter bar ── */
 
-    .rm-ach-filters {
+    .arcana-ach-filters {
         display: flex;
         flex-direction: column;
         gap: clamp(0.5rem, 0.6vw, 1rem);
@@ -696,14 +696,14 @@
         border-bottom: 2px solid rgba(255, 255, 255, 0.08);
     }
 
-    .rm-ach-filter-row {
+    .arcana-ach-filter-row {
         display: flex;
         align-items: center;
         gap: clamp(0.3rem, 0.5vw, 0.8rem);
         flex-wrap: wrap;
     }
 
-    .rm-ach-filter-divider {
+    .arcana-ach-filter-divider {
         width: 2px;
         height: clamp(1.2rem, 1.5vw, 2.4rem);
         background: rgba(255, 255, 255, 0.12);
@@ -711,7 +711,7 @@
         margin: 0 clamp(0.3rem, 0.5vw, 0.8rem);
     }
 
-    .rm-ach-tab {
+    .arcana-ach-tab {
         position: relative;
         z-index: 0;
         font-family: "p5hatty", "Orbitron", Arial, sans-serif;
@@ -721,8 +721,8 @@
         letter-spacing: 0.06em;
         padding: clamp(0.5rem, 0.6vw, 0.9rem) clamp(1rem, 1.2vw, 1.8rem);
         border: none;
-        background: var(--rm-white);
-        color: var(--rm-white);
+        background: var(--arcana-white);
+        color: var(--arcana-white);
         cursor: pointer;
         clip-path: polygon(0% 0%, 100% 0%, 96% 100%, 4% 100%);
         transition: all 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -730,30 +730,30 @@
         flex-shrink: 0;
     }
 
-    .rm-ach-tab::before {
+    .arcana-ach-tab::before {
         content: "";
         position: absolute;
         inset: 4px;
-        background: var(--rm-black);
+        background: var(--arcana-black);
         clip-path: polygon(0% 0%, 100% 0%, 96% 100%, 4% 100%);
         z-index: -1;
         transition: background 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
     }
 
-    .rm-ach-tab:hover {
+    .arcana-ach-tab:hover {
         transform: scale(1.06);
     }
 
-    .rm-ach-tab.active {
-        background: var(--rm-white);
-        color: var(--rm-black);
+    .arcana-ach-tab.active {
+        background: var(--arcana-white);
+        color: var(--arcana-black);
     }
 
-    .rm-ach-tab.active::before {
-        background: var(--rm-white);
+    .arcana-ach-tab.active::before {
+        background: var(--arcana-white);
     }
 
-    .rm-ach-empty {
+    .arcana-ach-empty {
         margin: clamp(1.5rem, 2vw, 3rem) 0;
         font-size: clamp(0.7rem, 0.65vw, 1.1rem);
         color: rgba(255, 255, 255, 0.35);
@@ -764,14 +764,14 @@
 
     /* ── Achievement grid ── */
 
-    .rm-achievement-grid {
+    .arcana-achievement-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(max(240px, 14vw), 1fr));
         gap: clamp(0.6rem, 0.6vw, 1.2rem);
     }
 
-    .rm-achievement-card {
-        background: var(--rm-black);
+    .arcana-achievement-card {
+        background: var(--arcana-black);
         padding: 0;
         display: flex;
         flex-direction: column;
@@ -781,36 +781,36 @@
         transition: opacity 120ms ease;
     }
 
-    .rm-achievement-card:nth-child(even) {
+    .arcana-achievement-card:nth-child(even) {
         transform: rotate(0.5deg);
     }
 
-    .rm-achievement-card.is-unlocked {
+    .arcana-achievement-card.is-unlocked {
         opacity: 1;
     }
 
-    .rm-achievement-card-header {
+    .arcana-achievement-card-header {
         display: flex;
         align-items: center;
         gap: clamp(0.3rem, 0.4vw, 0.6rem);
-        background: var(--rm-white);
-        color: var(--rm-black);
+        background: var(--arcana-white);
+        color: var(--arcana-black);
         padding: clamp(0.3rem, 0.4vw, 0.7rem) clamp(0.7rem, 0.9vw, 1.6rem);
         margin: clamp(0.2rem, 0.25vw, 0.45rem) clamp(0.2rem, 0.25vw, 0.45rem) 0;
         clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 1.5% 100%);
     }
 
-    .rm-achievement-status-icon {
+    .arcana-achievement-status-icon {
         font-size: clamp(0.8rem, 0.7vw, 1.2rem);
         font-weight: 800;
         flex-shrink: 0;
     }
 
-    .rm-achievement-card.is-unlocked .rm-achievement-status-icon {
-        color: var(--rm-red);
+    .arcana-achievement-card.is-unlocked .arcana-achievement-status-icon {
+        color: var(--arcana-red);
     }
 
-    .rm-achievement-name {
+    .arcana-achievement-name {
         font-size: clamp(0.7rem, 0.65vw, 1.2rem);
         font-weight: 700;
         text-transform: uppercase;
@@ -819,7 +819,7 @@
         flex: 1;
     }
 
-    .rm-difficulty {
+    .arcana-difficulty {
         font-size: clamp(0.55rem, 0.5vw, 0.9rem);
         font-weight: 700;
         text-transform: uppercase;
@@ -827,24 +827,24 @@
         flex-shrink: 0;
     }
 
-    .rm-difficulty--beginner {
+    .arcana-difficulty--beginner {
         opacity: 0.5;
     }
-    .rm-difficulty--intermediate {
+    .arcana-difficulty--intermediate {
         opacity: 0.65;
     }
-    .rm-difficulty--advanced {
+    .arcana-difficulty--advanced {
         opacity: 0.8;
     }
-    .rm-difficulty--expert {
+    .arcana-difficulty--expert {
         opacity: 0.9;
     }
-    .rm-difficulty--legendary {
-        color: var(--rm-red);
+    .arcana-difficulty--legendary {
+        color: var(--arcana-red);
         opacity: 1;
     }
 
-    .rm-achievement-desc {
+    .arcana-achievement-desc {
         margin: 0;
         padding: clamp(0.25rem, 0.35vw, 0.6rem) clamp(0.7rem, 0.9vw, 1.6rem)
             clamp(0.25rem, 0.35vw, 0.6rem) clamp(1.2rem, 1.4vw, 2.4rem);
@@ -854,17 +854,17 @@
         white-space: pre-line;
     }
 
-    .rm-achievement-date {
+    .arcana-achievement-date {
         margin: 0;
         padding: 0 clamp(0.7rem, 0.9vw, 1.6rem) clamp(0.15rem, 0.2vw, 0.35rem)
             clamp(1.2rem, 1.4vw, 2.4rem);
         font-size: clamp(0.58rem, 0.5vw, 0.9rem);
-        color: var(--rm-red);
+        color: var(--arcana-red);
         font-weight: 700;
         letter-spacing: 0.04em;
     }
 
-    .rm-achievement-prereqs {
+    .arcana-achievement-prereqs {
         display: flex;
         flex-wrap: wrap;
         gap: clamp(0.2rem, 0.25vw, 0.4rem);
@@ -872,7 +872,7 @@
             clamp(0.3rem, 0.4vw, 0.6rem) clamp(1.2rem, 1.4vw, 2.4rem);
     }
 
-    .rm-prereq-tag {
+    .arcana-prereq-tag {
         font-size: clamp(0.5rem, 0.45vw, 0.75rem);
         font-weight: 700;
         text-transform: uppercase;
@@ -882,24 +882,24 @@
         padding: 0.1rem 0.4rem;
     }
 
-    .rm-achievement-action {
+    .arcana-achievement-action {
         align-self: flex-end;
         margin: auto clamp(0.7rem, 0.9vw, 1.6rem) clamp(0.6rem, 0.7vw, 1rem);
         border: 0;
-        background: var(--rm-white, #fff);
-        color: var(--rm-black, #000);
+        background: var(--arcana-white, #fff);
+        color: var(--arcana-black, #000);
         padding: 0.35em 0.7em;
         font: 800 clamp(0.6rem, 0.58vw, 1rem) "p5hatty", "Orbitron", sans-serif;
         text-transform: uppercase;
         cursor: pointer;
     }
 
-    .rm-achievement-action.is-revoke {
-        background: var(--rm-red, #e5191c);
-        color: var(--rm-white, #fff);
+    .arcana-achievement-action.is-revoke {
+        background: var(--arcana-red, #e5191c);
+        color: var(--arcana-white, #fff);
     }
 
-    .rm-achievement-action:disabled {
+    .arcana-achievement-action:disabled {
         cursor: wait;
         opacity: 0.6;
     }

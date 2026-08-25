@@ -396,10 +396,10 @@
     });
 </script>
 
-<section class="rm-stage">
+<section class="arcana-stage">
     <button
         type="button"
-        class="rm-back-btn"
+        class="arcana-back-btn"
         onclick={() => {
             if (selectedMedia) {
                 selectedMedia = null;
@@ -417,18 +417,18 @@
     {:else if galleryError}
         <p class="state-text error" style="padding: 2rem;">{galleryError}</p>
     {:else if galleryData && !selectedMedia}
-        <div class="rm-gallery-layout">
+        <div class="arcana-gallery-layout">
             <!-- LEFT: category nav + sort -->
-            <div class="rm-gallery-sidebar" bind:this={sidebarRef}>
-                <ul class="rm-gallery-pack-list">
+            <div class="arcana-gallery-sidebar" bind:this={sidebarRef}>
+                <ul class="arcana-gallery-pack-list">
                     {#each GALLERY_CATEGORIES as cat, ci}
                         <li
-                            class="rm-gallery-pack-line"
+                            class="arcana-gallery-pack-line"
                             style:z-index={galleryActiveCategory === cat.id ? 10 : 0}
                         >
                             <button
                                 type="button"
-                                class="rm-gallery-pack-btn"
+                                class="arcana-gallery-pack-btn"
                                 class:is-active={galleryActiveCategory === cat.id}
                                 onclick={() => selectGalleryCategory(cat.id)}
                                 onmouseenter={() => selectGalleryCategory(cat.id)}
@@ -442,15 +442,15 @@
                         </li>
                     {/each}
                 </ul>
-                <div class="rm-gallery-pack-quad" aria-hidden="true"></div>
+                <div class="arcana-gallery-pack-quad" aria-hidden="true"></div>
 
-                <div class="rm-gallery-filters">
-                    <div class="rm-gallery-filter-row">
+                <div class="arcana-gallery-filters">
+                    <div class="arcana-gallery-filter-row">
                         <PromptWord text="Sort" fontSize={36} />
                         {#each getActiveSortOptions() as opt}
                             <button
                                 type="button"
-                                class="rm-gallery-tab"
+                                class="arcana-gallery-tab"
                                 class:active={gallerySortKey === opt.key}
                                 onclick={() => toggleGallerySort(opt.key)}
                             >
@@ -462,65 +462,65 @@
             </div>
 
             <!-- RIGHT: waterfall cover wall -->
-            <div class="rm-gallery-content">
+            <div class="arcana-gallery-content">
                 {#if getFilteredGalleryItems().length === 0}
                     <p class="state-text" style="padding: 2rem;">
                         No items match the current filter.
                     </p>
                 {:else}
-                    <div class="rm-gallery-wall">
+                    <div class="arcana-gallery-wall">
                         {#each getFilteredGalleryItems() as item, i (item.id)}
                             {@const displayRating = getDisplayRating(item)}
                             {@const itemMediaType = getMediaType(item)}
                             <button
                                 type="button"
-                                class="rm-gallery-card"
+                                class="arcana-gallery-card"
                                 style="transform: rotate({getCardRotation(i)});"
                                 onclick={() => {
                                     selectedMedia = item;
                                 }}
                             >
-                                <div class="rm-gallery-card-frame">
+                                <div class="arcana-gallery-card-frame">
                                     {#if item.cover}
                                         <img
                                             src={proxyCover(item.cover)}
                                             alt={item.name}
-                                            class="rm-gallery-card-img"
+                                            class="arcana-gallery-card-img"
                                             loading="lazy"
                                             onerror={handleCoverError}
                                         />
                                         <div
-                                            class="rm-gallery-card-fallback"
+                                            class="arcana-gallery-card-fallback"
                                             style="display:none;"
                                         ></div>
                                     {:else}
                                         <div
-                                            class="rm-gallery-card-fallback"
+                                            class="arcana-gallery-card-fallback"
                                         ></div>
                                     {/if}
                                 </div>
-                                <div class="rm-gallery-card-info">
-                                    <span class="rm-gallery-card-name"
+                                <div class="arcana-gallery-card-info">
+                                    <span class="arcana-gallery-card-name"
                                         >{item.name}</span
                                     >
                                     {#if itemMediaType === "game"}
-                                        <div class="rm-gallery-card-game-meta">
+                                        <div class="arcana-gallery-card-game-meta">
                                             {#if item.extra.playtime_hours}
                                                 <span
-                                                    class="rm-gallery-card-playtime"
+                                                    class="arcana-gallery-card-playtime"
                                                     >{item.extra
                                                         .playtime_hours}h</span
                                                 >
                                             {/if}
                                             {#if item.extra.achievement_total}
                                                 <div
-                                                    class="rm-gallery-card-ach"
+                                                    class="arcana-gallery-card-ach"
                                                 >
                                                     <div
-                                                        class="rm-gallery-card-ach-bar"
+                                                        class="arcana-gallery-card-ach-bar"
                                                     >
                                                         <div
-                                                            class="rm-gallery-card-ach-fill"
+                                                            class="arcana-gallery-card-ach-fill"
                                                             style="width: {(
                                                                 (((item.extra
                                                                     .achievement_unlocked as number) ??
@@ -532,7 +532,7 @@
                                                         ></div>
                                                     </div>
                                                     <span
-                                                        class="rm-gallery-card-ach-text"
+                                                        class="arcana-gallery-card-ach-text"
                                                         >{item.extra
                                                             .achievement_unlocked ??
                                                             0}/{item.extra
@@ -543,12 +543,12 @@
                                         </div>
                                     {:else if displayRating}
                                         <div
-                                            class="rm-gallery-card-stars"
+                                            class="arcana-gallery-card-stars"
                                             class:is-community={!displayRating.isPersonal}
                                         >
                                             {#each ratingToStars(displayRating.value) as star}
                                                 <span
-                                                    class="rm-gallery-star rm-gallery-star--{star}"
+                                                    class="arcana-gallery-star arcana-gallery-star--{star}"
                                                     >★</span
                                                 >
                                             {/each}
@@ -563,63 +563,63 @@
         </div>
     {:else if galleryData && selectedMedia}
         <!-- Detail view -->
-        <div class="rm-gallery-detail">
-            <div class="rm-gallery-detail-inner">
-                <div class="rm-gallery-detail-cover">
+        <div class="arcana-gallery-detail">
+            <div class="arcana-gallery-detail-inner">
+                <div class="arcana-gallery-detail-cover">
                     {#if selectedMedia.cover}
                         <img
                             src={proxyCover(selectedMedia.cover)}
                             alt={selectedMedia.name}
-                            class="rm-gallery-detail-img"
+                            class="arcana-gallery-detail-img"
                         />
                     {:else}
                         <div
-                            class="rm-gallery-card-placeholder rm-gallery-detail-placeholder"
+                            class="arcana-gallery-card-placeholder arcana-gallery-detail-placeholder"
                         >
-                            <span class="rm-gallery-card-placeholder-text"
+                            <span class="arcana-gallery-card-placeholder-text"
                                 >{selectedMedia.name.charAt(0)}</span
                             >
                         </div>
                     {/if}
                 </div>
-                <div class="rm-gallery-detail-info">
-                    <h2 class="rm-gallery-detail-title">
+                <div class="arcana-gallery-detail-info">
+                    <h2 class="arcana-gallery-detail-title">
                         {selectedMedia.name}
                     </h2>
                     {#if selectedMedia.name_original}
-                        <p class="rm-gallery-detail-original">
+                        <p class="arcana-gallery-detail-original">
                             {selectedMedia.name_original}
                         </p>
                     {/if}
 
                     {#if getMediaType(selectedMedia) === "game"}
                         <!-- Game-specific detail -->
-                        <div class="rm-gallery-detail-meta">
+                        <div class="arcana-gallery-detail-meta">
                             {#if selectedMedia.extra.playtime_hours != null}
-                                <div class="rm-gallery-detail-row">
-                                    <span class="rm-gallery-detail-label"
+                                <div class="arcana-gallery-detail-row">
+                                    <span class="arcana-gallery-detail-label"
                                         >PLAYTIME</span
                                     >
-                                    <span class="rm-gallery-detail-value"
+                                    <span class="arcana-gallery-detail-value"
                                         >{selectedMedia.extra
                                             .playtime_hours}h</span
                                     >
                                 </div>
                             {/if}
                             {#if selectedMedia.extra.achievement_total}
-                                <div class="rm-gallery-detail-row">
-                                    <span class="rm-gallery-detail-label"
+                                <div class="arcana-gallery-detail-row">
+                                    <span class="arcana-gallery-detail-label"
                                         >ACHIEVEMENTS</span
                                     >
-                                    <span class="rm-gallery-detail-value"
+                                    <span class="arcana-gallery-detail-value"
                                         >{selectedMedia.extra
                                             .achievement_unlocked ?? 0} / {selectedMedia
                                             .extra.achievement_total}</span
                                     >
                                 </div>
-                                <div class="rm-gallery-detail-ach-bar">
+                                <div class="arcana-gallery-detail-ach-bar">
                                     <div
-                                        class="rm-gallery-detail-ach-fill"
+                                        class="arcana-gallery-detail-ach-fill"
                                         style="width: {(
                                             (((selectedMedia.extra
                                                 .achievement_unlocked as number) ??
@@ -632,22 +632,22 @@
                                 </div>
                             {/if}
                             {#if selectedMedia.extra.release_date}
-                                <div class="rm-gallery-detail-row">
-                                    <span class="rm-gallery-detail-label"
+                                <div class="arcana-gallery-detail-row">
+                                    <span class="arcana-gallery-detail-label"
                                         >RELEASE</span
                                     >
-                                    <span class="rm-gallery-detail-value"
+                                    <span class="arcana-gallery-detail-value"
                                         >{selectedMedia.extra
                                             .release_date}</span
                                     >
                                 </div>
                             {/if}
                             {#if selectedMedia.rating !== null}
-                                <div class="rm-gallery-detail-row">
-                                    <span class="rm-gallery-detail-label"
+                                <div class="arcana-gallery-detail-row">
+                                    <span class="arcana-gallery-detail-label"
                                         >METACRITIC</span
                                     >
-                                    <span class="rm-gallery-detail-value"
+                                    <span class="arcana-gallery-detail-value"
                                         >{formatRating(
                                             selectedMedia.rating,
                                         )}</span
@@ -655,11 +655,11 @@
                                 </div>
                             {/if}
                             {#if selectedMedia.extra.steam_url}
-                                <div class="rm-gallery-detail-row">
-                                    <span class="rm-gallery-detail-label"
+                                <div class="arcana-gallery-detail-row">
+                                    <span class="arcana-gallery-detail-label"
                                         >STEAM</span
                                     >
-                                    <span class="rm-gallery-detail-value"
+                                    <span class="arcana-gallery-detail-value"
                                         >{selectedMedia.extra.steam_url}</span
                                     >
                                 </div>
@@ -667,13 +667,13 @@
                         </div>
                     {:else}
                         <!-- Default (anime/media) detail -->
-                        <div class="rm-gallery-detail-meta">
+                        <div class="arcana-gallery-detail-meta">
                             {#if selectedMedia.rating !== null}
-                                <div class="rm-gallery-detail-row">
-                                    <span class="rm-gallery-detail-label"
+                                <div class="arcana-gallery-detail-row">
+                                    <span class="arcana-gallery-detail-label"
                                         >RATING</span
                                     >
-                                    <span class="rm-gallery-detail-value"
+                                    <span class="arcana-gallery-detail-value"
                                         >{formatRating(
                                             selectedMedia.rating,
                                         )}</span
@@ -681,12 +681,12 @@
                                 </div>
                             {/if}
                             {#if selectedMedia.my_rating !== null}
-                                <div class="rm-gallery-detail-row">
-                                    <span class="rm-gallery-detail-label"
+                                <div class="arcana-gallery-detail-row">
+                                    <span class="arcana-gallery-detail-label"
                                         >MY RATING</span
                                     >
                                     <span
-                                        class="rm-gallery-detail-value rm-gallery-detail-myrating"
+                                        class="arcana-gallery-detail-value arcana-gallery-detail-myrating"
                                         >{formatRating(
                                             selectedMedia.my_rating,
                                         )}</span
@@ -694,31 +694,31 @@
                                 </div>
                             {/if}
                             {#if selectedMedia.episodes !== null}
-                                <div class="rm-gallery-detail-row">
-                                    <span class="rm-gallery-detail-label"
+                                <div class="arcana-gallery-detail-row">
+                                    <span class="arcana-gallery-detail-label"
                                         >EPISODES</span
                                     >
-                                    <span class="rm-gallery-detail-value"
+                                    <span class="arcana-gallery-detail-value"
                                         >{selectedMedia.episodes}</span
                                     >
                                 </div>
                             {/if}
                             {#if selectedMedia.date_started}
-                                <div class="rm-gallery-detail-row">
-                                    <span class="rm-gallery-detail-label"
+                                <div class="arcana-gallery-detail-row">
+                                    <span class="arcana-gallery-detail-label"
                                         >STARTED</span
                                     >
-                                    <span class="rm-gallery-detail-value"
+                                    <span class="arcana-gallery-detail-value"
                                         >{selectedMedia.date_started}</span
                                     >
                                 </div>
                             {/if}
                             {#if selectedMedia.date_finished}
-                                <div class="rm-gallery-detail-row">
-                                    <span class="rm-gallery-detail-label"
+                                <div class="arcana-gallery-detail-row">
+                                    <span class="arcana-gallery-detail-label"
                                         >FINISHED</span
                                     >
-                                    <span class="rm-gallery-detail-value"
+                                    <span class="arcana-gallery-detail-value"
                                         >{selectedMedia.date_finished}</span
                                     >
                                 </div>
@@ -727,9 +727,9 @@
                     {/if}
 
                     {#if selectedMedia.tags.length > 0}
-                        <div class="rm-gallery-detail-tags">
+                        <div class="arcana-gallery-detail-tags">
                             {#each selectedMedia.tags as tag}
-                                <span class="rm-gallery-detail-tag">{tag}</span>
+                                <span class="arcana-gallery-detail-tag">{tag}</span>
                             {/each}
                         </div>
                     {/if}
@@ -745,20 +745,20 @@
 <style>
 
     /* ── Gallery filter tabs ── */
-    .rm-gallery-filters {
+    .arcana-gallery-filters {
         display: flex;
         flex-direction: column;
         gap: clamp(0.5rem, 0.6vw, 1rem);
     }
 
-    .rm-gallery-filter-row {
+    .arcana-gallery-filter-row {
         display: flex;
         align-items: center;
         gap: clamp(0.3rem, 0.5vw, 0.8rem);
         flex-wrap: wrap;
     }
 
-    .rm-gallery-tab {
+    .arcana-gallery-tab {
         position: relative;
         z-index: 0;
         font-family: "p5hatty", "Orbitron", Arial, sans-serif;
@@ -768,8 +768,8 @@
         letter-spacing: 0.06em;
         padding: clamp(0.5rem, 0.6vw, 0.9rem) clamp(1rem, 1.2vw, 1.8rem);
         border: none;
-        background: var(--rm-white);
-        color: var(--rm-white);
+        background: var(--arcana-white);
+        color: var(--arcana-white);
         cursor: pointer;
         clip-path: polygon(0% 0%, 100% 0%, 96% 100%, 4% 100%);
         transition: all 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -777,31 +777,31 @@
         flex-shrink: 0;
     }
 
-    .rm-gallery-tab::before {
+    .arcana-gallery-tab::before {
         content: "";
         position: absolute;
         inset: 4px;
-        background: var(--rm-black);
+        background: var(--arcana-black);
         clip-path: polygon(0% 0%, 100% 0%, 96% 100%, 4% 100%);
         z-index: -1;
         transition: background 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
     }
 
-    .rm-gallery-tab:hover {
+    .arcana-gallery-tab:hover {
         transform: scale(1.06);
     }
 
-    .rm-gallery-tab.active {
-        background: var(--rm-white);
-        color: var(--rm-black);
+    .arcana-gallery-tab.active {
+        background: var(--arcana-white);
+        color: var(--arcana-black);
     }
 
-    .rm-gallery-tab.active::before {
-        background: var(--rm-white);
+    .arcana-gallery-tab.active::before {
+        background: var(--arcana-white);
     }
 
     /* ── Gallery ── */
-    .rm-gallery-layout {
+    .arcana-gallery-layout {
         flex: 1;
         display: grid;
         grid-template-columns: auto 1fr;
@@ -809,7 +809,7 @@
         height: 100%;
     }
 
-    .rm-gallery-sidebar {
+    .arcana-gallery-sidebar {
         position: relative;
         overflow-y: auto;
         height: 100%;
@@ -822,26 +822,26 @@
         scrollbar-gutter: stable;
     }
 
-    .rm-gallery-sidebar::-webkit-scrollbar {
+    .arcana-gallery-sidebar::-webkit-scrollbar {
         width: 14px;
     }
-    .rm-gallery-sidebar::-webkit-scrollbar-track {
-        background: var(--rm-black, #000);
-        border: 4px solid var(--rm-white, #fff);
+    .arcana-gallery-sidebar::-webkit-scrollbar-track {
+        background: var(--arcana-black, #000);
+        border: 4px solid var(--arcana-white, #fff);
         border-radius: 0;
         margin-top: 12vh;
         margin-bottom: 12vh;
     }
-    .rm-gallery-sidebar::-webkit-scrollbar-thumb {
-        background: var(--rm-white, #fff);
+    .arcana-gallery-sidebar::-webkit-scrollbar-thumb {
+        background: var(--arcana-white, #fff);
         border-radius: 0;
         border: none;
     }
-    .rm-gallery-sidebar::-webkit-scrollbar-thumb:hover {
-        background: var(--rm-white, #fff);
+    .arcana-gallery-sidebar::-webkit-scrollbar-thumb:hover {
+        background: var(--arcana-white, #fff);
     }
 
-    .rm-gallery-pack-list {
+    .arcana-gallery-pack-list {
         list-style: none;
         margin: 0;
         padding: 0;
@@ -849,69 +849,69 @@
         flex-direction: column;
     }
 
-    .rm-gallery-pack-line {
+    .arcana-gallery-pack-line {
         margin: -1.2rem 0;
         position: relative;
     }
 
-    .rm-gallery-pack-line:nth-child(odd) {
+    .arcana-gallery-pack-line:nth-child(odd) {
         margin-left: 0;
     }
-    .rm-gallery-pack-line:nth-child(even) {
+    .arcana-gallery-pack-line:nth-child(even) {
         margin-left: 3vw;
     }
 
-    .rm-gallery-pack-btn {
+    .arcana-gallery-pack-btn {
         display: inline-flex;
         align-items: center;
         gap: 0.5rem;
         border: none;
-        background: var(--rm-black);
+        background: var(--arcana-black);
         cursor: pointer;
         padding: 1.1rem 2.8rem 1.1rem 2.4rem;
         width: fit-content;
         transition: background-color 140ms ease;
     }
 
-    .rm-gallery-pack-btn:not(.is-active):hover {
-        background: var(--rm-red);
+    .arcana-gallery-pack-btn:not(.is-active):hover {
+        background: var(--arcana-red);
     }
 
-    .rm-gallery-pack-btn.is-active {
-        background: var(--rm-red);
+    .arcana-gallery-pack-btn.is-active {
+        background: var(--arcana-red);
     }
 
     /* Per-item rotation + clip-path */
-    .rm-gallery-pack-line:nth-child(6n + 1) .rm-gallery-pack-btn {
+    .arcana-gallery-pack-line:nth-child(6n + 1) .arcana-gallery-pack-btn {
         transform: rotate(-5deg);
         clip-path: polygon(0% 8%, 100% 0%, 98% 92%, 2% 100%);
     }
-    .rm-gallery-pack-line:nth-child(6n + 2) .rm-gallery-pack-btn {
+    .arcana-gallery-pack-line:nth-child(6n + 2) .arcana-gallery-pack-btn {
         transform: rotate(-3deg);
         clip-path: polygon(1% 5%, 99% 0%, 97% 96%, 0% 100%);
     }
-    .rm-gallery-pack-line:nth-child(6n + 3) .rm-gallery-pack-btn {
+    .arcana-gallery-pack-line:nth-child(6n + 3) .arcana-gallery-pack-btn {
         transform: rotate(-1deg);
         clip-path: polygon(2% 0%, 100% 4%, 96% 100%, 0% 92%);
     }
-    .rm-gallery-pack-line:nth-child(6n + 4) .rm-gallery-pack-btn {
+    .arcana-gallery-pack-line:nth-child(6n + 4) .arcana-gallery-pack-btn {
         transform: rotate(1deg);
         clip-path: polygon(0% 6%, 98% 0%, 100% 94%, 3% 100%);
     }
-    .rm-gallery-pack-line:nth-child(6n + 5) .rm-gallery-pack-btn {
+    .arcana-gallery-pack-line:nth-child(6n + 5) .arcana-gallery-pack-btn {
         transform: rotate(2deg);
         clip-path: polygon(1% 0%, 97% 4%, 99% 100%, 2% 96%);
     }
-    .rm-gallery-pack-line:nth-child(6n + 6) .rm-gallery-pack-btn {
+    .arcana-gallery-pack-line:nth-child(6n + 6) .arcana-gallery-pack-btn {
         transform: rotate(-2deg);
         clip-path: polygon(0% 4%, 100% 0%, 98% 96%, 1% 100%);
     }
 
-    .rm-gallery-pack-btn :global(.p5m) {
+    .arcana-gallery-pack-btn :global(.p5m) {
         font-size: clamp(3.6rem, 7vw, 5.6rem);
     }
 
-    .rm-gallery-pack-quad {
+    .arcana-gallery-pack-quad {
         position: absolute;
         left: var(--pack-quad-x);
         top: var(--pack-quad-y);
@@ -919,7 +919,7 @@
         height: var(--pack-quad-h);
         transform: rotate(var(--pack-quad-rot));
         z-index: 15;
-        background: var(--rm-red);
+        background: var(--arcana-red);
         mix-blend-mode: difference;
         clip-path: var(
             --pack-quad-clip,
@@ -935,7 +935,7 @@
             clip-path 120ms ease;
     }
 
-    .rm-gallery-content {
+    .arcana-gallery-content {
         overflow-y: auto;
         height: 100%;
         padding: clamp(6rem, 10vh, 12rem) clamp(2rem, 3vw, 5rem)
@@ -945,36 +945,36 @@
         margin-right: clamp(1rem, 2vw, 3rem);
     }
 
-    .rm-gallery-content::-webkit-scrollbar {
+    .arcana-gallery-content::-webkit-scrollbar {
         width: 14px;
     }
-    .rm-gallery-content::-webkit-scrollbar-track {
-        background: var(--rm-black, #000);
-        border: 4px solid var(--rm-white, #fff);
+    .arcana-gallery-content::-webkit-scrollbar-track {
+        background: var(--arcana-black, #000);
+        border: 4px solid var(--arcana-white, #fff);
         border-radius: 0;
         margin-top: 12vh;
         margin-bottom: 12vh;
     }
-    .rm-gallery-content::-webkit-scrollbar-thumb {
-        background: var(--rm-white, #fff);
+    .arcana-gallery-content::-webkit-scrollbar-thumb {
+        background: var(--arcana-white, #fff);
         border-radius: 0;
         border: none;
     }
-    .rm-gallery-content::-webkit-scrollbar-thumb:hover {
-        background: var(--rm-white, #fff);
+    .arcana-gallery-content::-webkit-scrollbar-thumb:hover {
+        background: var(--arcana-white, #fff);
     }
 
-    .rm-gallery-wall {
+    .arcana-gallery-wall {
         display: flex;
         flex-wrap: wrap;
         gap: clamp(0.8rem, 1vw, 1.6rem);
     }
 
-    .rm-gallery-card {
+    .arcana-gallery-card {
         display: block;
         width: calc((100% - 4 * clamp(0.8rem, 1vw, 1.6rem)) / 5);
         border: none;
-        background: var(--rm-white);
+        background: var(--arcana-white);
         cursor: pointer;
         padding: clamp(0.3rem, 0.4vw, 0.55rem);
         padding-bottom: clamp(0.4rem, 0.5vw, 0.7rem);
@@ -988,7 +988,7 @@
             0 4px 8px rgba(0, 0, 0, 0.2);
     }
 
-    .rm-gallery-card:hover {
+    .arcana-gallery-card:hover {
         z-index: 2;
         transform: rotate(0deg) scale(1.04) !important;
         box-shadow:
@@ -996,113 +996,113 @@
             0 8px 20px rgba(0, 0, 0, 0.3);
     }
 
-    .rm-gallery-card-frame {
+    .arcana-gallery-card-frame {
         position: relative;
         width: 100%;
         overflow: hidden;
-        background: var(--rm-black);
+        background: var(--arcana-black);
     }
 
-    .rm-gallery-card-img {
+    .arcana-gallery-card-img {
         display: block;
         width: 100%;
         height: auto;
         object-fit: cover;
     }
 
-    .rm-gallery-card-fallback {
+    .arcana-gallery-card-fallback {
         width: 100%;
         aspect-ratio: 3 / 4;
-        background: var(--rm-black);
+        background: var(--arcana-black);
         display: flex;
         align-items: center;
         justify-content: center;
     }
 
-    .rm-gallery-card-info {
+    .arcana-gallery-card-info {
         padding: clamp(0.25rem, 0.35vw, 0.5rem) clamp(0.1rem, 0.15vw, 0.2rem) 0;
         display: flex;
         flex-direction: column;
         gap: clamp(0.08rem, 0.1vw, 0.15rem);
     }
 
-    .rm-gallery-card-name {
+    .arcana-gallery-card-name {
         font-size: clamp(0.48rem, 0.45vw, 0.75rem);
         font-weight: 800;
-        color: var(--rm-black);
+        color: var(--arcana-black);
         letter-spacing: 0.02em;
         text-align: left;
         line-height: 1.2;
     }
 
-    .rm-gallery-card-stars {
+    .arcana-gallery-card-stars {
         display: flex;
         gap: 0;
         line-height: 1;
     }
 
-    .rm-gallery-star {
+    .arcana-gallery-star {
         font-size: clamp(0.38rem, 0.36vw, 0.6rem);
         line-height: 1;
     }
 
-    .rm-gallery-star--full {
-        color: var(--rm-red);
+    .arcana-gallery-star--full {
+        color: var(--arcana-red);
     }
 
-    .rm-gallery-star--half {
-        color: var(--rm-red);
+    .arcana-gallery-star--half {
+        color: var(--arcana-red);
         opacity: 0.4;
     }
 
-    .rm-gallery-star--empty {
+    .arcana-gallery-star--empty {
         color: rgba(0, 0, 0, 0.15);
     }
 
-    .rm-gallery-card-stars.is-community .rm-gallery-star--full,
-    .rm-gallery-card-stars.is-community .rm-gallery-star--half {
-        color: var(--rm-black);
+    .arcana-gallery-card-stars.is-community .arcana-gallery-star--full,
+    .arcana-gallery-card-stars.is-community .arcana-gallery-star--half {
+        color: var(--arcana-black);
         opacity: 0.35;
     }
 
     /* ── Game card meta ── */
-    .rm-gallery-card-game-meta {
+    .arcana-gallery-card-game-meta {
         display: flex;
         flex-direction: column;
         gap: clamp(0.06rem, 0.08vw, 0.12rem);
     }
 
-    .rm-gallery-card-playtime {
+    .arcana-gallery-card-playtime {
         font-size: clamp(0.42rem, 0.4vw, 0.65rem);
         font-weight: 900;
-        color: var(--rm-black);
+        color: var(--arcana-black);
         letter-spacing: 0.06em;
         line-height: 1;
     }
 
-    .rm-gallery-card-ach {
+    .arcana-gallery-card-ach {
         display: flex;
         align-items: center;
         gap: clamp(0.15rem, 0.2vw, 0.3rem);
     }
 
-    .rm-gallery-card-ach-bar {
+    .arcana-gallery-card-ach-bar {
         flex: 1;
         height: clamp(2px, 0.2vw, 4px);
-        background: var(--rm-black);
+        background: var(--arcana-black);
         position: relative;
         clip-path: polygon(2% 0%, 100% 0%, 98% 100%, 0% 100%);
     }
 
-    .rm-gallery-card-ach-fill {
+    .arcana-gallery-card-ach-fill {
         position: absolute;
         top: 0;
         left: 0;
         height: 100%;
-        background: var(--rm-red);
+        background: var(--arcana-red);
     }
 
-    .rm-gallery-card-ach-text {
+    .arcana-gallery-card-ach-text {
         font-size: clamp(0.32rem, 0.3vw, 0.5rem);
         font-weight: 700;
         color: rgba(0, 0, 0, 0.45);
@@ -1112,7 +1112,7 @@
     }
 
     /* ── Gallery detail ── */
-    .rm-gallery-detail {
+    .arcana-gallery-detail {
         flex: 1;
         display: flex;
         align-items: center;
@@ -1125,26 +1125,26 @@
         margin-right: clamp(1rem, 2vw, 3rem);
     }
 
-    .rm-gallery-detail::-webkit-scrollbar {
+    .arcana-gallery-detail::-webkit-scrollbar {
         width: 14px;
     }
-    .rm-gallery-detail::-webkit-scrollbar-track {
-        background: var(--rm-black, #000);
-        border: 4px solid var(--rm-white, #fff);
+    .arcana-gallery-detail::-webkit-scrollbar-track {
+        background: var(--arcana-black, #000);
+        border: 4px solid var(--arcana-white, #fff);
         border-radius: 0;
         margin-top: 12vh;
         margin-bottom: 12vh;
     }
-    .rm-gallery-detail::-webkit-scrollbar-thumb {
-        background: var(--rm-white, #fff);
+    .arcana-gallery-detail::-webkit-scrollbar-thumb {
+        background: var(--arcana-white, #fff);
         border-radius: 0;
         border: none;
     }
-    .rm-gallery-detail::-webkit-scrollbar-thumb:hover {
-        background: var(--rm-white, #fff);
+    .arcana-gallery-detail::-webkit-scrollbar-thumb:hover {
+        background: var(--arcana-white, #fff);
     }
 
-    .rm-gallery-detail-inner {
+    .arcana-gallery-detail-inner {
         display: grid;
         grid-template-columns: auto 1fr;
         gap: clamp(1.5rem, 2.5vw, 4rem);
@@ -1152,29 +1152,29 @@
         width: 100%;
     }
 
-    .rm-gallery-detail-cover {
+    .arcana-gallery-detail-cover {
         width: clamp(330px, 33vw, 780px);
         flex-shrink: 0;
     }
 
-    .rm-gallery-detail-img {
+    .arcana-gallery-detail-img {
         display: block;
         width: 100%;
         height: auto;
         clip-path: polygon(3% 0%, 100% 2%, 97% 100%, 0% 97%);
     }
 
-    .rm-gallery-detail-placeholder {
+    .arcana-gallery-detail-placeholder {
         aspect-ratio: 3 / 4;
     }
 
-    .rm-gallery-detail-info {
+    .arcana-gallery-detail-info {
         display: flex;
         flex-direction: column;
         gap: clamp(0.75rem, 1.2vw, 1.8rem);
     }
 
-    .rm-gallery-detail-title {
+    .arcana-gallery-detail-title {
         margin: 0;
         font-size: clamp(2.1rem, 2.7vw, 4.5rem);
         font-weight: 900;
@@ -1183,7 +1183,7 @@
         line-height: 1.1;
     }
 
-    .rm-gallery-detail-original {
+    .arcana-gallery-detail-original {
         margin: 0;
         font-size: clamp(0.975rem, 0.9vw, 1.5rem);
         color: rgba(255, 255, 255, 0.45);
@@ -1191,13 +1191,13 @@
         letter-spacing: 0.03em;
     }
 
-    .rm-gallery-detail-meta {
+    .arcana-gallery-detail-meta {
         display: flex;
         flex-direction: column;
         gap: clamp(0.225rem, 0.3vw, 0.45rem);
     }
 
-    .rm-gallery-detail-row {
+    .arcana-gallery-detail-row {
         display: flex;
         justify-content: space-between;
         align-items: baseline;
@@ -1205,7 +1205,7 @@
         border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     }
 
-    .rm-gallery-detail-label {
+    .arcana-gallery-detail-label {
         font-size: clamp(0.825rem, 0.75vw, 1.275rem);
         font-weight: 700;
         text-transform: uppercase;
@@ -1213,49 +1213,49 @@
         color: rgba(255, 255, 255, 0.5);
     }
 
-    .rm-gallery-detail-value {
+    .arcana-gallery-detail-value {
         font-size: clamp(0.975rem, 0.9vw, 1.5rem);
         font-weight: 800;
         letter-spacing: 0.04em;
     }
 
-    .rm-gallery-detail-myrating {
-        color: var(--rm-red);
+    .arcana-gallery-detail-myrating {
+        color: var(--arcana-red);
     }
 
-    .rm-gallery-detail-tags {
+    .arcana-gallery-detail-tags {
         display: flex;
         flex-wrap: wrap;
         gap: clamp(0.3rem, 0.4vw, 0.6rem);
         margin-top: clamp(0.3rem, 0.4vw, 0.6rem);
     }
 
-    .rm-gallery-detail-tag {
+    .arcana-gallery-detail-tag {
         font-size: clamp(0.75rem, 0.69vw, 1.125rem);
         font-weight: 700;
         letter-spacing: 0.08em;
         text-transform: uppercase;
-        color: var(--rm-white);
+        color: var(--arcana-white);
         background: rgba(229, 25, 28, 0.2);
         clip-path: polygon(4% 0%, 100% 0%, 96% 100%, 0% 100%);
         padding: clamp(0.15rem, 0.2vw, 0.3rem) clamp(0.5rem, 0.6vw, 1rem);
     }
 
     /* ── Game detail achievement bar ── */
-    .rm-gallery-detail-ach-bar {
+    .arcana-gallery-detail-ach-bar {
         width: 100%;
         height: clamp(6px, 0.5vw, 10px);
-        background: var(--rm-black);
+        background: var(--arcana-black);
         position: relative;
         clip-path: polygon(1% 0%, 100% 0%, 99% 100%, 0% 100%);
         margin-top: clamp(0.15rem, 0.2vw, 0.3rem);
     }
 
-    .rm-gallery-detail-ach-fill {
+    .arcana-gallery-detail-ach-fill {
         position: absolute;
         top: 0;
         left: 0;
         height: 100%;
-        background: var(--rm-red);
+        background: var(--arcana-red);
     }
 </style>

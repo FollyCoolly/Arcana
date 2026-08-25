@@ -406,13 +406,13 @@
     });
 </script>
 
-<section class="rm-stage">
-    <div class="rm-missions-bg-poly" aria-hidden="true"></div>
+<section class="arcana-stage">
+    <div class="arcana-missions-bg-poly" aria-hidden="true"></div>
 
-    <div class="rm-missions-panel">
+    <div class="arcana-missions-panel">
         <!-- Sort prompts: Q shifts right-to-left, E shifts left-to-right, center is active -->
-        <header class="rm-missions-sort-bar">
-            <div class="rm-sort-side-label rm-sort-side-label--prev">
+        <header class="arcana-missions-sort-bar">
+            <div class="arcana-sort-side-label arcana-sort-side-label--prev">
                 <PromptWord
                     text={SORT_OPTIONS[sortCarousel[0]].label}
                     fontSize={44}
@@ -420,13 +420,13 @@
             </div>
             <button
                 type="button"
-                class="rm-sort-key-btn rm-sort-key-btn--prev"
+                class="arcana-sort-key-btn arcana-sort-key-btn--prev"
                 onclick={() => cycleSort(-1)}
                 aria-label="Previous sort"
             >
                 <KeyHint key="Q" fontSize={30} />
             </button>
-            <div class="rm-sort-current-label">
+            <div class="arcana-sort-current-label">
                 <PromptWord
                     text={`Sort by ${SORT_OPTIONS[sortCarousel[1]].label}`}
                     fontSize={54}
@@ -434,13 +434,13 @@
             </div>
             <button
                 type="button"
-                class="rm-sort-key-btn rm-sort-key-btn--next"
+                class="arcana-sort-key-btn arcana-sort-key-btn--next"
                 onclick={() => cycleSort(1)}
                 aria-label="Next sort"
             >
                 <KeyHint key="E" fontSize={30} />
             </button>
-            <div class="rm-sort-side-label rm-sort-side-label--next">
+            <div class="arcana-sort-side-label arcana-sort-side-label--next">
                 <PromptWord
                     text={SORT_OPTIONS[sortCarousel[2]].label}
                     fontSize={44}
@@ -449,15 +449,15 @@
         </header>
 
         <!-- Column headers -->
-        <div class="rm-missions-col-headers">
-            <span class="rm-col-header rm-col-status">State</span>
-            <span class="rm-col-header rm-col-name">Mission Name</span>
-            <span class="rm-col-header rm-col-grade">Difficulty</span>
+        <div class="arcana-missions-col-headers">
+            <span class="arcana-col-header arcana-col-status">State</span>
+            <span class="arcana-col-header arcana-col-name">Mission Name</span>
+            <span class="arcana-col-header arcana-col-grade">Difficulty</span>
         </div>
 
         <!-- Mission list -->
         <div
-            class="rm-missions-scroll"
+            class="arcana-missions-scroll"
             bind:this={scrollRef}
             onscroll={updateScrollIndicator}
         >
@@ -467,11 +467,11 @@
                 <p class="state-text error">{error}</p>
             {:else if phanMode}
                 {#if proposedMissions.length > 0}
-                    <div class="rm-missions-list">
+                    <div class="arcana-missions-list">
                         {#each proposedMissions as mission, i (mission.id)}
                             <button
                                 type="button"
-                                class="rm-mission-row"
+                                class="arcana-mission-row"
                                 class:is-selected={phanSelectedIndex === i}
                                 bind:this={rowRefs[i]}
                                 onclick={() => {
@@ -494,15 +494,15 @@
                                 }}
                             >
                                 <img
-                                    class="rm-mission-stamp"
+                                    class="arcana-mission-stamp"
                                     src="/ui/mission_state/proposed.png"
                                     alt="proposed"
                                 />
-                                <span class="rm-mission-name"
+                                <span class="arcana-mission-name"
                                     >{mission.title}</span
                                 >
                                 <span
-                                    class="rm-mission-grade"
+                                    class="arcana-mission-grade"
                                     data-grade={difficultyGrade(
                                         mission.difficulty,
                                     )}
@@ -516,11 +516,11 @@
                     <p class="state-text">No new requests.</p>
                 {/if}
             {:else if sortedMissions.length > 0}
-                <div class="rm-missions-list">
+                <div class="arcana-missions-list">
                     {#each sortedMissions as mission, i (mission.id)}
                         <button
                             type="button"
-                            class="rm-mission-row"
+                            class="arcana-mission-row"
                             class:is-selected={selectedIndex === i}
                             class:is-completed={mission.status === "completed"}
                             class:is-archived={mission.status === "archived"}
@@ -538,7 +538,7 @@
                             }}
                         >
                             <img
-                                class="rm-mission-stamp"
+                                class="arcana-mission-stamp"
                                 src="/ui/mission_state/{mission.status ===
                                 'completed'
                                     ? 'clear'
@@ -546,10 +546,10 @@
                                 alt={mission.status}
                             />
 
-                            <span class="rm-mission-name">{mission.title}</span>
+                            <span class="arcana-mission-name">{mission.title}</span>
 
                             <span
-                                class="rm-mission-grade"
+                                class="arcana-mission-grade"
                                 data-grade={difficultyGrade(mission.difficulty)}
                             >
                                 {difficultyGrade(mission.difficulty)}
@@ -565,12 +565,12 @@
 
     <!-- Scroll indicator -->
     <div
-        class="rm-missions-scroll-indicator"
+        class="arcana-missions-scroll-indicator"
         aria-hidden="true"
         style="--thumb-ratio: {thumbRatio}; --scroll-ratio: {scrollRatio};"
     >
-        <div class="rm-missions-scroll-track">
-            <div class="rm-missions-scroll-thumb"></div>
+        <div class="arcana-missions-scroll-track">
+            <div class="arcana-missions-scroll-thumb"></div>
         </div>
     </div>
 
@@ -578,47 +578,47 @@
     {#if detailMission}
         <button
             type="button"
-            class="rm-detail-backdrop"
+            class="arcana-detail-backdrop"
             aria-label="Close Mission details"
             onclick={closeDetail}
         ></button>
-        <article class="rm-detail-card">
-            <div class="rm-detail-top">
+        <article class="arcana-detail-card">
+            <div class="arcana-detail-top">
                 <span
-                    class="rm-detail-stamp"
+                    class="arcana-detail-stamp"
                     class:stamp-active={detailMission.status === "active"}
                     class:stamp-clear={detailMission.status === "completed"}
                 >
                     {statusLabel(detailMission.status)}
                 </span>
                 <span
-                    class="rm-detail-grade"
+                    class="arcana-detail-grade"
                     data-grade={difficultyGrade(detailMission.difficulty)}
                 >
                     {difficultyGrade(detailMission.difficulty)}
                 </span>
             </div>
-            <h2 class="rm-detail-title">{detailMission.title}</h2>
+            <h2 class="arcana-detail-title">{detailMission.title}</h2>
             {#if detailMission.description}
-                <p class="rm-detail-desc">{detailMission.description}</p>
+                <p class="arcana-detail-desc">{detailMission.description}</p>
             {/if}
-            <div class="rm-detail-meta">
+            <div class="arcana-detail-meta">
                 {#if detailMission.progress != null}
-                    <div class="rm-detail-progress-row">
-                        <div class="rm-detail-track">
+                    <div class="arcana-detail-progress-row">
+                        <div class="arcana-detail-track">
                             <div
-                                class="rm-detail-fill"
+                                class="arcana-detail-fill"
                                 style:width="{detailMission.progress}%"
                             ></div>
                         </div>
-                        <span class="rm-detail-pct"
+                        <span class="arcana-detail-pct"
                             >{detailMission.progress}%</span
                         >
                     </div>
                 {/if}
                 {#if detailMission.days_remaining != null}
                     <span
-                        class="rm-detail-deadline"
+                        class="arcana-detail-deadline"
                         class:is-overdue={detailMission.days_remaining < 0}
                     >
                         {detailMission.days_remaining > 0
@@ -629,9 +629,9 @@
                     </span>
                 {/if}
             </div>
-            <div class="rm-dashboard-slots">
-                <span class="rm-dashboard-slots-label">Main menu</span>
-                <div class="rm-dashboard-slot-buttons">
+            <div class="arcana-dashboard-slots">
+                <span class="arcana-dashboard-slots-label">Main menu</span>
+                <div class="arcana-dashboard-slot-buttons">
                     {#each DASHBOARD_SLOTS as item (item.slot)}
                         {@const selected = isDashboardSlotSelected(
                             item.slot,
@@ -644,7 +644,7 @@
                                     !detailMission.deadline))}
                         <button
                             type="button"
-                            class="rm-dashboard-slot-btn"
+                            class="arcana-dashboard-slot-btn"
                             class:is-selected={selected}
                             disabled={updating || unavailable}
                             title={item.slot === "countdown" &&
@@ -663,10 +663,10 @@
                 </div>
             </div>
             {#if detailMission.status !== "archived"}
-                <div class="rm-detail-actions">
+                <div class="arcana-detail-actions">
                     {#if detailMission.status === "active"}
                         <button
-                            class="rm-action-btn rm-action-accept"
+                            class="arcana-action-btn arcana-action-accept"
                             disabled={updating}
                             onclick={() =>
                                 runMissionCommand(
@@ -676,7 +676,7 @@
                         >
                     {/if}
                     <button
-                        class="rm-action-btn rm-action-reject"
+                        class="arcana-action-btn arcana-action-reject"
                         disabled={updating}
                         onclick={() =>
                             runMissionCommand(
@@ -687,7 +687,7 @@
                 </div>
             {/if}
             {#if actionError}
-                <p class="rm-detail-action-error">{actionError}</p>
+                <p class="arcana-detail-action-error">{actionError}</p>
             {/if}
         </article>
     {/if}
@@ -696,37 +696,37 @@
     {#if phanDetailMission}
         <button
             type="button"
-            class="rm-detail-backdrop"
+            class="arcana-detail-backdrop"
             aria-label="Close Mission suggestion"
             onclick={() => {
                 phanDetailMission = null;
                 actionError = null;
             }}
         ></button>
-        <article class="rm-detail-card">
-            <div class="rm-detail-top">
-                <span class="rm-detail-stamp">NEW!</span>
+        <article class="arcana-detail-card">
+            <div class="arcana-detail-top">
+                <span class="arcana-detail-stamp">NEW!</span>
                 <span
-                    class="rm-detail-grade"
+                    class="arcana-detail-grade"
                     data-grade={difficultyGrade(phanDetailMission.difficulty)}
                 >
                     {difficultyGrade(phanDetailMission.difficulty)}
                 </span>
             </div>
-            <h2 class="rm-detail-title">{phanDetailMission.title}</h2>
+            <h2 class="arcana-detail-title">{phanDetailMission.title}</h2>
             {#if phanDetailMission.description}
-                <p class="rm-detail-desc">{phanDetailMission.description}</p>
+                <p class="arcana-detail-desc">{phanDetailMission.description}</p>
             {/if}
             {#if phanDetailMission.reason}
-                <p class="rm-detail-reason">
+                <p class="arcana-detail-reason">
                     <strong>WHY THIS MISSION</strong>
                     {phanDetailMission.reason}
                 </p>
             {/if}
-            <div class="rm-detail-meta">
+            <div class="arcana-detail-meta">
                 {#if phanDetailMission.days_remaining != null}
                     <span
-                        class="rm-detail-deadline"
+                        class="arcana-detail-deadline"
                         class:is-overdue={phanDetailMission.days_remaining < 0}
                     >
                         {phanDetailMission.days_remaining > 0
@@ -737,9 +737,9 @@
                     </span>
                 {/if}
             </div>
-            <div class="rm-detail-actions">
+            <div class="arcana-detail-actions">
                 <button
-                    class="rm-action-btn rm-action-accept"
+                    class="arcana-action-btn arcana-action-accept"
                     disabled={updating}
                     onclick={() =>
                         runSuggestionCommand(
@@ -749,7 +749,7 @@
                     >ACCEPT</button
                 >
                 <button
-                    class="rm-action-btn rm-action-reject"
+                    class="arcana-action-btn arcana-action-reject"
                     disabled={updating}
                     onclick={() =>
                         runSuggestionCommand(
@@ -760,13 +760,13 @@
                 >
             </div>
             {#if actionError}
-                <p class="rm-detail-action-error">{actionError}</p>
+                <p class="arcana-detail-action-error">{actionError}</p>
             {/if}
         </article>
     {/if}
 
     <!-- P key: toggle phan mode -->
-    <button type="button" class="rm-phan-mode-btn" onclick={togglePhanMode}>
+    <button type="button" class="arcana-phan-mode-btn" onclick={togglePhanMode}>
         <KeyHint key="P" fontSize={36} />
         <PromptWord text={phanMode ? "tracked" : "phansite"} fontSize={72} />
     </button>
@@ -781,7 +781,7 @@
 
     <button
         type="button"
-        class="rm-back-btn rm-back-btn--missions"
+        class="arcana-back-btn arcana-back-btn--missions"
         onclick={() => onBack()}
     >
         <KeyHint key="Esc" fontSize={36} />
@@ -790,7 +790,7 @@
 </section>
 
 <style>
-    :global(.rm-stage) {
+    :global(.arcana-stage) {
         --missions-bg-clip: polygon(
             40% 0%,
             93% 0%,
@@ -802,7 +802,7 @@
         );
     }
 
-    .rm-missions-bg-poly {
+    .arcana-missions-bg-poly {
         position: absolute;
         inset: 0;
         z-index: 0;
@@ -812,7 +812,7 @@
     }
 
     /* ── Panel ── */
-    .rm-missions-panel {
+    .arcana-missions-panel {
         --missions-content-left: clamp(12rem, 16vw, 40rem);
         --missions-content-right: clamp(3rem, 6vw, 15rem);
         --missions-content-width: min(
@@ -841,7 +841,7 @@
     }
 
     /* ── Sort prompts ── */
-    .rm-missions-sort-bar {
+    .arcana-missions-sort-bar {
         --sort-side-slot: clamp(8rem, 10vw, 13rem);
         --sort-current-slot: clamp(18rem, 24vw, 30rem);
         flex-shrink: 0;
@@ -861,8 +861,8 @@
         transform: translate(-30rem, 2rem) rotate(-2deg);
     }
 
-    .rm-sort-side-label,
-    .rm-sort-current-label {
+    .arcana-sort-side-label,
+    .arcana-sort-current-label {
         display: flex;
         align-items: center;
         justify-content: center;
@@ -870,15 +870,15 @@
         pointer-events: none;
     }
 
-    .rm-sort-side-label--prev {
+    .arcana-sort-side-label--prev {
         justify-content: flex-end;
     }
 
-    .rm-sort-side-label--next {
+    .arcana-sort-side-label--next {
         justify-content: flex-start;
     }
 
-    .rm-sort-key-btn {
+    .arcana-sort-key-btn {
         display: flex;
         align-items: center;
         justify-content: center;
@@ -889,27 +889,27 @@
         transition: transform 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
     }
 
-    .rm-sort-key-btn:hover {
+    .arcana-sort-key-btn:hover {
         transform: scale(1.08) rotate(-2deg);
     }
 
-    .rm-sort-key-btn:focus-visible {
+    .arcana-sort-key-btn:focus-visible {
         outline: 0.16rem solid #ffffff;
         outline-offset: 0.16rem;
     }
 
-    .rm-sort-side-label :global(.p5-prompt-word) {
+    .arcana-sort-side-label :global(.p5-prompt-word) {
         max-width: 100%;
         height: auto;
     }
 
-    .rm-sort-current-label :global(.p5-prompt-word) {
+    .arcana-sort-current-label :global(.p5-prompt-word) {
         max-width: 100%;
         height: auto;
     }
 
     /* ── Column headers ── */
-    .rm-missions-col-headers {
+    .arcana-missions-col-headers {
         flex-shrink: 0;
         position: relative;
         display: grid;
@@ -925,7 +925,7 @@
         font-weight: 600;
     }
 
-    .rm-col-header {
+    .arcana-col-header {
         position: relative;
         width: 100%;
         height: var(--col-h);
@@ -945,7 +945,7 @@
         transform-origin: center;
     }
 
-    .rm-col-status {
+    .arcana-col-status {
         --col-h: clamp(3.5rem, 7vw, 7rem);
         --col-rot: -1deg;
         --col-font-size: clamp(1.6rem, 2.5vw, 5rem);
@@ -953,7 +953,7 @@
         top: clamp(2rem, 4vw, 4rem);
     }
 
-    .rm-col-name {
+    .arcana-col-name {
         --col-h: clamp(3.5rem, 7vw, 7rem);
         --col-rot: -2deg;
         --col-font-size: clamp(1.6rem, 2.5vw, 5rem);
@@ -961,7 +961,7 @@
         top: clamp(1rem, 2vw, 2rem);
     }
 
-    .rm-col-grade {
+    .arcana-col-grade {
         --col-h: clamp(3.5rem, 7vw, 7rem);
         --col-rot: -3deg;
         --col-font-size: clamp(1.6rem, 2.5vw, 5rem);
@@ -971,19 +971,19 @@
     }
 
     /* ── Scroll area ── */
-    .rm-missions-scroll {
+    .arcana-missions-scroll {
         flex: 1;
         overflow-x: visible;
         overflow-y: auto;
         scrollbar-width: none;
     }
 
-    .rm-missions-scroll::-webkit-scrollbar {
+    .arcana-missions-scroll::-webkit-scrollbar {
         display: none;
     }
 
     /* ── Custom scroll indicator ── */
-    .rm-missions-scroll-indicator {
+    .arcana-missions-scroll-indicator {
         position: absolute;
         top: 20vh;
         right: clamp(10rem, 20vw, 20rem);
@@ -995,16 +995,16 @@
         width: 28px;
     }
 
-    .rm-missions-scroll-track {
+    .arcana-missions-scroll-track {
         position: relative;
         width: 100%;
         height: 100%;
-        background: var(--rm-black);
-        border: 4px solid var(--rm-white);
+        background: var(--arcana-black);
+        border: 4px solid var(--arcana-white);
         box-sizing: border-box;
     }
 
-    .rm-missions-scroll-thumb {
+    .arcana-missions-scroll-thumb {
         position: absolute;
         left: 0;
         right: 0;
@@ -1012,10 +1012,10 @@
         top: calc(
             var(--scroll-ratio, 0) * (100% - var(--thumb-ratio, 1) * 100%)
         );
-        background: var(--rm-white);
+        background: var(--arcana-white);
     }
 
-    .rm-missions-list {
+    .arcana-missions-list {
         list-style: none;
         margin: 0;
         margin-left: var(--missions-content-left);
@@ -1029,7 +1029,7 @@
     }
 
     /* ── Mission rows ── */
-    .rm-mission-row {
+    .arcana-mission-row {
         display: grid;
         grid-template-columns: var(--mission-grid-columns);
         width: 100%;
@@ -1050,7 +1050,7 @@
         position: relative;
     }
 
-    .rm-mission-row::before {
+    .arcana-mission-row::before {
         content: "";
         position: absolute;
         inset: 0;
@@ -1063,48 +1063,48 @@
         transition: background 100ms ease;
     }
 
-    .rm-mission-row.is-selected {
+    .arcana-mission-row.is-selected {
         background: transparent;
         transform: scaleY(1.08);
         clip-path: none;
         z-index: 2;
     }
 
-    .rm-mission-row.is-selected::before {
+    .arcana-mission-row.is-selected::before {
         background: #e5191c;
     }
 
-    .rm-mission-row.is-completed {
+    .arcana-mission-row.is-completed {
         opacity: 0.55;
     }
 
-    .rm-mission-row.is-archived {
+    .arcana-mission-row.is-archived {
         opacity: 0.3;
     }
 
-    .rm-mission-row.is-selected.is-completed,
-    .rm-mission-row.is-selected.is-archived {
+    .arcana-mission-row.is-selected.is-completed,
+    .arcana-mission-row.is-selected.is-archived {
         opacity: 1;
     }
 
     /* ── Status stamp ── */
-    .rm-mission-stamp {
+    .arcana-mission-stamp {
         display: block;
         width: 80%;
         height: 80%;
         object-fit: contain;
     }
 
-    .rm-mission-row.is-completed .rm-mission-stamp {
+    .arcana-mission-row.is-completed .arcana-mission-stamp {
         opacity: 0.9;
     }
 
-    .rm-mission-row.is-selected .rm-mission-stamp {
+    .arcana-mission-row.is-selected .arcana-mission-stamp {
         opacity: 1;
     }
 
     /* ── Mission name ── */
-    .rm-mission-name {
+    .arcana-mission-name {
         min-width: 0;
         font-family:
             "Source Han Sans SC", "Noto Sans SC", "方正兰亭黑_GBK", Arial,
@@ -1120,7 +1120,7 @@
     }
 
     /* ── Grade letter ── */
-    .rm-mission-grade {
+    .arcana-mission-grade {
         text-align: center;
         font-family:
             "Source Han Sans SC", "Noto Sans SC", "方正兰亭黑_GBK", Arial,
@@ -1135,21 +1135,21 @@
         overflow: hidden;
     }
 
-    .rm-mission-grade[data-grade="S"] {
+    .arcana-mission-grade[data-grade="S"] {
         color: #e5191c;
     }
 
-    .rm-mission-grade[data-grade="--"] {
+    .arcana-mission-grade[data-grade="--"] {
         font-size: clamp(0.9rem, 1vw, 1.5rem);
         opacity: 0.3;
     }
 
-    .rm-mission-row.is-selected .rm-mission-grade {
+    .arcana-mission-row.is-selected .arcana-mission-grade {
         color: #ffffff;
     }
 
     /* ── Detail card overlay ── */
-    .rm-detail-backdrop {
+    .arcana-detail-backdrop {
         position: absolute;
         inset: 0;
         z-index: 20;
@@ -1158,7 +1158,7 @@
         background: rgba(0, 0, 0, 0.5);
     }
 
-    .rm-detail-card {
+    .arcana-detail-card {
         position: absolute;
         top: 50%;
         left: 55%;
@@ -1174,10 +1174,10 @@
             "Source Han Sans SC", "Noto Sans SC", "方正兰亭黑_GBK", Arial,
             sans-serif;
         font-weight: 600;
-        animation: rm-detail-pop 180ms ease-out;
+        animation: arcana-detail-pop 180ms ease-out;
     }
 
-    @keyframes rm-detail-pop {
+    @keyframes arcana-detail-pop {
         from {
             opacity: 0;
             transform: translate(-50%, -46%) rotate(-1.5deg) scale(0.92);
@@ -1188,7 +1188,7 @@
         }
     }
 
-    .rm-detail-top {
+    .arcana-detail-top {
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -1197,7 +1197,7 @@
         clip-path: polygon(0% 0%, 100% 0%, 100% 85%, 0% 100%);
     }
 
-    .rm-detail-stamp {
+    .arcana-detail-stamp {
         font-size: clamp(0.7rem, 0.75vw, 1.1rem);
         font-weight: 900;
         font-style: italic;
@@ -1206,7 +1206,7 @@
         color: #ffffff;
     }
 
-    .rm-detail-grade {
+    .arcana-detail-grade {
         font-size: clamp(1.6rem, 2vw, 2.8rem);
         font-weight: 900;
         color: #000000;
@@ -1216,16 +1216,16 @@
         clip-path: polygon(6% 0%, 100% 5%, 94% 100%, 0% 95%);
     }
 
-    .rm-detail-grade[data-grade="S"] {
+    .arcana-detail-grade[data-grade="S"] {
         color: #e5191c;
     }
 
-    .rm-detail-grade[data-grade="--"] {
+    .arcana-detail-grade[data-grade="--"] {
         font-size: clamp(1rem, 1.2vw, 1.8rem);
         opacity: 0.4;
     }
 
-    .rm-detail-title {
+    .arcana-detail-title {
         margin: 0;
         padding: clamp(0.6rem, 0.8vw, 1.2rem) clamp(0.8rem, 1vw, 1.5rem)
             clamp(0.3rem, 0.4vw, 0.6rem);
@@ -1236,7 +1236,7 @@
         line-height: 1.3;
     }
 
-    .rm-detail-desc {
+    .arcana-detail-desc {
         margin: 0;
         padding: 0 clamp(0.8rem, 1vw, 1.5rem) clamp(0.6rem, 0.7vw, 1rem);
         font-size: clamp(0.7rem, 0.65vw, 1rem);
@@ -1246,7 +1246,7 @@
         white-space: pre-line;
     }
 
-    .rm-detail-meta {
+    .arcana-detail-meta {
         display: flex;
         flex-direction: column;
         gap: clamp(0.3rem, 0.4vw, 0.6rem);
@@ -1256,13 +1256,13 @@
         margin-top: auto;
     }
 
-    .rm-detail-progress-row {
+    .arcana-detail-progress-row {
         display: flex;
         align-items: center;
         gap: clamp(0.4rem, 0.5vw, 0.8rem);
     }
 
-    .rm-detail-track {
+    .arcana-detail-track {
         flex: 1;
         height: clamp(6px, 0.5vw, 10px);
         background: rgba(255, 255, 255, 0.1);
@@ -1270,31 +1270,31 @@
         overflow: hidden;
     }
 
-    .rm-detail-fill {
+    .arcana-detail-fill {
         height: 100%;
         background: #e5191c;
         transition: width 300ms ease;
     }
 
-    .rm-detail-pct {
+    .arcana-detail-pct {
         font-size: clamp(0.7rem, 0.7vw, 1.1rem);
         font-weight: 800;
         color: rgba(255, 255, 255, 0.6);
         flex-shrink: 0;
     }
 
-    .rm-detail-deadline {
+    .arcana-detail-deadline {
         font-size: clamp(0.6rem, 0.6vw, 0.9rem);
         font-weight: 800;
         letter-spacing: 0.06em;
         color: #e5191c;
     }
 
-    .rm-detail-deadline.is-overdue {
+    .arcana-detail-deadline.is-overdue {
         color: rgba(255, 80, 80, 0.9);
     }
 
-    .rm-detail-reason {
+    .arcana-detail-reason {
         margin: 0 clamp(0.8rem, 1vw, 1.5rem) clamp(0.6rem, 0.7vw, 1rem);
         padding: clamp(0.5rem, 0.6vw, 0.9rem);
         color: rgba(255, 255, 255, 0.72);
@@ -1304,7 +1304,7 @@
         line-height: 1.45;
     }
 
-    .rm-detail-reason strong {
+    .arcana-detail-reason strong {
         display: block;
         margin-bottom: 0.2rem;
         color: #e5191c;
@@ -1312,12 +1312,12 @@
         letter-spacing: 0.08em;
     }
 
-    .rm-dashboard-slots {
+    .arcana-dashboard-slots {
         padding: clamp(0.45rem, 0.55vw, 0.8rem) clamp(0.8rem, 1vw, 1.5rem);
         border-top: 1px solid rgba(255, 255, 255, 0.08);
     }
 
-    .rm-dashboard-slots-label {
+    .arcana-dashboard-slots-label {
         display: block;
         margin-bottom: 0.35rem;
         color: rgba(255, 255, 255, 0.5);
@@ -1327,13 +1327,13 @@
         text-transform: uppercase;
     }
 
-    .rm-dashboard-slot-buttons {
+    .arcana-dashboard-slot-buttons {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 0.3rem;
     }
 
-    .rm-dashboard-slot-btn {
+    .arcana-dashboard-slot-btn {
         border: 1px solid rgba(255, 255, 255, 0.18);
         padding: 0.3rem 0.45rem;
         color: rgba(255, 255, 255, 0.65);
@@ -1344,19 +1344,19 @@
         cursor: pointer;
     }
 
-    .rm-dashboard-slot-btn.is-selected {
+    .arcana-dashboard-slot-btn.is-selected {
         border-color: #e5191c;
         color: #ffffff;
         background: rgba(229, 25, 28, 0.55);
     }
 
-    .rm-dashboard-slot-btn:disabled {
+    .arcana-dashboard-slot-btn:disabled {
         opacity: 0.3;
         cursor: not-allowed;
     }
 
     /* ── Detail action buttons ── */
-    .rm-detail-actions {
+    .arcana-detail-actions {
         display: flex;
         gap: clamp(0.5rem, 0.6vw, 1rem);
         padding: clamp(0.5rem, 0.6vw, 0.9rem) clamp(0.8rem, 1vw, 1.5rem)
@@ -1364,7 +1364,7 @@
         border-top: 1px solid rgba(255, 255, 255, 0.08);
     }
 
-    .rm-action-btn {
+    .arcana-action-btn {
         flex: 1;
         font-family:
             "Source Han Sans SC", "Noto Sans SC", "方正兰亭黑_GBK", Arial,
@@ -1382,32 +1382,32 @@
             transform 120ms ease;
     }
 
-    .rm-action-btn:hover {
+    .arcana-action-btn:hover {
         transform: scale(1.03);
     }
 
-    .rm-action-btn:disabled {
+    .arcana-action-btn:disabled {
         opacity: 0.4;
         cursor: not-allowed;
         transform: none;
     }
 
-    .rm-action-accept {
+    .arcana-action-accept {
         background: #e5191c;
         color: #ffffff;
     }
 
-    .rm-action-reject {
+    .arcana-action-reject {
         background: rgba(255, 255, 255, 0.1);
         color: rgba(255, 255, 255, 0.5);
     }
 
-    .rm-action-reject:hover {
+    .arcana-action-reject:hover {
         background: rgba(255, 255, 255, 0.15);
         color: rgba(255, 255, 255, 0.7);
     }
 
-    .rm-detail-action-error {
+    .arcana-detail-action-error {
         margin: 0;
         padding: 0 clamp(0.8rem, 1vw, 1.5rem) clamp(0.7rem, 0.8vw, 1.2rem);
         color: #ff6b6b;
@@ -1415,13 +1415,13 @@
         font-weight: 700;
     }
 
-    .rm-back-btn--missions {
+    .arcana-back-btn--missions {
         left: auto;
         right: clamp(1.5rem, 3vw, 4rem);
     }
 
     /* ── P key: phan mode toggle button ── */
-    .rm-phan-mode-btn {
+    .arcana-phan-mode-btn {
         position: fixed;
         top: clamp(0rem, 0vh, 0rem);
         right: clamp(10rem, 18vw, 20rem);
@@ -1437,11 +1437,11 @@
         transition: transform 120ms ease;
     }
 
-    .rm-phan-mode-btn:hover {
+    .arcana-phan-mode-btn:hover {
         transform: rotate(-5deg) scale(1.06);
     }
 
-    .rm-phan-mode-btn :global(.p5-prompt-word) {
+    .arcana-phan-mode-btn :global(.p5-prompt-word) {
         margin-left: -1rem;
     }
 </style>

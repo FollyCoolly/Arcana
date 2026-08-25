@@ -407,12 +407,12 @@
     });
 </script>
 
-<section class="rm-stage">
+<section class="arcana-stage">
     <!-- Bottom-left key hints -->
-    <div class="rm-skills-hints">
+    <div class="arcana-skills-hints">
         <button
             type="button"
-            class="rm-back-btn rm-back-btn--inline"
+            class="arcana-back-btn arcana-back-btn--inline"
             onclick={() => onBack()}
         >
             <KeyHint key="Esc" fontSize={36} />
@@ -420,11 +420,11 @@
         </button>
 
         {#if totalSkills > 1 || (skillData && skillData.skills.length > 0)}
-            <div class="rm-nav-hint-group">
+            <div class="arcana-nav-hint-group">
                 {#if totalSkills > 1}
                     <button
                         type="button"
-                        class="rm-nav-hint-btn"
+                        class="arcana-nav-hint-btn"
                         onclick={() => navigatePrev()}
                     >
                         <KeyHint key="Q" fontSize={36} />
@@ -433,7 +433,7 @@
 
                     <button
                         type="button"
-                        class="rm-nav-hint-btn"
+                        class="arcana-nav-hint-btn"
                         onclick={() => navigateNext()}
                     >
                         <KeyHint key="E" fontSize={36} />
@@ -443,7 +443,7 @@
 
                 <button
                     type="button"
-                    class="rm-nav-hint-btn"
+                    class="arcana-nav-hint-btn"
                     onclick={() => toggleSkillFilter()}
                 >
                     <KeyHint key="H" fontSize={36} />
@@ -458,17 +458,17 @@
     {:else if skillError}
         <p class="state-text error" style="padding: 2rem;">{skillError}</p>
     {:else if skillData && selectedSkill}
-        <div class="rm-skill-detail">
-            <div class="rm-skill-detail-left">
-                <div class="rm-skill-detail-header">
+        <div class="arcana-skill-detail">
+            <div class="arcana-skill-detail-left">
+                <div class="arcana-skill-detail-header">
                     <CollageLabel text={selectedSkill.definition.name} />
-                    <span class="rm-skill-level-badge">
+                    <span class="arcana-skill-level-badge">
                         <span
-                            class="rm-skill-lv-frag"
+                            class="arcana-skill-lv-frag"
                             style:transform="rotate(-3deg)">Lv.</span
                         >
                         <span
-                            class="rm-skill-lv-frag rm-skill-lv-inv"
+                            class="arcana-skill-lv-frag arcana-skill-lv-inv"
                             style:transform="rotate(4deg)"
                             >{selectedSkill.level >= 5
                                 ? "MAX"
@@ -477,7 +477,7 @@
                     </span>
                 </div>
 
-                <div class="rm-skill-image-card">
+                <div class="arcana-skill-image-card">
                     <img
                         src={skillCardImageUrl}
                         alt={selectedSkill.definition.name}
@@ -485,18 +485,18 @@
                 </div>
 
                 {#if selectedSkill.definition.description}
-                    <p class="rm-skill-description">
+                    <p class="arcana-skill-description">
                         {selectedSkill.definition.description}
                     </p>
                 {/if}
             </div>
 
-            <div class="rm-skill-detail-right">
-                <div class="rm-skill-node-grid" style="--cols: 9">
+            <div class="arcana-skill-detail-right">
+                <div class="arcana-skill-node-grid" style="--cols: 9">
                     {#each computeHexRows(sortedNodes, 9) as row, rowIdx}
                         <div
-                            class="rm-hex-row"
-                            class:rm-hex-row--odd={rowIdx % 2 === 1}
+                            class="arcana-hex-row"
+                            class:arcana-hex-row--odd={rowIdx % 2 === 1}
                         >
                             {#each row as node}
                                 {@const unlocked = isNodeUnlocked(
@@ -504,8 +504,8 @@
                                 )}
                                 <button
                                     type="button"
-                                    class="rm-hex-border"
-                                    class:rm-hex-border--unlocked={unlocked}
+                                    class="arcana-hex-border"
+                                    class:arcana-hex-border--unlocked={unlocked}
                                     onclick={() =>
                                         openNodeDetail(node.achievement_id)}
                                     aria-label={getAchievementName(
@@ -513,15 +513,15 @@
                                     )}
                                 >
                                     <span
-                                        class="rm-skill-node-hex"
-                                        class:rm-skill-node-hex--unlocked={unlocked}
+                                        class="arcana-skill-node-hex"
+                                        class:arcana-skill-node-hex--unlocked={unlocked}
                                     >
-                                        <span class="rm-node-name"
+                                        <span class="arcana-node-name"
                                             >{getAchievementName(
                                                 node.achievement_id,
                                             )}</span
                                         >
-                                        <span class="rm-node-points"
+                                        <span class="arcana-node-points"
                                             >{node.points} pt</span
                                         >
                                     </span>
@@ -543,12 +543,12 @@
         {@const prog = detailProgress}
         {@const unlocked = prog?.status === "achieved"}
         <div
-            class="rm-node-modal-backdrop"
+            class="arcana-node-modal-backdrop"
             role="presentation"
             onclick={closeNodeDetail}
         >
             <div
-                class="rm-node-modal"
+                class="arcana-node-modal"
                 role="dialog"
                 aria-modal="true"
                 aria-label="Achievement detail"
@@ -556,44 +556,44 @@
                 onclick={(e) => e.stopPropagation()}
                 onkeydown={(e) => e.stopPropagation()}
             >
-                <header class="rm-node-modal-header">
-                    <span class="rm-node-modal-status-icon"
+                <header class="arcana-node-modal-header">
+                    <span class="arcana-node-modal-status-icon"
                         >{unlocked ? "✓" : "○"}</span
                     >
-                    <span class="rm-node-modal-title"
+                    <span class="arcana-node-modal-title"
                         >{ach?.name ??
                             getAchievementName(detailAchievementId)}</span
                     >
                     {#if ach}
                         <span
-                            class="rm-difficulty rm-difficulty--{ach.difficulty}"
+                            class="arcana-difficulty arcana-difficulty--{ach.difficulty}"
                             >{getDifficultyLabel(ach.difficulty)}</span
                         >
                     {/if}
                 </header>
 
                 {#if ach}
-                    <p class="rm-node-modal-desc">{ach.description}</p>
+                    <p class="arcana-node-modal-desc">{ach.description}</p>
                 {:else}
-                    <p class="rm-node-modal-desc rm-node-modal-missing">
+                    <p class="arcana-node-modal-desc arcana-node-modal-missing">
                         Achievement metadata not found.
                     </p>
                 {/if}
 
-                <dl class="rm-node-modal-meta">
-                    <div class="rm-node-modal-meta-row">
+                <dl class="arcana-node-modal-meta">
+                    <div class="arcana-node-modal-meta-row">
                         <dt>Status</dt>
                         <dd>
                             {#if unlocked && prog?.status === "achieved"}
-                                <span class="rm-node-modal-badge rm-unlocked"
+                                <span class="arcana-node-modal-badge arcana-unlocked"
                                     >Achieved</span
                                 >
                             {:else if prog?.status === "tracked"}
-                                <span class="rm-node-modal-badge rm-tracked"
+                                <span class="arcana-node-modal-badge arcana-tracked"
                                     >Tracked</span
                                 >
                             {:else}
-                                <span class="rm-node-modal-badge rm-locked"
+                                <span class="arcana-node-modal-badge arcana-locked"
                                     >Locked</span
                                 >
                             {/if}
@@ -601,19 +601,19 @@
                     </div>
 
                     {#if prog?.achieved_at}
-                        <div class="rm-node-modal-meta-row">
+                        <div class="arcana-node-modal-meta-row">
                             <dt>Achieved</dt>
                             <dd>{prog.achieved_at}</dd>
                         </div>
                     {/if}
 
                     {#if ach && ach.tags.length > 0}
-                        <div class="rm-node-modal-meta-row">
+                        <div class="arcana-node-modal-meta-row">
                             <dt>Tags</dt>
                             <dd>
-                                <div class="rm-node-modal-tags">
+                                <div class="arcana-node-modal-tags">
                                     {#each ach.tags as tag}
-                                        <span class="rm-node-modal-tag"
+                                        <span class="arcana-node-modal-tag"
                                             >{tag}</span
                                         >
                                     {/each}
@@ -623,12 +623,12 @@
                     {/if}
 
                     {#if ach && ach.prerequisites.length > 0}
-                        <div class="rm-node-modal-meta-row">
+                        <div class="arcana-node-modal-meta-row">
                             <dt>Prereqs</dt>
                             <dd>
-                                <div class="rm-node-modal-tags">
+                                <div class="arcana-node-modal-tags">
                                     {#each ach.prerequisites as prereq}
-                                        <span class="rm-node-modal-tag"
+                                        <span class="arcana-node-modal-tag"
                                             >{prereq
                                                 .split("::")[1]
                                                 ?.replace(/_/g, " ") ??
@@ -642,11 +642,11 @@
                 </dl>
 
                 {#if canShowToggle}
-                    <div class="rm-node-modal-actions">
+                    <div class="arcana-node-modal-actions">
                         <button
                             type="button"
-                            class="rm-node-modal-action"
-                            class:rm-node-modal-action--lock={unlocked &&
+                            class="arcana-node-modal-action"
+                            class:arcana-node-modal-action--lock={unlocked &&
                                 prog?.status === "achieved"}
                             disabled={toggleBusy}
                             onclick={toggleAchievement}
@@ -660,7 +660,7 @@
                             {/if}
                         </button>
                         {#if toggleError}
-                            <span class="rm-node-modal-action-error"
+                            <span class="arcana-node-modal-action-error"
                                 >{toggleError}</span
                             >
                         {/if}
@@ -674,7 +674,7 @@
 
 <style>
     /* ── Bottom-left hints container ── */
-    .rm-skills-hints {
+    .arcana-skills-hints {
         position: fixed;
         bottom: clamp(1.5rem, 3vh, 3.5rem);
         left: clamp(1.5rem, 3vw, 4rem);
@@ -684,8 +684,8 @@
         gap: clamp(1.5rem, 2vw, 3rem);
     }
 
-    /* Override the global .rm-back-btn positioning so it flows inline */
-    .rm-back-btn--inline {
+    /* Override the global .arcana-back-btn positioning so it flows inline */
+    .arcana-back-btn--inline {
         position: static;
         display: flex;
         align-items: center;
@@ -697,20 +697,20 @@
         transform: rotate(2deg);
         transition: transform 120ms ease;
     }
-    .rm-back-btn--inline:hover {
+    .arcana-back-btn--inline:hover {
         transform: rotate(2deg) scale(1.06);
     }
-    .rm-back-btn--inline :global(.p5-prompt-word) {
+    .arcana-back-btn--inline :global(.p5-prompt-word) {
         margin-left: -1rem;
     }
 
-    .rm-nav-hint-group {
+    .arcana-nav-hint-group {
         display: flex;
         align-items: center;
         gap: clamp(0.6rem, 1vw, 1.5rem);
     }
 
-    .rm-nav-hint-btn {
+    .arcana-nav-hint-btn {
         display: flex;
         align-items: center;
         gap: 0;
@@ -721,15 +721,15 @@
         transform: rotate(-1deg);
         transition: transform 120ms ease;
     }
-    .rm-nav-hint-btn:hover {
+    .arcana-nav-hint-btn:hover {
         transform: rotate(-1deg) scale(1.06);
     }
-    .rm-nav-hint-btn :global(.p5-prompt-word) {
+    .arcana-nav-hint-btn :global(.p5-prompt-word) {
         margin-left: -1rem;
     }
 
     /* ── Skill detail layout ── */
-    .rm-skill-detail {
+    .arcana-skill-detail {
         flex: 1;
         display: grid;
         grid-template-columns: 1fr 2fr;
@@ -741,7 +741,7 @@
         box-sizing: border-box;
     }
 
-    .rm-skill-detail-left {
+    .arcana-skill-detail-left {
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -749,11 +749,11 @@
         padding: clamp(0.5rem, 0.8vw, 1.2rem) clamp(1rem, 2vw, 3rem) 0;
     }
 
-    .rm-skill-image-card {
+    .arcana-skill-image-card {
         line-height: 0;
     }
 
-    .rm-skill-description {
+    .arcana-skill-description {
         margin: 2rem 0 0 0;
         width: 40rem;
         font-size: clamp(1.5rem, 1.4vw, 2.3rem);
@@ -761,33 +761,33 @@
         line-height: 1.6;
     }
 
-    .rm-skill-detail-right {
+    .arcana-skill-detail-right {
         overflow-y: auto;
         padding: clamp(0.5rem, 0.8vw, 1.2rem) clamp(2rem, 4vw, 8rem) 0
             clamp(0.3rem, 0.5vw, 0.8rem);
     }
 
-    .rm-skill-detail-header {
+    .arcana-skill-detail-header {
         display: flex;
         align-items: center;
         gap: clamp(0.7rem, 1.2vw, 1.8rem);
         margin-bottom: clamp(0.6rem, 1vw, 1.5rem);
         font-size: clamp(2.16rem, 2.43vw, 3.78rem);
         flex-wrap: wrap;
-        --rm-gold: #ffffff;
+        --arcana-gold: #ffffff;
     }
 
-    .rm-skill-level-badge {
+    .arcana-skill-level-badge {
         display: inline-flex;
         align-items: center;
         white-space: nowrap;
         gap: -0.05em;
     }
 
-    .rm-skill-lv-frag {
+    .arcana-skill-lv-frag {
         display: inline-block;
-        background: var(--rm-gold, #f5a623);
-        color: var(--rm-black, #000);
+        background: var(--arcana-gold, #f5a623);
+        color: var(--arcana-black, #000);
         font-family: "p5hatty", "Orbitron", Arial, sans-serif;
         font-weight: 800;
         font-size: 1em;
@@ -797,16 +797,16 @@
         box-shadow: 0.04em 0.06em 0 rgba(0, 0, 0, 0.35);
     }
 
-    .rm-skill-lv-frag.rm-skill-lv-inv {
-        background: var(--rm-black, #000);
-        color: var(--rm-gold, #f5a623);
+    .arcana-skill-lv-frag.arcana-skill-lv-inv {
+        background: var(--arcana-black, #000);
+        color: var(--arcana-gold, #f5a623);
         box-shadow:
-            0 0 0 0.07em var(--rm-gold, #f5a623),
+            0 0 0 0.07em var(--arcana-gold, #f5a623),
             0.04em 0.06em 0 rgba(0, 0, 0, 0.35);
         margin-left: -0.03em;
     }
 
-    .rm-skill-node-grid {
+    .arcana-skill-node-grid {
         --hex-w: 13.5rem;
         --hex-h: calc(var(--hex-w) * 1.1547);
         --cols: 9;
@@ -817,20 +817,20 @@
         padding-bottom: calc(var(--hex-h) * 0.25);
     }
 
-    .rm-hex-row {
+    .arcana-hex-row {
         display: flex;
         width: 100%;
     }
 
-    .rm-hex-row:not(:first-child) {
+    .arcana-hex-row:not(:first-child) {
         margin-top: calc(var(--hex-h) * -0.25);
     }
 
-    .rm-hex-row--odd {
+    .arcana-hex-row--odd {
         padding-left: calc(var(--hex-w) / 2);
     }
 
-    .rm-hex-border {
+    .arcana-hex-border {
         width: var(--hex-w);
         height: var(--hex-h);
         clip-path: polygon(
@@ -841,7 +841,7 @@
             0% 75%,
             0% 25%
         );
-        background: var(--rm-white);
+        background: var(--arcana-white);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -856,20 +856,20 @@
             transform 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
     }
 
-    .rm-hex-border:hover {
+    .arcana-hex-border:hover {
         transform: scale(1.06);
     }
 
-    .rm-hex-border:focus-visible {
+    .arcana-hex-border:focus-visible {
         outline: none;
     }
 
-    .rm-hex-border:focus-visible .rm-skill-node-hex {
-        background: var(--rm-gold, #f5a623);
-        color: var(--rm-black);
+    .arcana-hex-border:focus-visible .arcana-skill-node-hex {
+        background: var(--arcana-gold, #f5a623);
+        color: var(--arcana-black);
     }
 
-    .rm-skill-node-hex {
+    .arcana-skill-node-hex {
         width: calc(100% - 10px);
         height: calc(100% - 10px);
         clip-path: polygon(
@@ -880,8 +880,8 @@
             0% 75%,
             0% 25%
         );
-        background: var(--rm-black);
-        color: var(--rm-white);
+        background: var(--arcana-black);
+        color: var(--arcana-white);
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -893,12 +893,12 @@
             color 150ms ease;
     }
 
-    .rm-skill-node-hex--unlocked {
+    .arcana-skill-node-hex--unlocked {
         background: #e0093b;
-        color: var(--rm-white);
+        color: var(--arcana-white);
     }
 
-    .rm-node-name {
+    .arcana-node-name {
         font-size: clamp(0.78rem, 1.02vw, 1.38rem);
         font-weight: 700;
         text-transform: uppercase;
@@ -912,18 +912,18 @@
         -webkit-box-orient: vertical;
     }
 
-    .rm-node-points {
+    .arcana-node-points {
         font-size: clamp(0.72rem, 0.9vw, 1.26rem);
         font-weight: 800;
         opacity: 0.7;
     }
 
-    .rm-skill-node-hex--unlocked .rm-node-points {
+    .arcana-skill-node-hex--unlocked .arcana-node-points {
         opacity: 1;
     }
 
     /* ── Node detail modal ── */
-    .rm-node-modal-backdrop {
+    .arcana-node-modal-backdrop {
         position: fixed;
         inset: 0;
         background: rgba(0, 0, 0, 0.72);
@@ -932,10 +932,10 @@
         justify-content: center;
         z-index: 100;
         padding: 2rem;
-        animation: rm-node-modal-fade 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+        animation: arcana-node-modal-fade 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
     }
 
-    @keyframes rm-node-modal-fade {
+    @keyframes arcana-node-modal-fade {
         from {
             opacity: 0;
         }
@@ -944,10 +944,10 @@
         }
     }
 
-    .rm-node-modal {
+    .arcana-node-modal {
         position: relative;
-        background: var(--rm-black);
-        color: var(--rm-white);
+        background: var(--arcana-black);
+        color: var(--arcana-white);
         width: min(920px, 94vw);
         max-height: 88vh;
         overflow-y: auto;
@@ -955,11 +955,11 @@
             clamp(2.2rem, 3vw, 3.8rem);
         clip-path: polygon(0% 2%, 98% 0%, 100% 96%, 2% 100%);
         transform: rotate(-0.6deg);
-        border: 30px solid var(--rm-white);
-        animation: rm-node-modal-pop 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+        border: 30px solid var(--arcana-white);
+        animation: arcana-node-modal-pop 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
     }
 
-    @keyframes rm-node-modal-pop {
+    @keyframes arcana-node-modal-pop {
         from {
             opacity: 0;
             transform: rotate(-0.6deg) scale(0.94);
@@ -970,25 +970,25 @@
         }
     }
 
-    .rm-node-modal-header {
+    .arcana-node-modal-header {
         display: flex;
         align-items: center;
         gap: clamp(0.4rem, 0.6vw, 0.9rem);
-        background: var(--rm-white);
-        color: var(--rm-black);
+        background: var(--arcana-white);
+        color: var(--arcana-black);
         padding: clamp(0.45rem, 0.6vw, 0.9rem) clamp(0.9rem, 1.2vw, 1.8rem);
         margin: 0 0 clamp(0.8rem, 1.2vw, 1.6rem);
         clip-path: polygon(0% 0%, 100% 0%, 98% 100%, 1% 100%);
     }
 
-    .rm-node-modal-status-icon {
+    .arcana-node-modal-status-icon {
         font-size: clamp(1rem, 1vw, 1.5rem);
         font-weight: 800;
-        color: var(--rm-red);
+        color: var(--arcana-red);
         flex-shrink: 0;
     }
 
-    .rm-node-modal-title {
+    .arcana-node-modal-title {
         font-family: "p5hatty", "Orbitron", Arial, sans-serif;
         font-size: clamp(1.3rem, 1.5vw, 2.2rem);
         font-weight: 800;
@@ -998,7 +998,7 @@
         flex: 1;
     }
 
-    .rm-node-modal-desc {
+    .arcana-node-modal-desc {
         margin: 0 0 clamp(1rem, 1.4vw, 1.8rem);
         padding: 0 clamp(0.4rem, 0.5vw, 0.8rem);
         font-size: clamp(1.05rem, 1.05vw, 1.5rem);
@@ -1006,12 +1006,12 @@
         line-height: 1.55;
     }
 
-    .rm-node-modal-missing {
+    .arcana-node-modal-missing {
         color: rgba(255, 255, 255, 0.4);
         font-style: italic;
     }
 
-    .rm-node-modal-meta {
+    .arcana-node-modal-meta {
         margin: 0 0 clamp(0.6rem, 1vw, 1.2rem);
         padding: 0 clamp(0.4rem, 0.5vw, 0.8rem);
         display: flex;
@@ -1019,14 +1019,14 @@
         gap: clamp(0.35rem, 0.5vw, 0.7rem);
     }
 
-    .rm-node-modal-meta-row {
+    .arcana-node-modal-meta-row {
         display: grid;
         grid-template-columns: clamp(70px, 7vw, 110px) 1fr;
         align-items: center;
         gap: clamp(0.6rem, 0.9vw, 1.2rem);
     }
 
-    .rm-node-modal-meta-row dt {
+    .arcana-node-modal-meta-row dt {
         font-family: "p5hatty", "Orbitron", Arial, sans-serif;
         font-size: clamp(0.9rem, 0.9vw, 1.25rem);
         font-weight: 800;
@@ -1035,13 +1035,13 @@
         color: rgba(255, 255, 255, 0.45);
     }
 
-    .rm-node-modal-meta-row dd {
+    .arcana-node-modal-meta-row dd {
         margin: 0;
         font-size: clamp(1rem, 1vw, 1.35rem);
-        color: var(--rm-white);
+        color: var(--arcana-white);
     }
 
-    .rm-node-modal-badge {
+    .arcana-node-modal-badge {
         display: inline-block;
         padding: 0.15em 0.6em;
         font-family: "p5hatty", "Orbitron", Arial, sans-serif;
@@ -1052,28 +1052,28 @@
         clip-path: polygon(4% 0%, 100% 0%, 96% 100%, 0% 100%);
     }
 
-    .rm-node-modal-badge.rm-unlocked {
-        background: var(--rm-red);
-        color: var(--rm-white);
+    .arcana-node-modal-badge.arcana-unlocked {
+        background: var(--arcana-red);
+        color: var(--arcana-white);
     }
 
-    .rm-node-modal-badge.rm-tracked {
-        background: var(--rm-gold, #f5a623);
-        color: var(--rm-black);
+    .arcana-node-modal-badge.arcana-tracked {
+        background: var(--arcana-gold, #f5a623);
+        color: var(--arcana-black);
     }
 
-    .rm-node-modal-badge.rm-locked {
-        background: var(--rm-gray, #2e2e2e);
-        color: var(--rm-white);
+    .arcana-node-modal-badge.arcana-locked {
+        background: var(--arcana-gray, #2e2e2e);
+        color: var(--arcana-white);
     }
 
-    .rm-node-modal-tags {
+    .arcana-node-modal-tags {
         display: flex;
         flex-wrap: wrap;
         gap: clamp(0.2rem, 0.3vw, 0.45rem);
     }
 
-    .rm-node-modal-tag {
+    .arcana-node-modal-tag {
         font-size: clamp(0.65rem, 0.6vw, 0.9rem);
         font-weight: 700;
         text-transform: uppercase;
@@ -1083,7 +1083,7 @@
         padding: 0.12rem 0.5rem;
     }
 
-    .rm-difficulty {
+    .arcana-difficulty {
         font-size: clamp(0.65rem, 0.65vw, 1rem);
         font-weight: 700;
         text-transform: uppercase;
@@ -1091,25 +1091,25 @@
         flex-shrink: 0;
     }
 
-    .rm-difficulty--beginner {
+    .arcana-difficulty--beginner {
         opacity: 0.5;
     }
-    .rm-difficulty--intermediate {
+    .arcana-difficulty--intermediate {
         opacity: 0.65;
     }
-    .rm-difficulty--advanced {
+    .arcana-difficulty--advanced {
         opacity: 0.8;
     }
-    .rm-difficulty--expert {
+    .arcana-difficulty--expert {
         opacity: 0.9;
     }
-    .rm-difficulty--legendary {
-        color: var(--rm-red);
+    .arcana-difficulty--legendary {
+        color: var(--arcana-red);
         opacity: 1;
     }
 
     /* ── Unlock / Lock action ── */
-    .rm-node-modal-actions {
+    .arcana-node-modal-actions {
         display: flex;
         align-items: center;
         gap: clamp(0.6rem, 0.9vw, 1.2rem);
@@ -1117,9 +1117,9 @@
             clamp(0.8rem, 1.2vw, 1.6rem);
     }
 
-    .rm-node-modal-action {
-        background: var(--rm-red);
-        color: var(--rm-white);
+    .arcana-node-modal-action {
+        background: var(--arcana-red);
+        color: var(--arcana-white);
         border: none;
         font-family: "p5hatty", "Orbitron", Arial, sans-serif;
         font-size: clamp(1rem, 1vw, 1.5rem);
@@ -1135,23 +1135,23 @@
             background 120ms ease;
     }
 
-    .rm-node-modal-action:hover:not(:disabled) {
+    .arcana-node-modal-action:hover:not(:disabled) {
         transform: rotate(-1deg) scale(1.05);
     }
 
-    .rm-node-modal-action:disabled {
+    .arcana-node-modal-action:disabled {
         opacity: 0.5;
         cursor: progress;
     }
 
-    .rm-node-modal-action--lock {
-        background: var(--rm-white);
-        color: var(--rm-black);
+    .arcana-node-modal-action--lock {
+        background: var(--arcana-white);
+        color: var(--arcana-black);
     }
 
-    .rm-node-modal-action-error {
+    .arcana-node-modal-action-error {
         font-size: clamp(0.78rem, 0.78vw, 1.1rem);
-        color: var(--rm-red);
+        color: var(--arcana-red);
         font-weight: 700;
     }
 </style>

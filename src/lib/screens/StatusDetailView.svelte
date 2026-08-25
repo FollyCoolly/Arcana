@@ -159,21 +159,21 @@
                         {#each group.scores as score}
                             {@const isMissing = score.score === null}
                             <article
-                                class="rm-metric-card"
-                                class:rm-metric-maxed={!isMissing &&
+                                class="arcana-metric-card"
+                                class:arcana-metric-maxed={!isMissing &&
                                     score.score !== null &&
                                     score.score >= 100}
-                                class:rm-metric-missing={isMissing}
+                                class:arcana-metric-missing={isMissing}
                             >
-                                <p class="rm-metric-name">{score.name}</p>
-                                <p class="rm-metric-value">
+                                <p class="arcana-metric-name">{score.name}</p>
+                                <p class="arcana-metric-value">
                                     {score.score === null
                                         ? "—"
                                         : `${score.score.toFixed(1)} / 100`}
                                 </p>
-                                <div class="rm-metric-bar-wrap">
+                                <div class="arcana-metric-bar-wrap">
                                     <div
-                                        class="rm-metric-bar"
+                                        class="arcana-metric-bar"
                                         style:width="{Math.min(
                                             score.score ?? 0,
                                             100,
@@ -181,7 +181,7 @@
                                     ></div>
                                 </div>
                                 {#if score.missing_record_ids?.length}
-                                    <p class="rm-metric-missing-records">
+                                    <p class="arcana-metric-missing-records">
                                         Missing: {score.missing_record_ids.join(", ")}
                                     </p>
                                 {/if}
@@ -195,10 +195,10 @@
 
     <!-- Prev / Next dimension nav -->
     {#if tabIds.length > 1}
-        <div class="rm-detail-nav-hints">
+        <div class="arcana-detail-nav-hints">
             <button
                 type="button"
-                class="rm-detail-nav-btn"
+                class="arcana-detail-nav-btn"
                 onclick={() => navigatePrev()}
             >
                 <KeyHint key="Q" fontSize={36} />
@@ -206,7 +206,7 @@
             </button>
             <button
                 type="button"
-                class="rm-detail-nav-btn"
+                class="arcana-detail-nav-btn"
                 onclick={() => navigateNext()}
             >
                 <KeyHint key="E" fontSize={36} />
@@ -246,8 +246,8 @@
         letter-spacing: 0.06em;
         padding: clamp(0.825rem, 0.975vw, 1.5rem) clamp(1.65rem, 1.95vw, 3rem);
         border: none;
-        background: var(--rm-white);
-        color: var(--rm-white);
+        background: var(--arcana-white);
+        color: var(--arcana-white);
         cursor: pointer;
         clip-path: polygon(0% 0%, 100% 0%, 96% 100%, 4% 100%);
         transition: all 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -261,7 +261,7 @@
         content: "";
         position: absolute;
         inset: 6px;
-        background: var(--rm-black);
+        background: var(--arcana-black);
         clip-path: polygon(0% 0%, 100% 0%, 96% 100%, 4% 100%);
         z-index: -1;
         transition: background 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -272,12 +272,12 @@
     }
 
     .detail-tab.active {
-        background: var(--rm-white);
-        color: var(--rm-black);
+        background: var(--arcana-white);
+        color: var(--arcana-black);
     }
 
     .detail-tab.active::before {
-        background: var(--rm-white);
+        background: var(--arcana-white);
     }
 
     .dimension-summary {
@@ -299,8 +299,8 @@
 
     .dim-level-frag {
         display: inline-block;
-        background: var(--rm-gold, #f5a623);
-        color: var(--rm-black, #000);
+        background: var(--arcana-gold, #f5a623);
+        color: var(--arcana-black, #000);
         font-family: "p5hatty", "Orbitron", Arial, sans-serif;
         font-weight: 800;
         font-size: 1em;
@@ -311,10 +311,10 @@
     }
 
     .dim-level-frag.dim-level-inv {
-        background: var(--rm-black, #000);
-        color: var(--rm-gold, #f5a623);
+        background: var(--arcana-black, #000);
+        color: var(--arcana-gold, #f5a623);
         box-shadow:
-            0 0 0 0.07em var(--rm-gold, #f5a623),
+            0 0 0 0.07em var(--arcana-gold, #f5a623),
             0.04em 0.06em 0 rgba(0, 0, 0, 0.35);
         margin-left: -0.03em;
     }
@@ -333,21 +333,21 @@
     }
 
     .detail-content::-webkit-scrollbar-track {
-        background: var(--rm-black, #000);
-        border: 4px solid var(--rm-white, #fff);
+        background: var(--arcana-black, #000);
+        border: 4px solid var(--arcana-white, #fff);
         border-radius: 0;
         margin-top: 12vh;
         margin-bottom: 12vh;
     }
 
     .detail-content::-webkit-scrollbar-thumb {
-        background: var(--rm-white, #fff);
+        background: var(--arcana-white, #fff);
         border-radius: 0;
         border: none;
     }
 
     .detail-content::-webkit-scrollbar-thumb:hover {
-        background: var(--rm-white, #fff);
+        background: var(--arcana-white, #fff);
     }
 
     .detail-group + .detail-group {
@@ -360,8 +360,8 @@
         gap: clamp(0.5rem, 0.5vw, 1rem);
     }
 
-    .rm-metric-card {
-        background: var(--rm-black);
+    .arcana-metric-card {
+        background: var(--arcana-black);
         border: none;
         padding: 0;
         display: flex;
@@ -370,23 +370,23 @@
         clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 4% 100%);
     }
 
-    .rm-metric-card:nth-child(even) {
+    .arcana-metric-card:nth-child(even) {
         transform: rotate(0.8deg);
     }
 
-    .rm-metric-card.rm-metric-maxed {
-        background: var(--rm-gold, #f5a623);
+    .arcana-metric-card.arcana-metric-maxed {
+        background: var(--arcana-gold, #f5a623);
     }
 
-    .rm-metric-card.rm-metric-missing {
+    .arcana-metric-card.arcana-metric-missing {
         opacity: 0.7;
     }
 
-    .rm-metric-name {
+    .arcana-metric-name {
         margin: clamp(0.2rem, 0.25vw, 0.45rem) clamp(0.2rem, 0.25vw, 0.45rem) 0
             clamp(0.2rem, 0.25vw, 0.45rem);
-        background: var(--rm-white);
-        color: var(--rm-black);
+        background: var(--arcana-white);
+        color: var(--arcana-black);
         padding: clamp(0.3rem, 0.4vw, 0.7rem) clamp(0.7rem, 0.9vw, 1.6rem);
         font-size: clamp(0.7rem, 0.65vw, 1.2rem);
         font-weight: 700;
@@ -396,15 +396,15 @@
         clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 1.8% 100%);
     }
 
-    .rm-metric-maxed .rm-metric-name {
-        background: var(--rm-black);
-        color: var(--rm-gold, #f5a623);
+    .arcana-metric-maxed .arcana-metric-name {
+        background: var(--arcana-black);
+        color: var(--arcana-gold, #f5a623);
     }
 
-    .rm-metric-value {
+    .arcana-metric-value {
         margin: 0;
-        background: var(--rm-black);
-        color: var(--rm-white);
+        background: var(--arcana-black);
+        color: var(--arcana-white);
         padding: clamp(0.25rem, 0.35vw, 0.6rem) clamp(0.7rem, 0.9vw, 1.6rem)
             clamp(0.25rem, 0.35vw, 0.6rem) clamp(1.2rem, 1.4vw, 2.4rem);
         font-size: clamp(1.1rem, 1.1vw, 2.2rem);
@@ -412,35 +412,35 @@
         line-height: 1.2;
     }
 
-    .rm-metric-maxed .rm-metric-value {
-        background: var(--rm-gold, #f5a623);
-        color: var(--rm-black);
+    .arcana-metric-maxed .arcana-metric-value {
+        background: var(--arcana-gold, #f5a623);
+        color: var(--arcana-black);
     }
 
-    .rm-metric-bar-wrap {
+    .arcana-metric-bar-wrap {
         height: 3px;
         background: #222;
         margin: 0 clamp(0.2rem, 0.25vw, 0.45rem) clamp(0.2rem, 0.25vw, 0.45rem);
     }
 
-    .rm-metric-bar {
+    .arcana-metric-bar {
         height: 100%;
         background: #f5a623;
         transition: width 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
     }
 
-    .rm-metric-missing-records {
+    .arcana-metric-missing-records {
         margin: 0;
         padding: 0.4rem 0.8rem 0.65rem;
-        background: var(--rm-black, #000);
-        color: var(--rm-white, #fff);
+        background: var(--arcana-black, #000);
+        color: var(--arcana-white, #fff);
         font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
         font-size: clamp(0.65rem, 0.65vw, 1rem);
         overflow-wrap: anywhere;
     }
 
     /* ── Prev / Next navigation ── */
-    .rm-detail-nav-hints {
+    .arcana-detail-nav-hints {
         position: fixed;
         bottom: clamp(1.5rem, 3vh, 3.5rem);
         left: clamp(13rem, 16vw, 22rem);
@@ -450,7 +450,7 @@
         gap: clamp(0.6rem, 1vw, 1.5rem);
     }
 
-    .rm-detail-nav-btn {
+    .arcana-detail-nav-btn {
         display: flex;
         align-items: center;
         gap: 0;
@@ -462,11 +462,11 @@
         transition: transform 120ms ease;
     }
 
-    .rm-detail-nav-btn:hover {
+    .arcana-detail-nav-btn:hover {
         transform: rotate(-1deg) scale(1.06);
     }
 
-    .rm-detail-nav-btn :global(.p5-prompt-word) {
+    .arcana-detail-nav-btn :global(.p5-prompt-word) {
         margin-left: -1rem;
     }
 </style>

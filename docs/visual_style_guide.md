@@ -18,23 +18,23 @@ Arcana 使用受 Persona 5 启发、但服务于自身信息结构的桌面 HUD 
 
 ## 2. 颜色
 
-全局视觉 token 定义在 `src/routes/+page.svelte` 的 `.rm-overlay`：
+全局视觉 token 定义在 `src/routes/+page.svelte` 的 `.arcana-overlay`：
 
 ```css
---rm-black: #000000;
---rm-white: #ffffff;
---rm-red: #e5191c;
---rm-gray: #2e2e2e;
---rm-gold: #f5a623;
+--arcana-black: #000000;
+--arcana-white: #ffffff;
+--arcana-red: #e5191c;
+--arcana-gray: #2e2e2e;
+--arcana-gold: #f5a623;
 ```
 
 | Token | 职责 |
 | --- | --- |
-| `--rm-black` | 主底板、轮廓、遮挡层和最高对比文字背景 |
-| `--rm-white` | 主文字、描边、分隔线和反相底板 |
-| `--rm-red` | 当前选择、主要行动、强调和高进度状态 |
-| `--rm-gray` | 背景结构、次级轨道和非关键装饰 |
-| `--rm-gold` | Status 雷达、维度标签和数据强调；不作为通用强调色 |
+| `--arcana-black` | 主底板、轮廓、遮挡层和最高对比文字背景 |
+| `--arcana-white` | 主文字、描边、分隔线和反相底板 |
+| `--arcana-red` | 当前选择、主要行动、强调和高进度状态 |
+| `--arcana-gray` | 背景结构、次级轨道和非关键装饰 |
+| `--arcana-gold` | Status 雷达、维度标签和数据强调；不作为通用强调色 |
 
 整个界面叠加在 `rgba(30, 0, 0, 0.8)` 的深红透明蒙版上。窗口和页面根节点本身透明，因此桌面内容会透出；当前实现没有 Acrylic、Mica 或 CSS blur 层。
 

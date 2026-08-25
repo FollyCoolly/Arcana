@@ -52,14 +52,14 @@
       : 0;
 
     const el = document.createElement('div');
-    el.className = `rm-tarot-card rm-nebula-card${leveled ? ' rm-tarot-card--leveled' : ''}`;
+    el.className = `arcana-tarot-card arcana-nebula-card${leveled ? ' arcana-tarot-card--leveled' : ''}`;
     el.style.width = '160px';
 
     const cardImage = '/card_examples/fool.png';
-    el.className = 'rm-nebula-card rm-nebula-image-card';
+    el.className = 'arcana-nebula-card arcana-nebula-image-card';
     const titleSvg = buildCardTitleSvg(skill.definition.name, hashStr(skill.definition.id));
     el.innerHTML = `<img src="${escapeHtml(cardImage)}" alt="${escapeHtml(skill.definition.name)}" />`
-      + `<div class="rm-nebula-title-area">${titleSvg}</div>`;
+      + `<div class="arcana-nebula-title-area">${titleSvg}</div>`;
 
     return el;
   }
@@ -122,7 +122,7 @@
 
       // Find which card was clicked — check both pointerdown target and pointerup target
       const target = (pointerDownTarget as HTMLElement) ?? (e.target as HTMLElement);
-      const cardEl = target.closest?.('.rm-nebula-card') as HTMLElement | null;
+      const cardEl = target.closest?.('.arcana-nebula-card') as HTMLElement | null;
       if (!cardEl) return;
 
       const skill = cardSkillMap.get(cardEl);
@@ -197,16 +197,16 @@
   });
 </script>
 
-<div class="rm-nebula-viewport" bind:this={containerEl}></div>
+<div class="arcana-nebula-viewport" bind:this={containerEl}></div>
 
 <style>
-  .rm-nebula-viewport {
+  .arcana-nebula-viewport {
     position: absolute;
     inset: 0;
     overflow: hidden;
     cursor: grab;
   }
-  .rm-nebula-viewport:active {
+  .arcana-nebula-viewport:active {
     cursor: grabbing;
   }
 </style>

@@ -146,8 +146,8 @@
     /* ── Individual fragment block: gold bg, black text ── */
     .p5cl-frag {
         display: inline-block;
-        background: var(--rm-gold, #f5a623);
-        color: var(--rm-black, #000);
+        background: var(--arcana-gold, #f5a623);
+        color: var(--arcana-black, #000);
         font-family: "p5hatty", "Orbitron", Arial, sans-serif;
         font-weight: 800;
         font-size: 1em;
@@ -161,11 +161,11 @@
 
     /* ── Inverted variant: gold text on black bg, gold outer wrap ── */
     .p5cl-frag.p5cl-inv {
-        background: var(--rm-black, #000);
-        color: var(--rm-gold, #f5a623);
+        background: var(--arcana-black, #000);
+        color: var(--arcana-gold, #f5a623);
         /* Gold outline wrap around the black block */
         box-shadow:
-            0 0 0 0.07em var(--rm-gold, #f5a623),
+            0 0 0 0.07em var(--arcana-gold, #f5a623),
             0.04em 0.06em 0 rgba(0, 0, 0, 0.35);
     }
 
@@ -174,8 +174,8 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        background: var(--rm-gold, #f5a623);
-        color: var(--rm-black, #000);
+        background: var(--arcana-gold, #f5a623);
+        color: var(--arcana-black, #000);
         font-family: "p5hatty", "Orbitron", Arial, sans-serif;
         font-weight: 800;
         font-size: 0.58em;
@@ -193,7 +193,7 @@
         font-family: "p5hatty", "Orbitron", Arial, sans-serif;
         font-size: 0.5em;
         font-weight: 700;
-        color: var(--rm-white, #fff);
+        color: var(--arcana-white, #fff);
         line-height: 1;
         letter-spacing: 0.03em;
     }

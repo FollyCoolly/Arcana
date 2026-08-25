@@ -72,7 +72,7 @@
                 </defs>
                 <!-- White frame only: outer polygon with inner hole -->
                 <path
-                    fill="var(--rm-white)"
+                    fill="var(--arcana-white)"
                     fill-rule="evenodd"
                     d="M 0,43 L 795,0 L 775,125 L 0,133 Z
                        M 16,57 L 757,20 L 751,109 L 14,128 Z"
@@ -83,7 +83,7 @@
                     y="0"
                     width={795 * (clamped / 100)}
                     height="133"
-                    fill={isHigh ? "var(--rm-red)" : "var(--rm-white)"}
+                    fill={isHigh ? "var(--arcana-red)" : "var(--arcana-white)"}
                     clip-path="url(#phansite-inner-clip)"
                     class="phansite-fill"
                 />
@@ -174,7 +174,7 @@
         position: absolute;
         width: 4.4rem;
         height: 2rem;
-        background: var(--rm-white);
+        background: var(--arcana-white);
         clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
         top: -1.3rem;
         left: 12.5rem;
@@ -191,12 +191,12 @@
     }
 
     .phansite-question {
-        color: var(--rm-white);
+        color: var(--arcana-white);
         font-family: "Source Han Sans SC", "Noto Sans SC", "方正兰亭黑_GBK", Arial, sans-serif;
         font-weight: 900;
         font-size: clamp(1.1rem, 1.5vw, 1.5rem);
         letter-spacing: 0.01em;
-        -webkit-text-stroke: 0.5em var(--rm-black);
+        -webkit-text-stroke: 0.5em var(--arcana-black);
         paint-order: stroke fill;
         text-align: left;
         display: inline-block;
@@ -207,7 +207,7 @@
     }
 
     .phansite-emphasis {
-        color: var(--rm-red);
+        color: var(--arcana-red);
         font-size: 1.3em;
         font-weight: 900;
         letter-spacing: 0.02em;
@@ -248,14 +248,14 @@
     }
 
     .phansite-percent {
-        color: var(--rm-white);
+        color: var(--arcana-white);
         font-family: "Source Han Sans SC", "Noto Sans SC", "方正兰亭黑_GBK", Arial, sans-serif;
         font-weight: 900;
         font-style: italic;
         font-size: clamp(4.8rem, 7.2vw, 7.2rem);
         line-height: 1;
         letter-spacing: 0.01em;
-        -webkit-text-stroke: 0.03em var(--rm-black);
+        -webkit-text-stroke: 0.03em var(--arcana-black);
         paint-order: stroke fill;
         transition: color 200ms ease;
         margin-top: -1rem;
@@ -264,7 +264,7 @@
     }
 
     .phansite-percent.is-high {
-        color: var(--rm-red);
+        color: var(--arcana-red);
     }
 
     .phansite-percent-small {

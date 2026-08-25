@@ -114,67 +114,67 @@
     });
 </script>
 
-<section class="rm-stage">
+<section class="arcana-stage">
     {#if view === "radar"}
-        <div class="rm-status-stars-br" aria-hidden="true">
-            <div class="rm-star-group rm-sg-1">
-                <div class="rm-sstar rm-sstar-1"></div>
-                <div class="rm-sstar rm-sstar-2"></div>
-                <div class="rm-sstar rm-sstar-3"></div>
-                <div class="rm-sstar rm-sstar-4"></div>
-                <div class="rm-sstar rm-sstar-5"></div>
-                <div class="rm-sstar rm-sstar-6"></div>
-                <div class="rm-sstar rm-sstar-7"></div>
-                <div class="rm-sstar rm-sstar-8"></div>
+        <div class="arcana-status-stars-br" aria-hidden="true">
+            <div class="arcana-star-group arcana-sg-1">
+                <div class="arcana-sstar arcana-sstar-1"></div>
+                <div class="arcana-sstar arcana-sstar-2"></div>
+                <div class="arcana-sstar arcana-sstar-3"></div>
+                <div class="arcana-sstar arcana-sstar-4"></div>
+                <div class="arcana-sstar arcana-sstar-5"></div>
+                <div class="arcana-sstar arcana-sstar-6"></div>
+                <div class="arcana-sstar arcana-sstar-7"></div>
+                <div class="arcana-sstar arcana-sstar-8"></div>
             </div>
-            <div class="rm-star-group rm-sg-2">
-                <div class="rm-sstar rm-sstar-1"></div>
-                <div class="rm-sstar rm-sstar-2"></div>
-                <div class="rm-sstar rm-sstar-3"></div>
-                <div class="rm-sstar rm-sstar-4"></div>
-                <div class="rm-sstar rm-sstar-5"></div>
-                <div class="rm-sstar rm-sstar-6"></div>
-                <div class="rm-sstar rm-sstar-7"></div>
-                <div class="rm-sstar rm-sstar-8"></div>
+            <div class="arcana-star-group arcana-sg-2">
+                <div class="arcana-sstar arcana-sstar-1"></div>
+                <div class="arcana-sstar arcana-sstar-2"></div>
+                <div class="arcana-sstar arcana-sstar-3"></div>
+                <div class="arcana-sstar arcana-sstar-4"></div>
+                <div class="arcana-sstar arcana-sstar-5"></div>
+                <div class="arcana-sstar arcana-sstar-6"></div>
+                <div class="arcana-sstar arcana-sstar-7"></div>
+                <div class="arcana-sstar arcana-sstar-8"></div>
             </div>
-            <div class="rm-star-group rm-sg-3">
-                <div class="rm-sstar rm-sstar-1"></div>
-                <div class="rm-sstar rm-sstar-2"></div>
-                <div class="rm-sstar rm-sstar-3"></div>
-                <div class="rm-sstar rm-sstar-4"></div>
-                <div class="rm-sstar rm-sstar-5"></div>
-                <div class="rm-sstar rm-sstar-6"></div>
-                <div class="rm-sstar rm-sstar-7"></div>
-                <div class="rm-sstar rm-sstar-8"></div>
+            <div class="arcana-star-group arcana-sg-3">
+                <div class="arcana-sstar arcana-sstar-1"></div>
+                <div class="arcana-sstar arcana-sstar-2"></div>
+                <div class="arcana-sstar arcana-sstar-3"></div>
+                <div class="arcana-sstar arcana-sstar-4"></div>
+                <div class="arcana-sstar arcana-sstar-5"></div>
+                <div class="arcana-sstar arcana-sstar-6"></div>
+                <div class="arcana-sstar arcana-sstar-7"></div>
+                <div class="arcana-sstar arcana-sstar-8"></div>
             </div>
-            <div class="rm-star-group rm-sg-4">
-                <div class="rm-sstar rm-sstar-1"></div>
-                <div class="rm-sstar rm-sstar-2"></div>
-                <div class="rm-sstar rm-sstar-3"></div>
-                <div class="rm-sstar rm-sstar-4"></div>
-                <div class="rm-sstar rm-sstar-5"></div>
-                <div class="rm-sstar rm-sstar-6"></div>
-                <div class="rm-sstar rm-sstar-7"></div>
-                <div class="rm-sstar rm-sstar-8"></div>
+            <div class="arcana-star-group arcana-sg-4">
+                <div class="arcana-sstar arcana-sstar-1"></div>
+                <div class="arcana-sstar arcana-sstar-2"></div>
+                <div class="arcana-sstar arcana-sstar-3"></div>
+                <div class="arcana-sstar arcana-sstar-4"></div>
+                <div class="arcana-sstar arcana-sstar-5"></div>
+                <div class="arcana-sstar arcana-sstar-6"></div>
+                <div class="arcana-sstar arcana-sstar-7"></div>
+                <div class="arcana-sstar arcana-sstar-8"></div>
             </div>
-            <div class="rm-star-group rm-sg-5">
-                <div class="rm-sstar rm-sstar-1"></div>
-                <div class="rm-sstar rm-sstar-2"></div>
-                <div class="rm-sstar rm-sstar-3"></div>
-                <div class="rm-sstar rm-sstar-4"></div>
-                <div class="rm-sstar rm-sstar-5"></div>
-                <div class="rm-sstar rm-sstar-6"></div>
-                <div class="rm-sstar rm-sstar-7"></div>
-                <div class="rm-sstar rm-sstar-8"></div>
+            <div class="arcana-star-group arcana-sg-5">
+                <div class="arcana-sstar arcana-sstar-1"></div>
+                <div class="arcana-sstar arcana-sstar-2"></div>
+                <div class="arcana-sstar arcana-sstar-3"></div>
+                <div class="arcana-sstar arcana-sstar-4"></div>
+                <div class="arcana-sstar arcana-sstar-5"></div>
+                <div class="arcana-sstar arcana-sstar-6"></div>
+                <div class="arcana-sstar arcana-sstar-7"></div>
+                <div class="arcana-sstar arcana-sstar-8"></div>
             </div>
         </div>
-        <div class="rm-status-bg" aria-hidden="true"></div>
+        <div class="arcana-status-bg" aria-hidden="true"></div>
     {/if}
-    <img src="/ui/Status.png" alt="Status" class="rm-status-title-img" />
+    <img src="/ui/Status.png" alt="Status" class="arcana-status-title-img" />
 
     <button
         type="button"
-        class="rm-back-btn"
+        class="arcana-back-btn"
         onclick={() => {
             if (view !== "radar") {
                 handleDetailBack();
@@ -188,49 +188,49 @@
     </button>
 
     {#if statusData && view === "radar"}
-        <div class="rm-player-panel" aria-label="Player info">
+        <div class="arcana-player-panel" aria-label="Player info">
             <div
-                class="rm-hint-board"
+                class="arcana-hint-board"
                 style:background-image="url(/ui/board/board_fat.png)"
             >
-                <span class="rm-hint-text">用户：{statusData.username}</span>
+                <span class="arcana-hint-text">用户：{statusData.username}</span>
             </div>
             {#if statusData.game_days !== null}
                 <div
-                    class="rm-hint-board rm-hint-board--slim"
+                    class="arcana-hint-board arcana-hint-board--slim"
                     style:background-image="url(/ui/board/board_slim.png)"
                 >
-                    <span class="rm-hint-text">游戏天数：{statusData.game_days}</span>
+                    <span class="arcana-hint-text">游戏天数：{statusData.game_days}</span>
                 </div>
             {/if}
         </div>
     {/if}
 
     {#if loading}
-        <div class="rm-stage-inner">
+        <div class="arcana-stage-inner">
             <p class="state-text">Loading status data...</p>
         </div>
     {:else if errorMessage}
-        <div class="rm-stage-inner">
+        <div class="arcana-stage-inner">
             <p class="state-text error">{errorMessage}</p>
         </div>
     {:else if statusData}
         {#if view === "radar"}
             {#if selectedDimensions.length > 0}
-                <div class="rm-radar-stage">
+                <div class="arcana-radar-stage">
                     <RadarChart
                         dimensions={selectedDimensions}
                         onSelect={handleDimensionSelect}
                     />
                 </div>
             {:else}
-                <div class="rm-stage-inner">
+                <div class="arcana-stage-inner">
                     <p class="state-text">No Status dimensions selected.</p>
                 </div>
             {/if}
             <button
                 type="button"
-                class="rm-configure-btn"
+                class="arcana-configure-btn"
                 onclick={() => {
                     view = "configure";
                 }}
@@ -244,16 +244,16 @@
                 onBack={handleDetailBack}
             />
         {:else}
-            <div class="rm-configure-panel">
+            <div class="arcana-configure-panel">
                 <h2>Displayed dimensions</h2>
                 <p>Choose up to five dimensions for the Status radar.</p>
-                <div class="rm-slot-list">
+                <div class="arcana-slot-list">
                     {#each Array.from({ length: 5 }, (_, position) => position) as position}
                         {@const selected = statusData.dimensions.find(
                             (dimension) =>
                                 dimension.selected_position === position,
                         )}
-                        <label class="rm-slot-row">
+                        <label class="arcana-slot-row">
                             <span>Slot {position + 1}</span>
                             <select
                                 value={selected?.id ?? ""}
@@ -277,14 +277,14 @@
             </div>
         {/if}
     {:else}
-        <div class="rm-stage-inner">
+        <div class="arcana-stage-inner">
             <p class="state-text">Status data is not available yet.</p>
         </div>
     {/if}
 </section>
 
 <style>
-    .rm-player-panel {
+    .arcana-player-panel {
         position: fixed;
         top: 2rem;
         left: 2rem;
@@ -295,7 +295,7 @@
         pointer-events: none;
     }
 
-    .rm-hint-board {
+    .arcana-hint-board {
         width: 32rem;
         height: 8rem;
         background-repeat: no-repeat;
@@ -306,12 +306,12 @@
         justify-content: center;
     }
 
-    .rm-hint-board--slim {
+    .arcana-hint-board--slim {
         height: 7rem;
         margin-top: -1rem;
     }
 
-    .rm-hint-text {
+    .arcana-hint-text {
         font-family:
             "Source Han Sans SC", "Noto Sans SC", "方正兰亭黑_GBK", "Microsoft YaHei", sans-serif;
         font-weight: 900;
@@ -323,7 +323,7 @@
         paint-order: stroke fill;
     }
 
-    .rm-status-title-img {
+    .arcana-status-title-img {
         position: fixed;
         top: clamp(0.8rem, 1.5vh, 3rem);
         right: clamp(1.2rem, 2.5vw, 5rem);
@@ -333,24 +333,24 @@
         pointer-events: none;
     }
 
-    .rm-stage-inner {
+    .arcana-stage-inner {
         flex: 1;
         display: flex;
         align-items: center;
         justify-content: center;
     }
 
-    .rm-status-bg {
+    .arcana-status-bg {
         position: absolute;
         inset: 0;
-        background: var(--rm-black, #000);
+        background: var(--arcana-black, #000);
         clip-path: polygon(50% 0%, 100% 0%, 100% 40%, 80% 100%, 13% 100%);
         z-index: 0;
         pointer-events: none;
     }
 
     /* ── Bottom-right stacked star groups decoration ── */
-    .rm-status-stars-br {
+    .arcana-status-stars-br {
         position: absolute;
         inset: 0;
         z-index: 0;
@@ -358,13 +358,13 @@
         overflow: hidden;
     }
 
-    .rm-star-group {
+    .arcana-star-group {
         position: absolute;
         aspect-ratio: 1;
         pointer-events: none;
     }
 
-    .rm-sstar {
+    .arcana-sstar {
         position: absolute;
         inset: 0;
         clip-path: polygon(
@@ -381,75 +381,75 @@
         );
     }
 
-    .rm-sstar-1 {
+    .arcana-sstar-1 {
         background: #444444;
         transform: scale(0.92);
     }
-    .rm-sstar-2 {
-        background: var(--rm-black, #000);
+    .arcana-sstar-2 {
+        background: var(--arcana-black, #000);
         transform: scale(0.8);
     }
-    .rm-sstar-3 {
+    .arcana-sstar-3 {
         background: #444444;
         transform: scale(0.68);
     }
-    .rm-sstar-4 {
-        background: var(--rm-black, #000);
+    .arcana-sstar-4 {
+        background: var(--arcana-black, #000);
         transform: scale(0.56);
     }
-    .rm-sstar-5 {
+    .arcana-sstar-5 {
         background: #444444;
         transform: scale(0.44);
     }
-    .rm-sstar-6 {
-        background: var(--rm-black, #000);
+    .arcana-sstar-6 {
+        background: var(--arcana-black, #000);
         transform: scale(0.32);
     }
-    .rm-sstar-7 {
+    .arcana-sstar-7 {
         background: #444444;
         transform: scale(0.2);
     }
-    .rm-sstar-8 {
-        background: var(--rm-black, #000);
+    .arcana-sstar-8 {
+        background: var(--arcana-black, #000);
         transform: scale(0.08);
     }
 
-    .rm-sg-1 {
+    .arcana-sg-1 {
         width: 90vh;
         top: 5%;
         right: -22%;
         transform: rotate(12deg);
     }
 
-    .rm-sg-2 {
+    .arcana-sg-2 {
         width: 90vh;
         top: 20%;
         right: -20%;
         transform: rotate(-22deg);
     }
 
-    .rm-sg-3 {
+    .arcana-sg-3 {
         width: 90vh;
         top: 32%;
         right: -15%;
         transform: rotate(0deg);
     }
 
-    .rm-sg-4 {
+    .arcana-sg-4 {
         width: 90vh;
         top: 55%;
         right: -10%;
         transform: rotate(-8deg);
     }
 
-    .rm-sg-5 {
+    .arcana-sg-5 {
         width: 90vh;
         top: 45%;
         right: -20%;
         transform: rotate(28deg);
     }
 
-    .rm-radar-stage {
+    .arcana-radar-stage {
         flex: 1;
         display: flex;
         align-items: center;
@@ -458,14 +458,14 @@
         padding-left: 8%;
     }
 
-    .rm-configure-btn {
+    .arcana-configure-btn {
         position: fixed;
         right: clamp(2rem, 4vw, 6rem);
         bottom: clamp(2rem, 4vh, 5rem);
         z-index: 12;
-        border: 0.2rem solid var(--rm-white, #fff);
-        background: var(--rm-black, #000);
-        color: var(--rm-white, #fff);
+        border: 0.2rem solid var(--arcana-white, #fff);
+        background: var(--arcana-black, #000);
+        color: var(--arcana-white, #fff);
         padding: 0.65em 1em;
         font: 800 clamp(1rem, 1.4vw, 2rem) "p5hatty", "Orbitron", sans-serif;
         text-transform: uppercase;
@@ -473,37 +473,37 @@
         transform: rotate(-1deg);
     }
 
-    .rm-configure-panel {
+    .arcana-configure-panel {
         position: relative;
         z-index: 2;
         width: min(58rem, 72vw);
         margin: clamp(8rem, 16vh, 15rem) auto 0;
         padding: clamp(1.5rem, 3vw, 3.5rem);
-        background: var(--rm-black, #000);
-        border: 0.35rem solid var(--rm-white, #fff);
+        background: var(--arcana-black, #000);
+        border: 0.35rem solid var(--arcana-white, #fff);
         transform: rotate(-0.4deg);
     }
 
-    .rm-configure-panel h2,
-    .rm-configure-panel p {
+    .arcana-configure-panel h2,
+    .arcana-configure-panel p {
         margin-top: 0;
     }
 
-    .rm-configure-panel h2 {
+    .arcana-configure-panel h2 {
         font-size: clamp(2rem, 3vw, 4rem);
         text-transform: uppercase;
     }
 
-    .rm-configure-panel p {
+    .arcana-configure-panel p {
         font-size: clamp(1rem, 1.3vw, 1.8rem);
     }
 
-    .rm-slot-list {
+    .arcana-slot-list {
         display: grid;
         gap: clamp(0.6rem, 1vh, 1rem);
     }
 
-    .rm-slot-row {
+    .arcana-slot-row {
         display: grid;
         grid-template-columns: minmax(7rem, 0.35fr) 1fr;
         align-items: center;
@@ -513,13 +513,13 @@
         text-transform: uppercase;
     }
 
-    .rm-slot-row select {
+    .arcana-slot-row select {
         width: 100%;
         padding: 0.55em 0.7em;
-        border: 0.2rem solid var(--rm-white, #fff);
+        border: 0.2rem solid var(--arcana-white, #fff);
         border-radius: 0;
-        background: var(--rm-white, #fff);
-        color: var(--rm-black, #000);
+        background: var(--arcana-white, #fff);
+        color: var(--arcana-black, #000);
         font: 700 clamp(0.9rem, 1.1vw, 1.5rem) "p5hatty", "Orbitron", sans-serif;
     }
 </style>

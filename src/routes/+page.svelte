@@ -465,7 +465,7 @@
         void preloadMissionMenuData();
 
         appWindow
-            .listen("reality://summoned", () => {
+            .listen("arcana://summoned", () => {
                 resetToMainMenu();
             })
             .then((unlisten) => {
@@ -484,13 +484,13 @@
     });
 </script>
 
-<main class="rm-overlay">
-    <section class="rm-scene">
+<main class="arcana-overlay">
+    <section class="arcana-scene">
         {#if currentScreen === "main"}
-            <div class="rm-calendar-widget">
+            <div class="arcana-calendar-widget">
                 <Calendar />
             </div>
-            <div class="rm-task-panel">
+            <div class="arcana-task-panel">
                 {#if missionMenuData?.countdown && missionMenuData.countdown.days_remaining <= 99}
                     {@const cd = missionMenuData.countdown}
                     {@const labelLen = cd.label.length}
@@ -503,45 +503,45 @@
                             ? "/ui/board/countdown_2wc.png"
                             : "/ui/board/countdown_4wc.png"}
                     <div
-                        class="rm-countdown"
+                        class="arcana-countdown"
                         aria-label="Mission countdown"
                         data-label-len={labelLen <= 2 ? "2" : "4"}
                         style:background-image="url({boardSrc})"
                     >
-                        <div class="rm-cd-mission-bg">
-                            <span class="rm-cd-mission-text">{cd.short_desc}</span>
+                        <div class="arcana-cd-mission-bg">
+                            <span class="arcana-cd-mission-text">{cd.short_desc}</span>
                         </div>
-                        <span class="rm-cd-prefix">距离</span>
+                        <span class="arcana-cd-prefix">距离</span>
                         {#if labelLen <= 2}
-                            <span class="rm-cd-label-a">{cd.label}</span>
+                            <span class="arcana-cd-label-a">{cd.label}</span>
                         {:else}
-                            <span class="rm-cd-label-a"
+                            <span class="arcana-cd-label-a"
                                 >{cd.label.slice(0, 2)}</span
                             >
-                            <span class="rm-cd-label-b"
+                            <span class="arcana-cd-label-b"
                                 >{cd.label.slice(2, 4)}</span
                             >
                         {/if}
-                        <span class="rm-cd-middle">还有</span>
-                        <div class="rm-cd-days-bg-1" aria-hidden="true"></div>
-                        <div class="rm-cd-days-bg-2" aria-hidden="true"></div>
-                        <span class="rm-cd-days-1">{daysStr[0]}</span>
-                        <span class="rm-cd-days-2">{daysStr[1]}</span>
-                        <span class="rm-cd-suffix">天</span>
+                        <span class="arcana-cd-middle">还有</span>
+                        <div class="arcana-cd-days-bg-1" aria-hidden="true"></div>
+                        <div class="arcana-cd-days-bg-2" aria-hidden="true"></div>
+                        <span class="arcana-cd-days-1">{daysStr[0]}</span>
+                        <span class="arcana-cd-days-2">{daysStr[1]}</span>
+                        <span class="arcana-cd-suffix">天</span>
                     </div>
                 {/if}
 
                 {#if missionMenuData?.hints}
                     {#each missionMenuData.hints as hint, i}
                         <div
-                            class="rm-hint-board"
+                            class="arcana-hint-board"
                             data-board={i === 0 ? "fat" : "slim"}
                             style:background-image="url(/ui/board/{i === 0
                                 ? 'board_fat'
                                 : 'board_slim'}.png)"
                             aria-label="Mission hint"
                         >
-                            <span class="rm-hint-text">{hint.short_desc}</span>
+                            <span class="arcana-hint-text">{hint.short_desc}</span>
                         </div>
                     {/each}
                 {/if}
@@ -552,40 +552,40 @@
                     progress={missionMenuData.progress.progress}
                 />
             {/if}
-            <div class="rm-star-left" aria-hidden="true">
-                <div class="rm-star-stack">
-                    <div class="rm-star rm-star-1"></div>
-                    <div class="rm-star rm-star-2"></div>
-                    <div class="rm-star rm-star-3"></div>
-                    <div class="rm-star rm-star-4"></div>
-                    <div class="rm-star rm-star-5"></div>
-                    <div class="rm-star rm-star-6"></div>
-                    <div class="rm-star rm-star-7"></div>
-                    <div class="rm-star rm-star-8"></div>
+            <div class="arcana-star-left" aria-hidden="true">
+                <div class="arcana-star-stack">
+                    <div class="arcana-star arcana-star-1"></div>
+                    <div class="arcana-star arcana-star-2"></div>
+                    <div class="arcana-star arcana-star-3"></div>
+                    <div class="arcana-star arcana-star-4"></div>
+                    <div class="arcana-star arcana-star-5"></div>
+                    <div class="arcana-star arcana-star-6"></div>
+                    <div class="arcana-star arcana-star-7"></div>
+                    <div class="arcana-star arcana-star-8"></div>
                 </div>
-                <div class="rm-star-stack rm-star-small">
-                    <div class="rm-star rm-sm-1"></div>
-                    <div class="rm-star rm-sm-2"></div>
-                    <div class="rm-star rm-sm-3"></div>
-                    <div class="rm-star rm-sm-4"></div>
-                    <div class="rm-star rm-sm-5"></div>
-                    <div class="rm-star rm-sm-6"></div>
-                </div>
-            </div>
-            <div class="rm-star-right" aria-hidden="true">
-                <div class="rm-star-stack">
-                    <div class="rm-star rm-star-solid"></div>
-                </div>
-                <div class="rm-star-stack rm-star-small">
-                    <div class="rm-star rm-sm-solid"></div>
+                <div class="arcana-star-stack arcana-star-small">
+                    <div class="arcana-star arcana-sm-1"></div>
+                    <div class="arcana-star arcana-sm-2"></div>
+                    <div class="arcana-star arcana-sm-3"></div>
+                    <div class="arcana-star arcana-sm-4"></div>
+                    <div class="arcana-star arcana-sm-5"></div>
+                    <div class="arcana-star arcana-sm-6"></div>
                 </div>
             </div>
-            <div class="rm-diagonal-line" aria-hidden="true"></div>
+            <div class="arcana-star-right" aria-hidden="true">
+                <div class="arcana-star-stack">
+                    <div class="arcana-star arcana-star-solid"></div>
+                </div>
+                <div class="arcana-star-stack arcana-star-small">
+                    <div class="arcana-star arcana-sm-solid"></div>
+                </div>
+            </div>
+            <div class="arcana-diagonal-line" aria-hidden="true"></div>
 
-            <div class="rm-prompt-hints">
+            <div class="arcana-prompt-hints">
                 <button
                     type="button"
-                    class="rm-prompt-hint"
+                    class="arcana-prompt-hint"
                     onclick={() => void hideInterface()}
                 >
                     <KeyHint key="Esc" fontSize={36} />
@@ -593,7 +593,7 @@
                 </button>
                 <button
                     type="button"
-                    class="rm-prompt-hint"
+                    class="arcana-prompt-hint"
                     onclick={() => void activateMenuItem(focusedMenuIndex)}
                 >
                     <KeyHint key="↵" fontSize={36} />
@@ -603,17 +603,17 @@
         {/if}
 
         {#if currentScreen === "main"}
-            <aside class="rm-command" bind:this={commandRef}>
-                <ul class="rm-menu">
+            <aside class="arcana-command" bind:this={commandRef}>
+                <ul class="arcana-menu">
                     {#each MENU_ITEMS as item, index}
                         <li
-                            class="rm-menu-line"
+                            class="arcana-menu-line"
                             style:position="relative"
                             style:z-index={focusedMenuIndex === index ? 10 : 0}
                         >
                             <button
                                 type="button"
-                                class="rm-menu-item"
+                                class="arcana-menu-item"
                                 class:is-focused={focusedMenuIndex === index}
                                 class:is-disabled={!item.enabled}
                                 aria-disabled={!item.enabled}
@@ -629,11 +629,11 @@
                         </li>
                     {/each}
                 </ul>
-                <div class="rm-selection-quad" aria-hidden="true"></div>
+                <div class="arcana-selection-quad" aria-hidden="true"></div>
 
-                <footer class="rm-command-foot">
+                <footer class="arcana-command-foot">
                     {#if menuFeedback}
-                        <p class="rm-feedback">{menuFeedback}</p>
+                        <p class="arcana-feedback">{menuFeedback}</p>
                     {/if}
                 </footer>
             </aside>
@@ -700,27 +700,27 @@
         overflow: hidden;
     }
 
-    .rm-overlay {
-        --rm-black: #000000;
-        --rm-white: #ffffff;
-        --rm-red: #e5191c;
-        --rm-gray: #2e2e2e;
-        --rm-gold: #f5a623;
+    .arcana-overlay {
+        --arcana-black: #000000;
+        --arcana-white: #ffffff;
+        --arcana-red: #e5191c;
+        --arcana-gray: #2e2e2e;
+        --arcana-gold: #f5a623;
         position: relative;
         min-height: 100vh;
-        color: var(--rm-white);
+        color: var(--arcana-white);
         background: rgba(30, 0, 0, 0.8);
         font-family: "p5hatty", "Orbitron", Arial, sans-serif;
     }
 
-    .rm-scene {
+    .arcana-scene {
         position: relative;
         width: 100%;
         height: 100vh;
         overflow: hidden;
     }
 
-    .rm-calendar-widget {
+    .arcana-calendar-widget {
         position: absolute;
         top: 1.5rem;
         left: 1.5rem;
@@ -729,7 +729,7 @@
         pointer-events: none;
     }
 
-    .rm-task-panel {
+    .arcana-task-panel {
         position: absolute;
         top: 2rem;
         right: 2rem;
@@ -741,7 +741,7 @@
         pointer-events: none;
     }
 
-    .rm-countdown {
+    .arcana-countdown {
         width: 52rem;
         height: 16.9rem;
         background-repeat: no-repeat;
@@ -750,7 +750,7 @@
         position: relative;
     }
 
-    .rm-hint-board {
+    .arcana-hint-board {
         width: 52rem;
         height: 8rem;
         background-repeat: no-repeat;
@@ -762,16 +762,16 @@
         justify-content: center;
     }
 
-    .rm-task-panel > * + * {
+    .arcana-task-panel > * + * {
         margin-top: -1rem;
     }
 
-    .rm-hint-board[data-board="slim"] {
+    .arcana-hint-board[data-board="slim"] {
         width: 52rem;
         height: 7rem;
     }
 
-    .rm-hint-text {
+    .arcana-hint-text {
         font-family:
             "Source Han Sans SC", "Noto Sans SC", "方正兰亭黑_GBK", "Microsoft YaHei", sans-serif;
         font-weight: 900;
@@ -783,20 +783,20 @@
         paint-order: stroke fill;
     }
 
-    .rm-cd-mission-bg {
+    .arcana-cd-mission-bg {
         position: absolute;
         top: 61%; /* ← 位置 */
         left: 10%; /* ← 位置 */
         width: 80%; /* ← 宽度 */
         height: 27%; /* ← 高度 */
-        background: var(--rm-red);
+        background: var(--arcana-red);
         display: flex;
         align-items: center;
         justify-content: center;
         z-index: 1;
     }
 
-    .rm-cd-mission-text {
+    .arcana-cd-mission-text {
         font-family:
             "Source Han Sans SC", "Noto Sans SC", "方正兰亭黑_GBK", "Microsoft YaHei", sans-serif;
         font-weight: 900;
@@ -806,18 +806,18 @@
         line-height: 1;
     }
 
-    .rm-cd-prefix,
-    .rm-cd-middle,
-    .rm-cd-label-a,
-    .rm-cd-label-b,
-    .rm-cd-days-1,
-    .rm-cd-days-2,
-    .rm-cd-suffix {
+    .arcana-cd-prefix,
+    .arcana-cd-middle,
+    .arcana-cd-label-a,
+    .arcana-cd-label-b,
+    .arcana-cd-days-1,
+    .arcana-cd-days-2,
+    .arcana-cd-suffix {
         position: absolute;
         font-family:
             "Source Han Sans SC", "Noto Sans SC", "方正兰亭黑_GBK", "Microsoft YaHei", sans-serif;
         font-weight: 900;
-        color: var(--rm-red);
+        color: var(--arcana-red);
         letter-spacing: 0.02em;
         line-height: 1;
         white-space: nowrap;
@@ -825,21 +825,21 @@
     }
 
     /* ── 2字 布局 ── */
-    .rm-countdown[data-label-len="2"] .rm-cd-prefix {
+    .arcana-countdown[data-label-len="2"] .arcana-cd-prefix {
         top: 8%;
         left: 30%;
         font-size: clamp(1.4rem, 2.8vw, 2.8rem);
         transform: rotate(-14deg);
         z-index: 1;
     }
-    .rm-countdown[data-label-len="2"] .rm-cd-label-a {
+    .arcana-countdown[data-label-len="2"] .arcana-cd-label-a {
         top: 14%;
         left: 38%;
         font-size: clamp(3rem, 6vw, 6rem);
         transform: rotate(-14deg);
         z-index: 2;
     }
-    .rm-countdown[data-label-len="2"] .rm-cd-middle {
+    .arcana-countdown[data-label-len="2"] .arcana-cd-middle {
         top: 42%;
         left: 61%;
         font-size: clamp(1.2rem, 2.4vw, 2.4rem);
@@ -847,27 +847,27 @@
         transform: rotate(-12deg);
         z-index: 1;
     }
-    .rm-countdown[data-label-len="2"] .rm-cd-days-bg-1 {
+    .arcana-countdown[data-label-len="2"] .arcana-cd-days-bg-1 {
         position: absolute;
         top: 20%;
         right: 16%;
         width: 12%;
         height: 40%;
-        background: var(--rm-red);
+        background: var(--arcana-red);
         transform: rotate(-14deg);
         z-index: 1;
     }
-    .rm-countdown[data-label-len="2"] .rm-cd-days-bg-2 {
+    .arcana-countdown[data-label-len="2"] .arcana-cd-days-bg-2 {
         position: absolute;
         top: 20%;
         right: 7%;
         width: 15%;
         height: 38%;
-        background: var(--rm-red);
+        background: var(--arcana-red);
         transform: rotate(-14deg);
         z-index: 1;
     }
-    .rm-countdown[data-label-len="2"] .rm-cd-days-1 {
+    .arcana-countdown[data-label-len="2"] .arcana-cd-days-1 {
         top: 14%;
         right: 17%;
         font-size: clamp(4rem, 8vw, 8rem);
@@ -875,7 +875,7 @@
         transform: rotate(-14deg);
         z-index: 2;
     }
-    .rm-countdown[data-label-len="2"] .rm-cd-days-2 {
+    .arcana-countdown[data-label-len="2"] .arcana-cd-days-2 {
         top: 12%;
         right: 8%;
         font-size: clamp(4rem, 8vw, 8rem);
@@ -883,7 +883,7 @@
         transform: rotate(-14deg);
         z-index: 2;
     }
-    .rm-countdown[data-label-len="2"] .rm-cd-suffix {
+    .arcana-countdown[data-label-len="2"] .arcana-cd-suffix {
         top: 33%;
         right: 1%;
         font-size: clamp(1.4rem, 2.8vw, 2.8rem);
@@ -892,28 +892,28 @@
     }
 
     /* ── 4字 布局 ── */
-    .rm-countdown[data-label-len="4"] .rm-cd-prefix {
+    .arcana-countdown[data-label-len="4"] .arcana-cd-prefix {
         top: 7%;
         left: 8.5%;
         font-size: clamp(1.4rem, 2.8vw, 2.8rem);
         transform: rotate(-14deg);
         z-index: 1;
     }
-    .rm-countdown[data-label-len="4"] .rm-cd-label-a {
+    .arcana-countdown[data-label-len="4"] .arcana-cd-label-a {
         top: 15%;
         left: 13%;
         font-size: clamp(3rem, 6vw, 6rem);
         transform: rotate(-14deg);
         z-index: 2;
     }
-    .rm-countdown[data-label-len="4"] .rm-cd-label-b {
+    .arcana-countdown[data-label-len="4"] .arcana-cd-label-b {
         top: 15%;
         left: 38%;
         font-size: clamp(3rem, 6vw, 6rem);
         transform: rotate(-14deg);
         z-index: 2;
     }
-    .rm-countdown[data-label-len="4"] .rm-cd-middle {
+    .arcana-countdown[data-label-len="4"] .arcana-cd-middle {
         top: 43%;
         left: 60%;
         font-size: clamp(1.2rem, 2.4vw, 2.4rem);
@@ -921,27 +921,27 @@
         transform: rotate(-12deg);
         z-index: 1;
     }
-    .rm-countdown[data-label-len="4"] .rm-cd-days-bg-1 {
+    .arcana-countdown[data-label-len="4"] .arcana-cd-days-bg-1 {
         position: absolute;
         top: 20%; /* ← 位置 */
         right: 18%; /* ← 位置 */
         width: 12%; /* ← 宽度 */
         height: 40%; /* ← 高度 */
-        background: var(--rm-red);
+        background: var(--arcana-red);
         transform: rotate(-14deg); /* ← 角度 */
         z-index: 1;
     }
-    .rm-countdown[data-label-len="4"] .rm-cd-days-bg-2 {
+    .arcana-countdown[data-label-len="4"] .arcana-cd-days-bg-2 {
         position: absolute;
         top: 20%; /* ← 位置 */
         right: 9%; /* ← 位置 */
         width: 15%; /* ← 宽度 */
         height: 38%; /* ← 高度 */
-        background: var(--rm-red);
+        background: var(--arcana-red);
         transform: rotate(-14deg); /* ← 角度 */
         z-index: 1;
     }
-    .rm-countdown[data-label-len="4"] .rm-cd-days-1 {
+    .arcana-countdown[data-label-len="4"] .arcana-cd-days-1 {
         top: 14%;
         right: 19%;
         font-size: clamp(4rem, 8vw, 8rem);
@@ -949,7 +949,7 @@
         transform: rotate(-14deg);
         z-index: 2;
     }
-    .rm-countdown[data-label-len="4"] .rm-cd-days-2 {
+    .arcana-countdown[data-label-len="4"] .arcana-cd-days-2 {
         top: 12%;
         right: 10%;
         font-size: clamp(4rem, 8vw, 8rem);
@@ -957,7 +957,7 @@
         transform: rotate(-14deg);
         z-index: 2;
     }
-    .rm-countdown[data-label-len="4"] .rm-cd-suffix {
+    .arcana-countdown[data-label-len="4"] .arcana-cd-suffix {
         top: 36%;
         right: 2%;
         font-size: clamp(1.4rem, 2.8vw, 2.8rem);
@@ -965,7 +965,7 @@
         z-index: 1;
     }
 
-    .rm-star-stack {
+    .arcana-star-stack {
         position: absolute;
         top: 50%;
         left: 35%;
@@ -976,7 +976,7 @@
         pointer-events: none;
     }
 
-    .rm-star {
+    .arcana-star {
         position: absolute;
         inset: 0;
         clip-path: polygon(
@@ -993,81 +993,81 @@
         );
     }
 
-    .rm-star-1 {
-        background: var(--rm-white);
+    .arcana-star-1 {
+        background: var(--arcana-white);
         transform: scale(0.92);
     }
-    .rm-star-2 {
-        background: var(--rm-black);
+    .arcana-star-2 {
+        background: var(--arcana-black);
         transform: scale(0.8);
     }
-    .rm-star-3 {
-        background: var(--rm-white);
+    .arcana-star-3 {
+        background: var(--arcana-white);
         transform: scale(0.68);
     }
-    .rm-star-4 {
-        background: var(--rm-black);
+    .arcana-star-4 {
+        background: var(--arcana-black);
         transform: scale(0.56);
     }
-    .rm-star-5 {
-        background: var(--rm-white);
+    .arcana-star-5 {
+        background: var(--arcana-white);
         transform: scale(0.44);
     }
-    .rm-star-6 {
-        background: var(--rm-black);
+    .arcana-star-6 {
+        background: var(--arcana-black);
         transform: scale(0.32);
     }
-    .rm-star-7 {
-        background: var(--rm-white);
+    .arcana-star-7 {
+        background: var(--arcana-white);
         transform: scale(0.2);
     }
-    .rm-star-8 {
-        background: var(--rm-black);
+    .arcana-star-8 {
+        background: var(--arcana-black);
         transform: scale(0.08);
     }
 
-    .rm-star-solid {
-        background: var(--rm-black);
+    .arcana-star-solid {
+        background: var(--arcana-black);
         transform: scale(0.92);
     }
 
-    .rm-star-small {
+    .arcana-star-small {
         top: 62%;
         left: 35%;
         transform: translate(-50%, -50%) rotate(20deg);
     }
 
-    .rm-sm-1 {
-        background: var(--rm-white);
+    .arcana-sm-1 {
+        background: var(--arcana-white);
         transform: scale(0.5);
     }
-    .rm-sm-2 {
-        background: var(--rm-black);
+    .arcana-sm-2 {
+        background: var(--arcana-black);
         transform: scale(0.48);
     }
-    .rm-sm-3 {
-        background: var(--rm-white);
+    .arcana-sm-3 {
+        background: var(--arcana-white);
         transform: scale(0.38);
     }
-    .rm-sm-4 {
-        background: var(--rm-black);
+    .arcana-sm-4 {
+        background: var(--arcana-black);
         transform: scale(0.28);
     }
-    .rm-sm-5 {
-        background: var(--rm-white);
+    .arcana-sm-5 {
+        background: var(--arcana-white);
         transform: scale(0.18);
     }
-    .rm-sm-6 {
-        background: var(--rm-black);
+    .arcana-sm-6 {
+        background: var(--arcana-black);
         transform: scale(0.08);
     }
 
-    .rm-sm-solid {
-        background: var(--rm-black);
+    .arcana-sm-solid {
+        background: var(--arcana-black);
         transform: scale(0.52);
     }
 
-    .rm-star-left {
+    .arcana-star-left {
         position: absolute;
         inset: 0;
         clip-path: polygon(0 0, 20% 0, 50% 100%, 0 100%);
@@ -1075,7 +1075,7 @@
         pointer-events: none;
     }
 
-    .rm-star-right {
+    .arcana-star-right {
         position: absolute;
         inset: 0;
         clip-path: polygon(20% 0, 100% 0, 100% 100%, 50% 100%);
@@ -1083,16 +1083,16 @@
         pointer-events: none;
     }
 
-    .rm-diagonal-line {
+    .arcana-diagonal-line {
         position: absolute;
         inset: 0;
         clip-path: polygon(19.85% 0%, 20.15% 0%, 50.15% 100%, 49.85% 100%);
-        background: var(--rm-white);
+        background: var(--arcana-white);
         z-index: 1;
         pointer-events: none;
     }
 
-    .rm-command {
+    .arcana-command {
         position: absolute;
         left: 30%;
         top: 50%;
@@ -1101,59 +1101,59 @@
         transform: translateY(-50%);
     }
 
-    .rm-menu {
+    .arcana-menu {
         margin: 0;
         padding: 0;
         list-style: none;
     }
 
-    .rm-menu-line {
+    .arcana-menu-line {
         margin: -1rem 0;
     }
 
-    .rm-menu-line:nth-child(1) {
+    .arcana-menu-line:nth-child(1) {
         margin-left: 1.5vw;
     }
-    .rm-menu-line:nth-child(2) {
+    .arcana-menu-line:nth-child(2) {
         margin-left: 5vw;
     }
-    .rm-menu-line:nth-child(3) {
+    .arcana-menu-line:nth-child(3) {
         margin-left: 1vw;
     }
-    .rm-menu-line:nth-child(4) {
+    .arcana-menu-line:nth-child(4) {
         margin-left: 7.5vw;
     }
-    .rm-menu-line:nth-child(5) {
+    .arcana-menu-line:nth-child(5) {
         margin-left: 7vw;
     }
-    .rm-menu-line:nth-child(6) {
+    .arcana-menu-line:nth-child(6) {
         margin-left: 10vw;
     }
-    .rm-menu-line:nth-child(1) .rm-menu-item {
+    .arcana-menu-line:nth-child(1) .arcana-menu-item {
         transform: rotate(-30deg);
         clip-path: polygon(0% 10%, 100% 0%, 90% 88%, 10% 96%);
     }
-    .rm-menu-line:nth-child(2) .rm-menu-item {
+    .arcana-menu-line:nth-child(2) .arcana-menu-item {
         transform: rotate(-27deg);
         clip-path: polygon(0% 5%, 99% 10%, 96% 94%, 2% 100%);
     }
-    .rm-menu-line:nth-child(3) .rm-menu-item {
+    .arcana-menu-line:nth-child(3) .arcana-menu-item {
         transform: rotate(-20deg);
         clip-path: polygon(2% 0%, 100% 8%, 98% 100%, 0% 90%);
     }
-    .rm-menu-line:nth-child(4) .rm-menu-item {
+    .arcana-menu-line:nth-child(4) .arcana-menu-item {
         transform: rotate(-8deg);
         clip-path: polygon(0% 6%, 98% 0%, 100% 92%, 1% 100%);
     }
-    .rm-menu-line:nth-child(5) .rm-menu-item {
+    .arcana-menu-line:nth-child(5) .arcana-menu-item {
         transform: rotate(-2deg);
         clip-path: polygon(1% 0%, 100% 4%, 97% 96%, 0% 100%);
     }
-    .rm-menu-line:nth-child(6) .rm-menu-item {
+    .arcana-menu-line:nth-child(6) .arcana-menu-item {
         transform: rotate(2deg);
         clip-path: polygon(0% 8%, 99% 0%, 100% 100%, 3% 92%);
     }
-    .rm-menu-item {
+    .arcana-menu-item {
         width: fit-content;
         border: 0;
         padding: 1rem 4rem;
@@ -1161,26 +1161,26 @@
         align-items: center;
         gap: 0.2rem;
         cursor: pointer;
-        color: var(--rm-white);
-        background: var(--rm-black);
+        color: var(--arcana-white);
+        background: var(--arcana-black);
         transition: background-color 140ms ease;
     }
 
-    .rm-menu-item:not(.is-disabled):hover,
-    .rm-menu-item.is-focused {
-        background: var(--rm-red);
+    .arcana-menu-item:not(.is-disabled):hover,
+    .arcana-menu-item.is-focused {
+        background: var(--arcana-red);
     }
 
-    .rm-menu-item.is-disabled {
+    .arcana-menu-item.is-disabled {
         cursor: default;
     }
 
-    .rm-menu-item:focus-visible {
-        outline: 0.16rem solid var(--rm-white);
+    .arcana-menu-item:focus-visible {
+        outline: 0.16rem solid var(--arcana-white);
         outline-offset: 0.12rem;
     }
 
-    .rm-selection-quad {
+    .arcana-selection-quad {
         position: absolute;
         left: var(--quad-x);
         top: var(--quad-y);
@@ -1188,7 +1188,7 @@
         height: var(--quad-h);
         transform: rotate(var(--quad-rot));
         z-index: 15;
-        background: var(--rm-red);
+        background: var(--arcana-red);
         mix-blend-mode: difference;
         clip-path: var(
             --quad-clip,
@@ -1204,26 +1204,26 @@
             clip-path 120ms ease;
     }
 
-    .rm-command-foot {
+    .arcana-command-foot {
         margin-top: 1rem;
         transform: rotate(2deg);
     }
 
-    .rm-feedback {
+    .arcana-feedback {
         margin: 0;
         font-size: 0.8rem;
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.08em;
-        color: var(--rm-white);
-        background: var(--rm-red);
+        color: var(--arcana-white);
+        background: var(--arcana-red);
         display: inline-block;
         padding: 0.24rem 0.42rem;
     }
 
     /* ─── Shared styles for screen components ─── */
 
-    :global(.rm-stage) {
+    :global(.arcana-stage) {
         position: absolute;
         inset: 0;
         display: flex;
@@ -1232,7 +1232,7 @@
         z-index: 2;
     }
 
-    :global(.rm-back-btn) {
+    :global(.arcana-back-btn) {
         position: fixed;
         bottom: clamp(1.5rem, 3vh, 3.5rem);
         left: clamp(1.5rem, 3vw, 4rem);
@@ -1248,15 +1248,15 @@
         transition: transform 120ms ease;
     }
 
-    :global(.rm-back-btn:hover) {
+    :global(.arcana-back-btn:hover) {
         transform: rotate(2deg) scale(1.06);
     }
 
-    :global(.rm-back-btn .p5-prompt-word) {
+    :global(.arcana-back-btn .p5-prompt-word) {
         margin-left: -1rem;
     }
 
-    .rm-prompt-hints {
+    .arcana-prompt-hints {
         position: fixed;
         bottom: clamp(1.5rem, 3vh, 3.5rem);
         left: clamp(1.5rem, 3vw, 4rem);
@@ -1266,7 +1266,7 @@
         gap: 0.5rem;
     }
 
-    .rm-prompt-hint {
+    .arcana-prompt-hint {
         display: flex;
         align-items: center;
         gap: 0;
@@ -1277,11 +1277,11 @@
         transition: transform 120ms ease;
     }
 
-    .rm-prompt-hint:hover {
+    .arcana-prompt-hint:hover {
         transform: scale(1.06);
     }
 
-    .rm-prompt-hint :global(.p5-prompt-word) {
+    .arcana-prompt-hint :global(.p5-prompt-word) {
         margin-left: -1rem;
     }
 
@@ -1291,22 +1291,22 @@
     }
 
     :global(.state-text.error) {
-        color: var(--rm-red);
+        color: var(--arcana-red);
         font-weight: 700;
     }
 
     /* Tarot card styles — :global because nebula cards are created programmatically outside Svelte template */
-    :global(.rm-nebula-card.rm-tarot-card) {
+    :global(.arcana-nebula-card.arcana-tarot-card) {
         cursor: pointer;
         transition: scale 160ms ease;
     }
 
-    :global(.rm-nebula-card.rm-tarot-card:hover) {
+    :global(.arcana-nebula-card.arcana-tarot-card:hover) {
         scale: 1.12;
         z-index: 5;
     }
 
-    :global(.rm-tarot-card) {
+    :global(.arcana-tarot-card) {
         display: block;
         border: none;
         background: none;
@@ -1316,15 +1316,15 @@
         transform: rotate(var(--card-rot, 0deg));
         transition: transform 200ms ease;
         font-family: "p5hatty", "Orbitron", Arial, sans-serif;
-        color: var(--rm-white);
+        color: var(--arcana-white);
     }
 
-    :global(.rm-tarot-card:hover) {
+    :global(.arcana-tarot-card:hover) {
         transform: translateY(-6px) rotateX(4deg) rotate(var(--card-rot, 0deg));
         z-index: 5;
     }
 
-    :global(.rm-tarot-card-inner) {
+    :global(.arcana-tarot-card-inner) {
         aspect-ratio: 0.6 / 1;
         display: flex;
         flex-direction: column;
@@ -1332,7 +1332,7 @@
         border: 2px solid rgba(255, 255, 255, 0.15);
     }
 
-    :global(.rm-tarot-top) {
+    :global(.arcana-tarot-top) {
         background: #ffffff;
         color: #000000;
         padding: 3px 5px;
@@ -1342,13 +1342,13 @@
         flex-shrink: 0;
     }
 
-    :global(.rm-tarot-level) {
+    :global(.arcana-tarot-level) {
         font-size: 11px;
         font-weight: 800;
         letter-spacing: 0.06em;
     }
 
-    :global(.rm-tarot-pack) {
+    :global(.arcana-tarot-pack) {
         font-size: 7px;
         font-weight: 700;
         text-transform: uppercase;
@@ -1361,7 +1361,7 @@
         max-width: 60%;
     }
 
-    :global(.rm-tarot-art) {
+    :global(.arcana-tarot-art) {
         flex: 1;
         background: #000000;
         position: relative;
@@ -1372,11 +1372,11 @@
         opacity: 0.35;
     }
 
-    :global(.rm-tarot-card--leveled .rm-tarot-art) {
+    :global(.arcana-tarot-card--leveled .arcana-tarot-art) {
         opacity: 1;
     }
 
-    :global(.rm-nebula-image-card) {
+    :global(.arcana-nebula-image-card) {
         width: 160px;
         height: 320px;
         background: #ffffff;
@@ -1385,8 +1385,8 @@
         grid-template-rows: 1fr 32fr 7fr;
     }
 
-    :global(.rm-nebula-title-area),
-    :global(.rm-image-card-title-area) {
+    :global(.arcana-nebula-title-area),
+    :global(.arcana-image-card-title-area) {
         grid-column: 1 / -1;
         grid-row: 3;
         overflow: hidden;
@@ -1396,7 +1396,7 @@
         transform: translateY(-50%);
     }
 
-    :global(.rm-nebula-image-card img) {
+    :global(.arcana-nebula-image-card img) {
         grid-column: 2;
         grid-row: 2;
         width: 100%;
@@ -1407,14 +1407,14 @@
         min-height: 0;
     }
 
-    :global(.rm-skill-image-card) {
+    :global(.arcana-skill-image-card) {
         width: 40rem;
         aspect-ratio: 768 / 1376;
         margin-top: 3rem;
         flex-shrink: 0;
     }
 
-    :global(.rm-skill-image-card img) {
+    :global(.arcana-skill-image-card img) {
         width: 100%;
         height: 100%;
         object-fit: cover;
@@ -1423,13 +1423,13 @@
         min-height: 0;
     }
 
-    :global(.rm-tarot-star-stack) {
+    :global(.arcana-tarot-star-stack) {
         position: absolute;
         width: 70%;
         aspect-ratio: 1;
     }
 
-    :global(.rm-tarot-star) {
+    :global(.arcana-tarot-star) {
         position: absolute;
         inset: 0;
         clip-path: polygon(
@@ -1446,28 +1446,28 @@
         );
     }
 
-    :global(.rm-ts-1) {
+    :global(.arcana-ts-1) {
         background: #ffffff;
         transform: scale(0.85);
     }
-    :global(.rm-ts-2) {
+    :global(.arcana-ts-2) {
         background: #000000;
         transform: scale(0.68);
     }
-    :global(.rm-ts-3) {
+    :global(.arcana-ts-3) {
         background: #ffffff;
         transform: scale(0.51);
     }
-    :global(.rm-ts-4) {
+    :global(.arcana-ts-4) {
         background: #000000;
         transform: scale(0.34);
     }
-    :global(.rm-ts-5) {
+    :global(.arcana-ts-5) {
         background: #ffffff;
         transform: scale(0.17);
     }
 
-    :global(.rm-tarot-stripe) {
+    :global(.arcana-tarot-stripe) {
         position: absolute;
         top: 0;
         left: 40%;
@@ -1478,18 +1478,18 @@
         transform: skewX(-20deg);
     }
 
-    :global(.rm-tarot-card--leveled .rm-tarot-stripe) {
+    :global(.arcana-tarot-card--leveled .arcana-tarot-stripe) {
         opacity: 0.7;
     }
 
-    :global(.rm-tarot-name-strip) {
+    :global(.arcana-tarot-name-strip) {
         background: #e5191c;
         padding: 2px 5px;
         flex-shrink: 0;
         overflow: hidden;
     }
 
-    :global(.rm-tarot-name) {
+    :global(.arcana-tarot-name) {
         display: block;
         font-size: 8px;
         font-weight: 800;
@@ -1501,7 +1501,7 @@
         text-overflow: ellipsis;
     }
 
-    :global(.rm-tarot-bottom) {
+    :global(.arcana-tarot-bottom) {
         background: #000000;
         padding: 3px 5px;
         display: flex;
@@ -1510,20 +1510,20 @@
         flex-shrink: 0;
     }
 
-    :global(.rm-tarot-progress) {
+    :global(.arcana-tarot-progress) {
         flex: 1;
         height: 4px;
         background: rgba(255, 255, 255, 0.15);
         overflow: hidden;
     }
 
-    :global(.rm-tarot-progress-fill) {
+    :global(.arcana-tarot-progress-fill) {
         height: 100%;
         background: #e5191c;
         transition: width 300ms ease;
     }
 
-    :global(.rm-tarot-lv) {
+    :global(.arcana-tarot-lv) {
         font-size: 7px;
         font-weight: 700;
         letter-spacing: 0.06em;
@@ -1531,35 +1531,35 @@
         flex-shrink: 0;
     }
 
-    :global(.rm-tarot-card:not(.rm-tarot-card--leveled) .rm-tarot-card-inner) {
+    :global(.arcana-tarot-card:not(.arcana-tarot-card--leveled) .arcana-tarot-card-inner) {
         border-color: rgba(255, 255, 255, 0.08);
     }
 
-    :global(.rm-tarot-card:not(.rm-tarot-card--leveled) .rm-tarot-top) {
+    :global(.arcana-tarot-card:not(.arcana-tarot-card--leveled) .arcana-tarot-top) {
         background: rgba(255, 255, 255, 0.3);
     }
 
-    :global(.rm-tarot-card:not(.rm-tarot-card--leveled) .rm-tarot-name-strip) {
+    :global(.arcana-tarot-card:not(.arcana-tarot-card--leveled) .arcana-tarot-name-strip) {
         background: rgba(229, 25, 28, 0.35);
     }
 
-    :global(.rm-tarot-card:not(.rm-tarot-card--leveled) .rm-tarot-lv) {
+    :global(.arcana-tarot-card:not(.arcana-tarot-card--leveled) .arcana-tarot-lv) {
         color: rgba(255, 255, 255, 0.3);
     }
 
-    :global(.rm-tarot-card--large) {
+    :global(.arcana-tarot-card--large) {
         width: clamp(400px, 27.5vw, 625px);
         margin-top: clamp(4rem, 10vh, 12rem);
         cursor: default;
         transform: none;
     }
 
-    :global(.rm-tarot-card--large:hover) {
+    :global(.arcana-tarot-card--large:hover) {
         transform: none;
     }
 
     @media (max-width: 980px) {
-        .rm-command {
+        .arcana-command {
             position: relative;
             left: auto;
             top: auto;
@@ -1571,7 +1571,7 @@
             box-sizing: border-box;
         }
 
-        .rm-selection-quad {
+        .arcana-selection-quad {
             display: none;
         }
     }

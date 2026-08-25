@@ -259,7 +259,7 @@ pub fn run() {
                             let _ = window.set_always_on_top(true);
                             let _ = window.show();
                             let _ = window.set_focus();
-                            let _ = window.emit("reality://summoned", ());
+                            let _ = window.emit("arcana://summoned", ());
                         }
                     }
                 })?;

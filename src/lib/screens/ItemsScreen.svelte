@@ -383,15 +383,15 @@
     });
 </script>
 
-<section class="rm-stage">
+<section class="arcana-stage">
     {#if itemLoading}
         <p class="state-text" style="padding: 2rem;">Loading items...</p>
     {:else if itemError}
         <p class="state-text error" style="padding: 2rem;">{itemError}</p>
     {:else if itemData}
-        <div class="rm-items-layout">
+        <div class="arcana-items-layout">
             <svg
-                class="rm-items-divider"
+                class="arcana-items-divider"
                 viewBox="-700 0 800 1000"
                 preserveAspectRatio="xMaxYMid meet"
                 aria-hidden="true"
@@ -399,102 +399,102 @@
                 <path
                     d="M -685.48 -200 A 1993 1993 0 0 1 -685.48 1200"
                     fill="none"
-                    stroke="var(--rm-black)"
+                    stroke="var(--arcana-black)"
                     stroke-width="48"
                 />
                 <path
                     d="M -634.27 -200 A 2041 2041 0 0 1 -634.27 1200"
                     fill="none"
-                    stroke="var(--rm-gray)"
+                    stroke="var(--arcana-gray)"
                     stroke-width="48"
                 />
                 <path
                     d="M -583.24 -200 A 2089 2089 0 0 1 -583.24 1200"
                     fill="none"
-                    stroke="var(--rm-black)"
+                    stroke="var(--arcana-black)"
                     stroke-width="48"
                 />
                 <path
                     d="M -532.37 -200 A 2137 2137 0 0 1 -532.37 1200"
                     fill="none"
-                    stroke="var(--rm-gray)"
+                    stroke="var(--arcana-gray)"
                     stroke-width="48"
                 />
                 <path
                     d="M -481.63 -200 A 2185 2185 0 0 1 -481.63 1200"
                     fill="none"
-                    stroke="var(--rm-black)"
+                    stroke="var(--arcana-black)"
                     stroke-width="48"
                 />
                 <path
                     d="M -431.02 -200 A 2233 2233 0 0 1 -431.02 1200"
                     fill="none"
-                    stroke="var(--rm-gray)"
+                    stroke="var(--arcana-gray)"
                     stroke-width="48"
                 />
                 <path
                     d="M -380.53 -200 A 2281 2281 0 0 1 -380.53 1200"
                     fill="none"
-                    stroke="var(--rm-black)"
+                    stroke="var(--arcana-black)"
                     stroke-width="48"
                 />
                 <path
                     d="M -330.16 -200 A 2329 2329 0 0 1 -330.16 1200"
                     fill="none"
-                    stroke="var(--rm-gray)"
+                    stroke="var(--arcana-gray)"
                     stroke-width="48"
                 />
                 <path
                     d="M -279.88 -200 A 2377 2377 0 0 1 -279.88 1200"
                     fill="none"
-                    stroke="var(--rm-black)"
+                    stroke="var(--arcana-black)"
                     stroke-width="48"
                 />
                 <path
                     d="M -229.7 -200 A 2425 2425 0 0 1 -229.7 1200"
                     fill="none"
-                    stroke="var(--rm-gray)"
+                    stroke="var(--arcana-gray)"
                     stroke-width="48"
                 />
                 <path
                     d="M -179.6 -200 A 2473 2473 0 0 1 -179.6 1200"
                     fill="none"
-                    stroke="var(--rm-black)"
+                    stroke="var(--arcana-black)"
                     stroke-width="48"
                 />
                 <path
                     d="M -129.6 -200 A 2521 2521 0 0 1 -129.6 1200"
                     fill="none"
-                    stroke="var(--rm-gray)"
+                    stroke="var(--arcana-gray)"
                     stroke-width="48"
                 />
                 <path
                     d="M -79.68 -200 A 2569 2569 0 0 1 -79.68 1200"
                     fill="none"
-                    stroke="var(--rm-black)"
+                    stroke="var(--arcana-black)"
                     stroke-width="48"
                 />
                 <path
                     d="M 0 0 A 2596 2596 0 0 1 0 1000"
                     fill="none"
-                    stroke="var(--rm-white)"
+                    stroke="var(--arcana-white)"
                     stroke-width="6"
                 />
             </svg>
             <!-- LEFT: Category nav + stats -->
-            <div class="rm-items-sidebar">
-                <nav class="rm-items-cat-nav" bind:this={catNavRef}>
-                    <ul class="rm-items-cat-list">
+            <div class="arcana-items-sidebar">
+                <nav class="arcana-items-cat-nav" bind:this={catNavRef}>
+                    <ul class="arcana-items-cat-list">
                         {#each itemData.stats.by_category as cat, i}
                             <li
-                                class="rm-items-cat-line"
+                                class="arcana-items-cat-line"
                                 style:z-index={itemFilterCategory === cat.name
                                     ? 10
                                     : 0}
                             >
                                 <button
                                     type="button"
-                                    class="rm-items-cat-btn"
+                                    class="arcana-items-cat-btn"
                                     class:is-active={itemFilterCategory ===
                                         cat.name}
                                     bind:this={catBtnRefs[i]}
@@ -518,10 +518,10 @@
                             </li>
                         {/each}
                     </ul>
-                    <div class="rm-items-cat-quad" aria-hidden="true"></div>
+                    <div class="arcana-items-cat-quad" aria-hidden="true"></div>
                 </nav>
 
-                <button type="button" class="rm-back-btn" onclick={onBack}>
+                <button type="button" class="arcana-back-btn" onclick={onBack}>
                     <KeyHint key="Esc" fontSize={36} />
                     <PromptWord text="Back" fontSize={72} />
                 </button>
@@ -529,21 +529,21 @@
 
             <!-- Tangent scroll indicator (read-only, decorative) -->
             <div
-                class="rm-items-scroll-indicator"
+                class="arcana-items-scroll-indicator"
                 aria-hidden="true"
                 style="--thumb-ratio: {thumbRatio}; --scroll-ratio: {scrollRatio};"
             >
-                <div class="rm-items-scroll-track">
-                    <div class="rm-items-scroll-thumb"></div>
+                <div class="arcana-items-scroll-track">
+                    <div class="arcana-items-scroll-thumb"></div>
                 </div>
             </div>
 
             <!-- RIGHT: Sort + list + summary -->
-            <div class="rm-items-content">
-                <div class="rm-items-sort-bar">
+            <div class="arcana-items-content">
+                <div class="arcana-items-sort-bar">
                     <button
                         type="button"
-                        class="rm-ach-tab"
+                        class="arcana-ach-tab"
                         class:active={sortKey === "name"}
                         onclick={() => toggleSort("name")}
                     >
@@ -551,7 +551,7 @@
                     </button>
                     <button
                         type="button"
-                        class="rm-ach-tab"
+                        class="arcana-ach-tab"
                         class:active={sortKey === "days_owned"}
                         onclick={() => toggleSort("days_owned")}
                     >
@@ -559,7 +559,7 @@
                     </button>
                     <button
                         type="button"
-                        class="rm-ach-tab"
+                        class="arcana-ach-tab"
                         class:active={sortKey === "price"}
                         onclick={() => toggleSort("price")}
                     >
@@ -567,19 +567,19 @@
                     </button>
                     <button
                         type="button"
-                        class="rm-ach-tab"
+                        class="arcana-ach-tab"
                         class:active={sortKey === "daily_cost"}
                         onclick={() => toggleSort("daily_cost")}
                     >
                         Daily{getSortIndicator("daily_cost")}
                     </button>
                 </div>
-                <div class="rm-items-list" bind:this={listRef}>
+                <div class="arcana-items-list" bind:this={listRef}>
                     {#each getFilteredSortedItems() as item, i}
                         {@const pill = getPillContent(item)}
                         <button
                             type="button"
-                            class="rm-item-row"
+                            class="arcana-item-row"
                             class:is-selected={selectedItem?.id === item.id}
                             bind:this={rowRefs[i]}
                             style="width: {getItemWidthPercent(
@@ -596,17 +596,17 @@
                         >
                             {#if selectedItem?.id === item.id}
                                 <span
-                                    class="rm-item-selection-tri"
+                                    class="arcana-item-selection-tri"
                                     aria-hidden="true"
                                 ></span>
                             {/if}
-                            <span class="rm-item-row-name">{item.name}</span>
+                            <span class="arcana-item-row-name">{item.name}</span>
                             {#if pill}
-                                <span class="rm-item-pill" aria-hidden="true">
-                                    <span class="rm-item-pill-main"
+                                <span class="arcana-item-pill" aria-hidden="true">
+                                    <span class="arcana-item-pill-main"
                                         >{pill.main}</span
                                     >
-                                    <span class="rm-item-pill-unit"
+                                    <span class="arcana-item-pill-unit"
                                         >{pill.unit}</span
                                     >
                                 </span>
@@ -624,7 +624,7 @@
 </section>
 
 <style>
-    .rm-items-layout {
+    .arcana-items-layout {
         display: grid;
         grid-template-columns: clamp(26rem, 42vw, 46rem) 1fr;
         overflow: hidden;
@@ -633,7 +633,7 @@
         position: relative;
     }
 
-    .rm-items-divider {
+    .arcana-items-divider {
         position: absolute;
         top: 0;
         left: clamp(26rem, 42vw, 46rem);
@@ -649,7 +649,7 @@
     }
 
     /* ── Left sidebar: category nav + stats ── */
-    .rm-items-sidebar {
+    .arcana-items-sidebar {
         display: flex;
         flex-direction: column;
         height: 100%;
@@ -661,7 +661,7 @@
         z-index: 1;
     }
 
-    .rm-items-cat-nav {
+    .arcana-items-cat-nav {
         position: relative;
         isolation: isolate;
         overflow: hidden;
@@ -669,7 +669,7 @@
         padding: 3.2rem 0 3.2rem 0.8rem;
     }
 
-    .rm-items-cat-list {
+    .arcana-items-cat-list {
         list-style: none;
         margin: 0;
         padding: 0;
@@ -677,71 +677,71 @@
         flex-direction: column;
     }
 
-    .rm-items-cat-line {
+    .arcana-items-cat-line {
         margin: -0.64rem 0;
         position: relative;
     }
 
-    .rm-items-cat-line:nth-child(odd) {
+    .arcana-items-cat-line:nth-child(odd) {
         margin-left: 0;
     }
 
-    .rm-items-cat-line:nth-child(even) {
+    .arcana-items-cat-line:nth-child(even) {
         margin-left: 3.2vw;
     }
 
-    .rm-items-cat-btn {
+    .arcana-items-cat-btn {
         display: inline-flex;
         align-items: center;
         gap: 0.5rem;
         border: none;
-        background: var(--rm-black);
+        background: var(--arcana-black);
         cursor: pointer;
         padding: 1.28rem 3.2rem 1.28rem 2.56rem;
         width: fit-content;
         transition: background-color 140ms ease;
     }
 
-    .rm-items-cat-btn:not(.is-active):hover {
-        background: var(--rm-red);
+    .arcana-items-cat-btn:not(.is-active):hover {
+        background: var(--arcana-red);
     }
 
-    .rm-items-cat-btn.is-active {
-        background: var(--rm-red);
+    .arcana-items-cat-btn.is-active {
+        background: var(--arcana-red);
         z-index: 1;
     }
 
-    .rm-items-cat-btn :global(.p5m) {
+    .arcana-items-cat-btn :global(.p5m) {
         font-size: clamp(3.2rem, 5.12vw, 4.8rem);
     }
 
     /* Per-item rotation + clip-path via <li> wrapper */
-    .rm-items-cat-line:nth-child(6n + 1) .rm-items-cat-btn {
+    .arcana-items-cat-line:nth-child(6n + 1) .arcana-items-cat-btn {
         transform: rotate(-5deg);
         clip-path: polygon(0% 8%, 100% 0%, 98% 92%, 2% 100%);
     }
-    .rm-items-cat-line:nth-child(6n + 2) .rm-items-cat-btn {
+    .arcana-items-cat-line:nth-child(6n + 2) .arcana-items-cat-btn {
         transform: rotate(-3deg);
         clip-path: polygon(1% 5%, 99% 0%, 97% 96%, 0% 100%);
     }
-    .rm-items-cat-line:nth-child(6n + 3) .rm-items-cat-btn {
+    .arcana-items-cat-line:nth-child(6n + 3) .arcana-items-cat-btn {
         transform: rotate(-1deg);
         clip-path: polygon(2% 0%, 100% 4%, 96% 100%, 0% 92%);
     }
-    .rm-items-cat-line:nth-child(6n + 4) .rm-items-cat-btn {
+    .arcana-items-cat-line:nth-child(6n + 4) .arcana-items-cat-btn {
         transform: rotate(1deg);
         clip-path: polygon(0% 6%, 98% 0%, 100% 94%, 3% 100%);
     }
-    .rm-items-cat-line:nth-child(6n + 5) .rm-items-cat-btn {
+    .arcana-items-cat-line:nth-child(6n + 5) .arcana-items-cat-btn {
         transform: rotate(2deg);
         clip-path: polygon(1% 0%, 97% 4%, 99% 100%, 2% 96%);
     }
-    .rm-items-cat-line:nth-child(6n + 6) .rm-items-cat-btn {
+    .arcana-items-cat-line:nth-child(6n + 6) .arcana-items-cat-btn {
         transform: rotate(-2deg);
         clip-path: polygon(0% 4%, 100% 0%, 98% 96%, 1% 100%);
     }
 
-    .rm-items-cat-quad {
+    .arcana-items-cat-quad {
         position: absolute;
         left: var(--cat-quad-x, -9999px);
         top: var(--cat-quad-y, -9999px);
@@ -749,7 +749,7 @@
         height: var(--cat-quad-h, 0);
         transform: rotate(var(--cat-quad-rot, 0deg));
         z-index: 15;
-        background: var(--rm-red);
+        background: var(--arcana-red);
         mix-blend-mode: difference;
         clip-path: var(
             --cat-quad-clip,
@@ -769,7 +769,7 @@
        Tangent to the white arc at viewBox (17.58, 900).
        In screen coords: 1.758vh right of divider line, at 90vh from top.
        Tangent angle from vertical: atan(400 / 2569) ≈ 8.85° to the right-up. */
-    .rm-items-scroll-indicator {
+    .arcana-items-scroll-indicator {
         position: absolute;
         top: 90vh;
         left: clamp(26rem, 42vw, 46rem);
@@ -784,16 +784,16 @@
         width: 28px;
     }
 
-    .rm-items-scroll-track {
+    .arcana-items-scroll-track {
         position: relative;
         width: 100%;
         height: 100%;
-        background: var(--rm-black);
-        border: 4px solid var(--rm-white);
+        background: var(--arcana-black);
+        border: 4px solid var(--arcana-white);
         box-sizing: border-box;
     }
 
-    .rm-items-scroll-thumb {
+    .arcana-items-scroll-thumb {
         position: absolute;
         left: 0;
         right: 0;
@@ -803,11 +803,11 @@
         top: calc(
             var(--scroll-ratio, 0) * (100% - var(--thumb-ratio, 1) * 100%)
         );
-        background: var(--rm-white);
+        background: var(--arcana-white);
     }
 
     /* ── Right content: list ── */
-    .rm-items-content {
+    .arcana-items-content {
         display: flex;
         flex-direction: column;
         height: 100%;
@@ -818,7 +818,7 @@
     }
 
     /* ── Sort bar (above the list, aligned to list's visual x-start) ── */
-    .rm-items-sort-bar {
+    .arcana-items-sort-bar {
         display: flex;
         align-items: center;
         gap: clamp(0.3rem, 0.5vw, 0.8rem);
@@ -828,7 +828,7 @@
         z-index: 2;
     }
 
-    .rm-ach-tab {
+    .arcana-ach-tab {
         position: relative;
         z-index: 0;
         font-family: "p5hatty", "Orbitron", Arial, sans-serif;
@@ -838,39 +838,39 @@
         letter-spacing: 0.06em;
         padding: clamp(0.5rem, 0.6vw, 0.9rem) clamp(1rem, 1.2vw, 1.8rem);
         border: none;
-        background: var(--rm-white);
-        color: var(--rm-white);
+        background: var(--arcana-white);
+        color: var(--arcana-white);
         cursor: pointer;
         clip-path: polygon(0% 0%, 100% 0%, 96% 100%, 4% 100%);
         transition: all 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
         white-space: nowrap;
     }
 
-    .rm-ach-tab::before {
+    .arcana-ach-tab::before {
         content: "";
         position: absolute;
         inset: 4px;
-        background: var(--rm-black);
+        background: var(--arcana-black);
         clip-path: polygon(0% 0%, 100% 0%, 96% 100%, 4% 100%);
         z-index: -1;
         transition: background 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
     }
 
-    .rm-ach-tab:hover {
+    .arcana-ach-tab:hover {
         transform: scale(1.06);
     }
 
-    .rm-ach-tab.active {
-        background: var(--rm-white);
-        color: var(--rm-black);
+    .arcana-ach-tab.active {
+        background: var(--arcana-white);
+        color: var(--arcana-black);
     }
 
-    .rm-ach-tab.active::before {
-        background: var(--rm-white);
+    .arcana-ach-tab.active::before {
+        background: var(--arcana-white);
     }
 
     /* ── Item list: radial fan from left ── */
-    .rm-items-list {
+    .arcana-items-list {
         flex: 1;
         overflow-y: auto;
         display: flex;
@@ -885,15 +885,15 @@
         scrollbar-width: none;
     }
 
-    .rm-items-list::-webkit-scrollbar {
+    .arcana-items-list::-webkit-scrollbar {
         display: none;
     }
 
-    .rm-item-row {
+    .arcana-item-row {
         display: flex;
         align-items: center;
         border: none;
-        color: var(--rm-white);
+        color: var(--arcana-white);
         cursor: pointer;
         padding: clamp(2.4rem, 6vw, 5rem) clamp(1.2rem, 1.5vw, 2.5rem);
         margin-bottom: -2vw;
@@ -911,40 +911,40 @@
     }
 
     /* Row background: a clipped polygon under everything else. */
-    .rm-item-row::before {
+    .arcana-item-row::before {
         content: "";
         position: absolute;
         inset: 0;
-        background: var(--rm-black);
+        background: var(--arcana-black);
         clip-path: var(--row-clip);
         transition: background 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
         z-index: 0;
     }
 
-    .rm-item-row:hover::before {
+    .arcana-item-row:hover::before {
         background: rgba(255, 255, 255, 0.12);
     }
 
-    .rm-item-row.is-selected::before,
-    .rm-item-row.is-selected:hover::before {
-        background: var(--rm-black);
+    .arcana-item-row.is-selected::before,
+    .arcana-item-row.is-selected:hover::before {
+        background: var(--arcana-black);
     }
 
     /* Selection triangle — sits above the row background, below the text.
        Short slanted edge on the left (1.3× row height), tip 20% past right. */
-    .rm-item-selection-tri {
+    .arcana-item-selection-tri {
         position: absolute;
         top: -15%;
         bottom: -15%;
         left: -8%;
         right: -20%;
-        background: var(--rm-red);
+        background: var(--arcana-red);
         clip-path: polygon(8% 0%, 100% 70%, 0% 100%);
         pointer-events: none;
         z-index: 1;
     }
 
-    .rm-item-row-name {
+    .arcana-item-row-name {
         font-family: "Source Han Sans SC", "Noto Sans SC", "方正兰亭黑_GBK", inherit;
         font-weight: 600;
         font-size: clamp(1.3rem, 1.5vw, 2.2rem);
@@ -960,7 +960,7 @@
 
     /* Reserve space for the absolutely-positioned pill so the name ellipsizes
        before running under it. Width = pill width + pill right offset + gap. */
-    .rm-item-row:has(.rm-item-pill) .rm-item-row-name {
+    .arcana-item-row:has(.arcana-item-pill) .arcana-item-row-name {
         padding-right: calc(
             clamp(7.5rem, 9.5vw, 11.5rem) + clamp(1.5rem, 2vw, 3rem) +
                 clamp(0.6rem, 0.8vw, 1rem)
@@ -968,7 +968,7 @@
     }
 
     /* ── Sort-value pill (inside right side of row quadrilateral) ── */
-    .rm-item-pill {
+    .arcana-item-pill {
         position: absolute;
         right: clamp(1.5rem, 2vw, 3rem);
         top: 50%;
@@ -979,8 +979,8 @@
         width: clamp(7.5rem, 9.5vw, 11.5rem);
         height: clamp(3.2rem, 4vw, 4.8rem);
         padding: 0 clamp(1.2rem, 1.4vw, 2rem);
-        background: var(--rm-white);
-        color: var(--rm-black);
+        background: var(--arcana-white);
+        color: var(--arcana-black);
         border-radius: 9999px;
         font-family: "Source Han Sans SC", "Noto Sans SC", "方正兰亭黑_GBK", inherit;
         font-size: clamp(1.8rem, 2.1vw, 2.6rem);
@@ -992,11 +992,11 @@
         z-index: 3;
     }
 
-    .rm-item-pill-main {
+    .arcana-item-pill-main {
         text-align: left;
     }
 
-    .rm-item-pill-unit {
+    .arcana-item-pill-unit {
         text-align: right;
         font-weight: 600;
     }
